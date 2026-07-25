@@ -7,8 +7,8 @@ on:
       - master
 
 env:
-  SERVICE_NAME: disha-diagnostics
-  REGION: asia-southeast1
+  SERVICE_NAME: disha-diagnostic-engine
+  REGION: asia-south1
 
 jobs:
   deploy:
