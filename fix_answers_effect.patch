@@ -1,0 +1,15 @@
+--- src/components/DeepDiveAssessment.tsx
++++ src/components/DeepDiveAssessment.tsx
+@@ -806,6 +806,12 @@
+     return () => unsub();
+   }, [activeSchool?.id]);
+ 
++  useEffect(() => {
++    dimensions.forEach(dim => {
++      updateDimensionScore(dim.id, answers);
++    });
++  }, [answers]);
++
+   useEffect(() => {
+     if (activeSurveyStakeholder) {
+       const currentQuestions = SURVEY_QUESTIONS[activeSurveyStakeholder].questions;

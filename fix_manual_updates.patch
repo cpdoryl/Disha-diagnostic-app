@@ -1,0 +1,25 @@
+--- src/components/DeepDiveAssessment.tsx
++++ src/components/DeepDiveAssessment.tsx
+@@ -862,11 +862,6 @@
+     });
+     setAnswers(newAnswers);
+     
+-    // Update all dimensions
+-    dimensions.forEach(dim => {
+-      updateDimensionScore(dim.id, newAnswers);
+-    });
+-    
+     markStakeholderAnswered(st);
+     setActiveSurveyStakeholder(null);
+     
+@@ -1225,10 +1220,6 @@
+         newAnswers[`${actualId}_${stakeholder}`] = Math.floor(Math.random() * 2) + 4; // 4 or 5
+       });
+       setAnswers(newAnswers);
+-      // Update all dimensions
+-      dimensions.forEach(dim => {
+-        updateDimensionScore(dim.id, newAnswers);
+-      });
+       setSimulateStakeholderLoading(null);
+       markStakeholderAnswered(stakeholder as any);
+       addCommunication({

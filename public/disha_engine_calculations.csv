@@ -1,0 +1,10 @@
+CALCULATION_STEP,DESCRIPTION,FORMULA / METHOD,EXAMPLE_VALUE
+Step 1: Subjective Baseline,Calculate average risk penalty from Q1-Q6,"Avg(Q1_Penalty ... Q6_Penalty)",5.33
+Step 1: Subjective Baseline,Calculate Unclamped Subjective Score,"100 - (Avg_Penalty * 10)",46.7
+Step 1: Subjective Baseline,Calculate Subjective Base Score (S_sub),"MAX(0, MIN(100, Unclamped_Score))",46.7
+Step 2: Objective Factor,Master Objective Factor (M_obj),"m_STR * m_SLA * m_retrain * m_plan",0.88
+Step 3: Mismatch & Divergence,Delusion Penalty (P_mismatch),"IF(S_sub>=80 AND M_obj<=0.85, 15, IF(...))",0
+Step 3: Mismatch & Divergence,Unclamped Health Index,"(S_sub * M_obj) - P_mismatch",41.09
+Step 3: Mismatch & Divergence,FINAL HEALTH INDEX (H),"MAX(0, MIN(100, Unclamped_Health_Index))",41.09
+Step 3: Mismatch & Divergence,Hard Operational Score Baseline,"M_obj * 100",88.00
+Step 3: Mismatch & Divergence,Absolute Divergence,"ABS(S_sub - Hard_Operational_Score)",41.3

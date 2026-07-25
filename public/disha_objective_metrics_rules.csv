@@ -1,0 +1,15 @@
+METRIC_ID,METRIC_NAME,RANGE_MIN,RANGE_MAX,MULTIPLIER,NOTES
+M01,Student-Teacher Ratio (STR),0,20,1.05,Optimal
+M01,Student-Teacher Ratio (STR),20.01,28,1.00,Standard
+M01,Student-Teacher Ratio (STR),28.01,35,0.88,Frictional
+M01,Student-Teacher Ratio (STR),35.01,999,0.75,Critical
+M02,Parent SLA (Hours),0,12,1.05,Optimal
+M02,Parent SLA (Hours),12.01,24,1.00,Standard
+M02,Parent SLA (Hours),24.01,48,0.85,Frictional
+M02,Parent SLA (Hours),48.01,999,0.70,Critical
+M03,Teacher Retraining (Hrs/Yr),25,999,1.05,Optimal
+M03,Teacher Retraining (Hrs/Yr),15,24.99,1.00,Standard
+M03,Teacher Retraining (Hrs/Yr),0,14.99,0.85,Frictional
+M04,Lesson Planning (Hrs/Wk),5,999,1.05,Optimal
+M04,Lesson Planning (Hrs/Wk),3,4.99,1.00,Standard
+M04,Lesson Planning (Hrs/Wk),0,2.99,0.88,Frictional

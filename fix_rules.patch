@@ -1,0 +1,20 @@
+--- firestore.rules
++++ firestore.rules
+@@ -107,5 +107,17 @@
+     match /support_requests/{requestId} {
+       allow create: if isValidId(requestId) && isValidSupportRequest(incoming());
+       allow read, update, delete: if isAdmin();
+     }
++    
++    match /deep_dive_assessments/{docId} {
++      allow read, write: if true;
++    }
++
++    match /{path=**}/surveys_{aid}/{docId} {
++      allow read, write: if true;
++    }
++    match /surveys_{aid}/{docId} {
++      allow read, write: if true;
++    }
+   }
+ }

@@ -1,0 +1,7 @@
+Q_ID,QUESTION,RATING_1_PENALTY,RATING_2_PENALTY,RATING_3_PENALTY,RATING_4_PENALTY,RATING_5_PENALTY
+Q1,Which operational issue currently causes the most friction?,10,8,4,2,0
+Q2,How frequent are parent complaints?,10,8,4,2,0
+Q3,How would you rate teacher morale?,10,8,4,2,0
+Q4,Rate curriculum execution consistency.,10,8,4,2,0
+Q5,How effective is your disciplinary system?,10,8,4,2,0
+Q6,Rate financial stability perception.,10,8,4,2,0

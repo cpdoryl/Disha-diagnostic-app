@@ -1,0 +1,6 @@
+{
+  "name": "DISHA Diagnostic Engine",
+  "description": "Adaptive School Diagnostic & Outcome Simulation Engine for data-driven school improvement.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

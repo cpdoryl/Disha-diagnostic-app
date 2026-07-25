@@ -1,0 +1,6 @@
+CHALLENGE_ID,CHALLENGE_NAME,PRIMARY_DIMENSIONS,SECONDARY_DIMENSIONS,SYMPTOMS,RECOMMENDED_ACTION
+C01,Teacher Attrition / Staff Turnover,"D7, D9",D8,"High turnover, complaints about workload","Conduct workload audit, improve leadership support channels"
+C02,Enrollment Decline,D11,"D10, D1","Fewer admissions, negative word-of-mouth","Enhance value proposition communication, curriculum review"
+C03,Parent Dissatisfaction,"D10, D12","D5, D13","Frequent complaints, slow SLA response","Implement 24hr SLA for parent queries, open feedback loops"
+C04,Academic Performance Drop,"D1, D3","D2, D8","Lower test scores, poor lesson planning","Increase lesson planning time, implement formative assessments"
+C05,Student Stress & Discipline,"D4, D5","D6, D2","Bullying reports, high disciplinary actions","Shift to restorative discipline, increase counseling"

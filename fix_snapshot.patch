@@ -1,0 +1,17 @@
+--- src/components/DeepDiveAssessment.tsx
++++ src/components/DeepDiveAssessment.tsx
+@@ -636,7 +636,12 @@
+            const st = change.doc.id as 'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other';
+            const data = change.doc.data();
+            if (data.answers) {
+-              setAnswers(prev => ({ ...prev, ...data.answers }));
++              setAnswers(prev => {
++                 const newAns = { ...prev };
++                 Object.keys(data.answers).forEach(k => {
++                   newAns[`${k}_${st}`] = data.answers[k];
++                 });
++                 return newAns;
++              });
+               setAnsweredStakeholders(prev => ({ ...prev, [st]: true }));
+            }
+         }

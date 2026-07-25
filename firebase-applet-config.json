@@ -1,0 +1,12 @@
+{
+  "projectId": "disha-diagnostics",
+  "appId": "1:709341433256:web:ff46c6f70db67d11dd219d",
+  "apiKey": "AIzaSyBBr4ANofK3qx869dmi3jbw9OT4peYZTZ8",
+  "authDomain": "disha-diagnostics.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-dishadiagnostice-63fe1b2b-7f23-4689-aa1a-cd41267d5918",
+  "storageBucket": "disha-diagnostics.firebasestorage.app",
+  "messagingSenderId": "709341433256",
+  "measurementId": "",
+  "oAuthClientId": "709341433256-vcevi54kgkjbu05q8bdnbgfcps3ccjsk.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
+}

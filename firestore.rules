@@ -1,0 +1,210 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net
+    match /{document=**} { 
+      allow read, write: if false; 
+    }
+    
+    function isSignedIn() { 
+      return request.auth != null; 
+    }
+    
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    // User approval check
+    function isApproved() {
+      return isSignedIn() && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isApproved == true);
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update, delete: if isSignedIn() && request.auth.uid == userId;
+      allow list, get, update, delete: if isAdmin();
+    }
+    
+    function isValidStudent(data) {
+      return data.keys().hasAll(['id', 'name', 'gradeLevel', 'classSection', 'gender', 'attendanceRate', 'riskProfile', 'academicPerformance'])
+          && data.id is string && data.id.size() <= 128
+          && data.name is string && data.name.size() <= 200
+          && data.gradeLevel is string && data.gradeLevel.size() <= 50
+          && data.classSection is string && data.classSection.size() <= 50
+          && data.gender is string && data.gender.size() <= 20
+          && data.attendanceRate is number
+          && data.riskProfile is string && data.riskProfile.size() <= 20
+          && data.academicPerformance is number;
+    }
+    
+    function isValidStaff(data) {
+      return data.keys().hasAll(['id', 'name', 'role', 'subject', 'tenureMonths', 'performanceScore'])
+          && data.id is string && data.id.size() <= 128
+          && data.name is string && data.name.size() <= 200
+          && data.role is string && data.role.size() <= 100
+          && data.subject is string && data.subject.size() <= 100
+          && data.tenureMonths is number
+          && data.performanceScore is number;
+    }
+
+    function isValidAttendance(data) {
+      return data.keys().hasAll(['id', 'date', 'studentId', 'studentName', 'status'])
+          && data.id is string && data.id.size() <= 128
+          && data.date is string && data.date.size() <= 50
+          && data.studentId is string && data.studentId.size() <= 128
+          && data.studentName is string && data.studentName.size() <= 200
+          && data.status is string && data.status.size() <= 50;
+    }
+
+    function isValidCommunication(data) {
+      return data.keys().hasAll(['id', 'title', 'content', 'sender', 'timestamp', 'recipientGroup'])
+          && data.id is string && data.id.size() <= 128
+          && data.title is string && data.title.size() <= 256
+          && data.content is string && data.content.size() <= 5000
+          && data.sender is string && data.sender.size() <= 100
+          && data.timestamp is string && data.timestamp.size() <= 50
+          && data.recipientGroup is string && data.recipientGroup.size() <= 100;
+    }
+
+    function isValidChallengeDomain(data) {
+      return data.keys().hasAll(['id', 'title', 'description', 'score', 'trend'])
+          && data.id is string && data.id.size() <= 128
+          && data.title is string && data.title.size() <= 256
+          && data.description is string && data.description.size() <= 2000
+          && data.score is number
+          && data.trend is string && data.trend.size() <= 20;
+    }
+
+    function isValidDimension(data) {
+      return data.keys().hasAll(['id', 'categoryId', 'categoryName', 'name', 'score', 'benchmark'])
+          && data.id is string && data.id.size() <= 128
+          && data.categoryId is string && data.categoryId.size() <= 128
+          && data.categoryName is string && data.categoryName.size() <= 100
+          && data.name is string && data.name.size() <= 100
+          && data.score is number
+          && data.benchmark is number;
+    }
+
+    function isValidGapPrediction(data) {
+      return data.keys().hasAll(['id', 'domainId', 'domainName', 'gapVsStandard', 'gapVsPeer', 'priorityRank', 'rootCause', 'recommendation'])
+          && data.id is string && data.id.size() <= 128
+          && data.domainId is string && data.domainId.size() <= 128
+          && data.domainName is string && data.domainName.size() <= 100
+          && data.gapVsStandard is number
+          && data.gapVsPeer is number
+          && data.priorityRank is number
+          && data.rootCause is string && data.rootCause.size() <= 2000
+          && data.recommendation is string && data.recommendation.size() <= 2000;
+    }
+
+    function isValidSimulationModel(data) {
+      return data.keys().hasAll(['id', 'targetMetric', 'targetValue', 'currentValue', 'confidenceTier', 'districtPrecedent', 'requiredChanges'])
+          && data.id is string && data.id.size() <= 128
+          && data.targetMetric is string && data.targetMetric.size() <= 100
+          && data.targetValue is number
+          && data.currentValue is number
+          && data.confidenceTier is string && data.confidenceTier.size() <= 10
+          && data.districtPrecedent is string && data.districtPrecedent.size() <= 500
+          && data.requiredChanges is list;
+    }
+
+    function isValidSupportRequest(data) {
+      return data.keys().hasAll(['id', 'email', 'category', 'message', 'consentGiven', 'consentNotice', 'timestamp'])
+          && data.id is string && data.id.size() <= 128
+          && data.email is string && data.email.size() <= 320
+          && data.category is string && data.category.size() <= 100
+          && data.message is string && data.message.size() <= 10000
+          && data.consentGiven is bool && data.consentGiven == true
+          && data.consentNotice is string && data.consentNotice.size() <= 1000
+          && data.timestamp is string && data.timestamp.size() <= 50;
+    }
+
+    match /schools/{schoolId} {
+      allow read, write: if true;
+    }
+
+    match /students/{studentId} {
+      allow read: if isApproved();
+      allow create: if isApproved() && isValidId(studentId) && isValidStudent(incoming());
+      allow update: if isApproved() && isValidId(studentId) && isValidStudent(incoming());
+      allow delete: if isApproved() && isValidId(studentId);
+    }
+    
+    match /staff/{staffId} {
+      allow read: if isApproved();
+      allow create: if isApproved() && isValidId(staffId) && isValidStaff(incoming());
+      allow update: if isApproved() && isValidId(staffId) && isValidStaff(incoming());
+      allow delete: if isApproved() && isValidId(staffId);
+    }
+    
+    match /attendance/{attendanceId} {
+      allow read: if isApproved();
+      allow create: if isApproved() && isValidId(attendanceId) && isValidAttendance(incoming());
+      allow update: if isApproved() && isValidId(attendanceId) && isValidAttendance(incoming());
+      allow delete: if isApproved() && isValidId(attendanceId);
+    }
+    
+    
+    
+    match /domains/{domainId} {
+      allow read: if isApproved();
+      allow create: if isApproved() && isValidId(domainId) && isValidChallengeDomain(incoming());
+      allow update: if isApproved() && isValidId(domainId) && isValidChallengeDomain(incoming());
+      allow delete: if isApproved() && isValidId(domainId);
+    }
+    
+    match /dimensions/{dimensionId} {
+      allow read: if isApproved();
+      allow create: if isApproved() && isValidId(dimensionId) && isValidDimension(incoming());
+      allow update: if isApproved() && isValidId(dimensionId) && isValidDimension(incoming());
+      allow delete: if isApproved() && isValidId(dimensionId);
+    }
+    
+    match /gaps/{gapId} {
+      allow read: if isApproved();
+      allow create: if isApproved() && isValidId(gapId) && isValidGapPrediction(incoming());
+      allow update: if isApproved() && isValidId(gapId) && isValidGapPrediction(incoming());
+      allow delete: if isApproved() && isValidId(gapId);
+    }
+    
+    match /simulations/{simId} {
+      allow read: if isApproved();
+      allow create: if isApproved() && isValidId(simId) && isValidSimulationModel(incoming());
+      allow update: if isApproved() && isValidId(simId) && isValidSimulationModel(incoming());
+      allow delete: if isApproved() && isValidId(simId);
+    }
+    
+    match /contact_requests/{requestId} {
+      allow create: if true;
+    }
+
+    match /support_requests/{requestId} {
+      allow create: if isValidId(requestId) && isValidSupportRequest(incoming());
+      allow read, update, delete: if isAdmin();
+    }
+
+  
+    
+    
+    match /communications/{commId} {
+      allow read, write: if true;
+    }
+
+    match /deep_dive_assessments/{docId} {
+      allow read, write: if true;
+    }
+
+    match /{collectionName}/{docId} {
+      allow read, write: if collectionName.matches('^surveys_.*');
+    }
+  }
+}

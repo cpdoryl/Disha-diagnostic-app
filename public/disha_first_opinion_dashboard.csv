@@ -1,0 +1,13 @@
+SECTION,FIELD,VALUE,NOTES
+Management Info,School Name,Acme High School,Enter school name
+Management Info,Date of Assessment,2026-10-15,YYYY-MM-DD
+Subjective Input,Q1: Which operational issue currently causes the most friction?,2,1-5 scale (1=Worst)
+Subjective Input,Q2: How frequent are parent complaints?,3,1-5 scale
+Subjective Input,Q3: How would you rate teacher morale?,4,1-5 scale
+Subjective Input,Q4: Rate curriculum execution consistency.,3,1-5 scale
+Subjective Input,Q5: How effective is your disciplinary system?,4,1-5 scale
+Subjective Input,Q6: Rate financial stability perception.,5,1-5 scale
+Objective Metric,Average Student-Teacher Ratio (STR),25,Target: <=20
+Objective Metric,Parent Query SLA (Hours),24,Target: <=12
+Objective Metric,Teacher Retraining (Hours/Year),20,Target: >=25
+Objective Metric,Lesson Planning Time (Hours/Week),4,Target: >=5
