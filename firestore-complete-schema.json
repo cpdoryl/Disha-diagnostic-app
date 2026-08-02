@@ -1,0 +1,484 @@
+{
+  "version": "1.0",
+  "projectId": "disha-diagnostics",
+  "description": "Complete Firestore Database Schema for DISHA Diagnostic Engine - All 3 Stages with All Stakeholders",
+  "lastUpdated": "2026-08-02",
+
+  "collections": {
+
+    "schools": {
+      "description": "School profiles and master data",
+      "schema": {
+        "schoolId": "string (doc ID)",
+        "name": "string",
+        "board": "string (CBSE/ICSE/IB/OTHER)",
+        "tier": "string (Budget/Mid-Market/Premium)",
+        "city": "string",
+        "state": "string",
+        "address": "string",
+        "pincode": "string",
+        "totalStudents": "number",
+        "totalTeachers": "number",
+        "principalName": "string",
+        "principalEmail": "string",
+        "principalPhone": "string",
+        "contactEmail": "string",
+        "contactPhone": "string",
+        "website": "string",
+        "established": "number (year)",
+        "grades": "array (e.g., ['Nursery', 'LKG', 'UKG', '1-5', '6-8', '9-10', '11-12'])",
+        "features": "array (e.g., ['Co-ed', 'Day-boarding', 'Hostel'])",
+        "registrationDate": "timestamp",
+        "status": "string (Active/Inactive/Suspended)",
+        "creditBalance": "number (₹)",
+        "subscriptionPlan": "string (Free/Starter/Professional/Enterprise)",
+        "subscriptionExpiry": "timestamp"
+      },
+      "subcollections": {
+        "assessments": "Link to all assessments for this school",
+        "staff": "School staff members",
+        "students": "School students",
+        "workflows": "Active improvement workflows"
+      }
+    },
+
+    "users": {
+      "description": "All users across stakeholder types",
+      "schema": {
+        "userId": "string (doc ID - Firebase Auth UID)",
+        "email": "string",
+        "displayName": "string",
+        "phone": "string",
+        "role": "string (Admin/Principal/Teacher/Parent/Student/SuperAdmin)",
+        "schoolId": "string (reference to school)",
+        "department": "string (e.g., 'Academic', 'Admin', 'Counseling')",
+        "designation": "string",
+        "qualifications": "array",
+        "yearsOfExperience": "number",
+        "profilePhoto": "string (URL)",
+        "joinDate": "timestamp",
+        "lastLogin": "timestamp",
+        "status": "string (Active/Inactive/Suspended)",
+        "permissions": "array (specific to role)",
+        "metadata": {
+          "loginCount": "number",
+          "assessmentsCompleted": "number",
+          "lastActivityDate": "timestamp"
+        }
+      }
+    },
+
+    "stage1_firstOpinionAssessments": {
+      "description": "Stage 1: First Opinion Engine - 15 Challenges Assessment",
+      "schema": {
+        "assessmentId": "string (doc ID)",
+        "schoolId": "string (reference)",
+        "createdBy": "string (userId)",
+        "createdAt": "timestamp",
+        "completedAt": "timestamp",
+        "status": "string (Draft/Submitted/Approved)",
+        "schoolDetails": {
+          "name": "string",
+          "board": "string",
+          "totalStudents": "number",
+          "city": "string",
+          "feeTier": "string"
+        },
+        "selectedChallenges": "array (challenge IDs selected)",
+        "challengeWeights": "map (challengeId -> weight %)",
+        "screeningResponses": {
+          "challengeId": {
+            "questionIndex": "number (1-3)",
+            "selectedOption": "string",
+            "weight": "number (1-10)",
+            "responseTime": "timestamp"
+          }
+        },
+        "operationalMetrics": {
+          "str": "number (student-teacher ratio)",
+          "parentSLA": "number (response time in hours)",
+          "trainingHours": "number (annual)",
+          "planningTime": "number (weekly)"
+        },
+        "calculations": {
+          "sSubScore": "number (0-100)",
+          "objectiveMultiplier": "number",
+          "scaledScore": "number",
+          "delisionPenalty": "number",
+          "healthIndex": "number (0-100)",
+          "riskQuadrant": "string (Elite/Hidden/Delusional/Critical)"
+        },
+        "recommendations": "array"
+      }
+    },
+
+    "stage2_14dAssessments": {
+      "description": "Stage 2: 14-Dimension EWISR Assessment",
+      "schema": {
+        "assessmentId": "string (doc ID)",
+        "schoolId": "string (reference)",
+        "createdBy": "string (userId)",
+        "createdAt": "timestamp",
+        "completedAt": "timestamp",
+        "status": "string (Draft/Submitted/Approved)",
+        "dimensionScores": {
+          "D01": "number (0-100)",
+          "D02": "number (0-100)",
+          "D03": "number (0-100)",
+          "D04": "number (0-100)",
+          "D05": "number (0-100)",
+          "D06": "number (0-100)",
+          "D07": "number (0-100)",
+          "D08": "number (0-100)",
+          "D09": "number (0-100)",
+          "D10": "number (0-100)",
+          "D11": "number (0-100)",
+          "D12": "number (0-100)",
+          "D13": "number (0-100)",
+          "D14": "number (0-100)"
+        },
+        "dimensionResponses": {
+          "D01": {
+            "Q1": "number (1-10)",
+            "Q2": "number (1-10)",
+            "Q3": "number (1-10)",
+            "Q4": "number (1-10)"
+          }
+        },
+        "overallHealthIndex": "number (0-100)",
+        "healthStatus": "string (Elite/Strong/Healthy/Average/Below Average/Needs Improvement)",
+        "strengths": "array (dimension IDs with scores 80+)",
+        "weaknesses": "array (dimension IDs with scores <70)",
+        "recommendations": "array"
+      }
+    },
+
+    "stage3_improvementPlans": {
+      "description": "Stage 3: Reverse Outcome Modeling - Goal-Based Improvement Plans",
+      "schema": {
+        "planId": "string (doc ID)",
+        "schoolId": "string (reference)",
+        "createdBy": "string (userId)",
+        "createdAt": "timestamp",
+        "planName": "string",
+        "status": "string (Draft/Approved/Active/Completed)",
+        "goalSetting": {
+          "currentHealthIndex": "number (0-100)",
+          "targetHealthIndex": "number (0-100)",
+          "gap": "number",
+          "timelineMonths": "number",
+          "availableBudget": "number (₹)",
+          "priorityFocus": "string (Academic/Facilities/Staff/Holistic)",
+          "riskTolerance": "string (Low/Medium/High)"
+        },
+        "reverseCalculation": {
+          "requiredPoints": "number",
+          "currentPoints": "number",
+          "pointsToGain": "number",
+          "dimensionTargets": {
+            "D01": {
+              "current": "number",
+              "target": "number",
+              "gap": "number",
+              "feasibility": "number (0-100%)",
+              "priority": "string"
+            }
+          }
+        },
+        "feasibilityAssessment": {
+          "overallFeasibility": "number (0-100%)",
+          "riskLevel": "string (Low/Medium/High)",
+          "adjustedTarget": "number (if not fully feasible)"
+        },
+        "actionPlan": {
+          "actionId": {
+            "dimension": "string",
+            "title": "string",
+            "description": "string",
+            "timeline": "number (months)",
+            "budget": "number (₹)",
+            "owner": "string (userId)",
+            "expectedImpact": "number (score points)",
+            "status": "string (Planned/In Progress/Completed)",
+            "startDate": "timestamp",
+            "endDate": "timestamp"
+          }
+        },
+        "resourceAllocation": {
+          "totalBudget": "number",
+          "allocatedByDimension": {
+            "D01": "number (₹)",
+            "D02": "number (₹)"
+          },
+          "contingencyBuffer": "number (₹)"
+        },
+        "timeline": {
+          "phase1": {
+            "name": "Foundation",
+            "months": "1-3",
+            "budget": "number",
+            "expectedGain": "number"
+          },
+          "phase2": {
+            "name": "Build",
+            "months": "4-9",
+            "budget": "number",
+            "expectedGain": "number"
+          },
+          "phase3": {
+            "name": "Optimize",
+            "months": "10-12",
+            "budget": "number",
+            "expectedGain": "number"
+          }
+        },
+        "milestones": [
+          {
+            "name": "string",
+            "month": "number",
+            "targetHealth": "number",
+            "deliverables": "array",
+            "owner": "string",
+            "completed": "boolean",
+            "completionDate": "timestamp"
+          }
+        ],
+        "monitoring": {
+          "lastReviewDate": "timestamp",
+          "currentProgress": "number (0-100%)",
+          "actualVsPlanned": "number",
+          "adjustments": "array"
+        }
+      }
+    },
+
+    "challenges_catalog": {
+      "description": "First Opinion Engine - 15 Challenges Master Data",
+      "schema": {
+        "challengeId": "string (C1-C15)",
+        "domain": "string (Growth/People/Academic/Reputation/Operations)",
+        "name": "string",
+        "description": "string",
+        "weight": "number",
+        "primaryMetric": "string",
+        "dataSource": "array",
+        "benchmark": {
+          "excellent": "number",
+          "good": "number",
+          "average": "number",
+          "poor": "number"
+        },
+        "questions": [
+          {
+            "index": "number",
+            "text": "string",
+            "options": [
+              {
+                "text": "string",
+                "weight": "number (1-10)",
+                "description": "string"
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    "dimensions_catalog": {
+      "description": "14-Dimension EWISR Master Data",
+      "schema": {
+        "dimensionId": "string (D01-D14)",
+        "name": "string",
+        "category": "string",
+        "description": "string",
+        "weight": "number (%)",
+        "importance": "string (Critical/Major/Supporting/Specialization)",
+        "questions": [
+          {
+            "index": "number",
+            "text": "string",
+            "options": [
+              {
+                "text": "string",
+                "weight": "number (1-10)"
+              }
+            ]
+          }
+        ],
+        "benchmarks": {
+          "excellent": "number",
+          "good": "number",
+          "average": "number",
+          "poor": "number"
+        },
+        "improvementDifficulty": "number (1-10)",
+        "typicalTimeToImprove": "number (months)",
+        "costFactor": "number (1-10)"
+      }
+    },
+
+    "workflow_templates": {
+      "description": "Workflow templates for different school contexts",
+      "schema": {
+        "templateId": "string (doc ID)",
+        "name": "string (e.g., 'Academic Excellence Focus')",
+        "description": "string",
+        "targetSchoolType": "string (Budget/Mid-market/Premium)",
+        "targetBoard": "array (CBSE/ICSE/IB)",
+        "focusDimensions": "array (dimension IDs to prioritize)",
+        "typicalDuration": "number (months)",
+        "estimatedCost": "number (₹)",
+        "successRate": "number (0-100%)",
+        "includedActions": "array (action templates)",
+        "expectedOutcome": "number (target health index)"
+      }
+    },
+
+    "user_stakeholders": {
+      "description": "Stakeholder-specific access and dashboards",
+      "schema": {
+        "stakeholderId": "string (doc ID - userId)",
+        "stakeholderType": "string (Admin/Principal/Teacher/Parent/Student)",
+        "schoolId": "string",
+        "accessLevel": "string (View/Edit/Admin)",
+        "permissions": "array",
+        "dashboardSettings": {
+          "visibleSections": "array",
+          "defaultView": "string",
+          "dataFilters": "map"
+        },
+        "notifications": {
+          "enabled": "boolean",
+          "frequency": "string (Instant/Daily/Weekly)",
+          "topics": "array"
+        }
+      }
+    },
+
+    "assessment_responses": {
+      "description": "Raw response data for audit and detailed analysis",
+      "schema": {
+        "responseId": "string (doc ID)",
+        "assessmentId": "string (reference)",
+        "responderId": "string (userId)",
+        "respondingRole": "string (Principal/Teacher/Parent/Admin)",
+        "timestamp": "timestamp",
+        "questionId": "string",
+        "selectedOption": "string",
+        "weight": "number",
+        "metadata": {
+          "timeToAnswer": "number (seconds)",
+          "attemptNumber": "number",
+          "confidence": "string (High/Medium/Low)"
+        }
+      }
+    },
+
+    "audit_logs": {
+      "description": "Complete audit trail for compliance (DPDP Act 2023)",
+      "schema": {
+        "logId": "string (doc ID)",
+        "timestamp": "timestamp",
+        "userId": "string (who made the change)",
+        "action": "string (CREATE/READ/UPDATE/DELETE)",
+        "entityType": "string (Assessment/Plan/Action/etc)",
+        "entityId": "string",
+        "changes": {
+          "fieldName": {
+            "oldValue": "any",
+            "newValue": "any"
+          }
+        },
+        "schoolId": "string (for filtering)",
+        "ipAddress": "string",
+        "userAgent": "string"
+      }
+    },
+
+    "notifications": {
+      "description": "Notifications for all stakeholders",
+      "schema": {
+        "notificationId": "string (doc ID)",
+        "recipientId": "string (userId)",
+        "schoolId": "string",
+        "type": "string (Assessment/Action/Review/System)",
+        "title": "string",
+        "message": "string",
+        "relatedEntityId": "string (assessment/plan/action ID)",
+        "status": "string (Unread/Read/Archived)",
+        "createdAt": "timestamp",
+        "readAt": "timestamp",
+        "actionUrl": "string"
+      }
+    },
+
+    "reporting": {
+      "description": "Aggregated reports for dashboards",
+      "schema": {
+        "reportId": "string (doc ID)",
+        "schoolId": "string",
+        "reportType": "string (Summary/Detailed/Comparative)",
+        "generatedAt": "timestamp",
+        "period": "string (M1/Q1/Annual)",
+        "metrics": {
+          "overallHealth": "number",
+          "dimensionScores": "map",
+          "trend": "number",
+          "comparisonToLastPeriod": "number"
+        },
+        "insights": "array",
+        "recommendations": "array",
+        "dataQuality": "number (0-100%)"
+      }
+    },
+
+    "benchmark_data": {
+      "description": "Comparison benchmarks (state/national/peer)",
+      "schema": {
+        "benchmarkId": "string (doc ID)",
+        "category": "string (StateAverage/NationalAverage/PeerGroup)",
+        "board": "string",
+        "tier": "string",
+        "year": "number",
+        "dimensionBenchmarks": {
+          "D01": "number",
+          "D02": "number"
+        },
+        "chargengeBenchmarks": {
+          "C01": "number"
+        },
+        "sampleSize": "number",
+        "confidence": "number (0-100%)"
+      }
+    },
+
+    "system_configuration": {
+      "description": "System-wide settings and parameters",
+      "schema": {
+        "configId": "string (doc ID)",
+        "parameterName": "string",
+        "value": "any",
+        "type": "string (number/string/boolean/array)",
+        "description": "string",
+        "lastModified": "timestamp",
+        "modifiedBy": "string"
+      }
+    }
+  },
+
+  "security_levels": {
+    "public": "No authentication required",
+    "authenticated": "Firebase Auth required",
+    "school_user": "User must belong to school",
+    "school_admin": "User must be school admin",
+    "system_admin": "System admin only"
+  },
+
+  "data_lifecycle": {
+    "assessments": "Keep for 7 years (compliance)",
+    "audit_logs": "Keep for 7 years (legal requirement)",
+    "responses": "Keep for 3 years (analysis)",
+    "notifications": "Auto-delete after 30 days",
+    "temporary_data": "Auto-delete after 7 days"
+  }
+}
