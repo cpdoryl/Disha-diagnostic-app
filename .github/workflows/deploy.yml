@@ -7,8 +7,8 @@ on:
       - master
 
 env:
-  SERVICE_NAME: disha-diagnostic-engine
-  REGION: asia-south1
+  SERVICE_NAME: disha-diagnostics
+  REGION: asia-southeast1
 
 jobs:
   deploy:
@@ -36,12 +36,6 @@ jobs:
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
 
-      - name: Delete Old Service (Clear Metadata)
-        run: |
-          gcloud run services delete ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --quiet 2>/dev/null || true
-
       - name: Deploy Image to Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
@@ -49,5 +43,4 @@ jobs:
             --platform managed \
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
-            --port 3000 \
-            --quiet
+            --port 3000

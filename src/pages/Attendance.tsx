@@ -5,7 +5,7 @@ import { cn } from '../lib/utils';
 import { AttendanceRecord } from '../types';
 
 export const Attendance = () => {
-  const { students, attendance, addAttendanceRecords } = useAppStore();
+  const { students, attendance, addAttendanceRecords, activeSchool } = useAppStore();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedGrade, setSelectedGrade] = useState('Grade 10');
   const [selectedSection, setSelectedSection] = useState('A');
@@ -49,8 +49,15 @@ export const Attendance = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900">Attendance Register</h2>
-        <p className="text-gray-500 mt-1 font-medium">Daily attendance entry, checklists, and compliance logging.</p>
+        <div className="flex items-center gap-2">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Attendance Register</h2>
+          {activeSchool && (
+            <span className="bg-emerald-100 text-emerald-900 text-xs font-extrabold px-2.5 py-1 rounded-lg border border-emerald-200">
+              {activeSchool.name}
+            </span>
+          )}
+        </div>
+        <p className="text-gray-500 mt-1 font-medium">Daily attendance entry, class checklists, and DISHA Dimension 4 (Culture & Climate) telemetry logging.</p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

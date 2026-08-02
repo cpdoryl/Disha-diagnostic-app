@@ -3,11 +3,13 @@ import {
   Building, Users, Shield, GraduationCap, Trophy, Globe, HeartPulse, Sliders, 
   Upload, Search, FileText, CheckCircle2, AlertTriangle, RefreshCw, Star, 
   Check, ArrowRight, Activity, Cpu, Sparkles, BookOpen, Compass, ChevronRight, Play, Info,
-  Download, Send, Lock, Scale, FileSpreadsheet, Eye, HelpCircle, Mail, MessageCircle, Link2
+  Download, Send, Lock, Scale, FileSpreadsheet, Eye, HelpCircle, Mail, MessageCircle, Link2, Volume2, Languages, Zap, AlertCircle,
+  User, Phone, Building2, MapPin, Award, Layers
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { db } from '../lib/firebase';
 import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { SchoolDataHub } from './SchoolDataHub';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 
 // 14 dimensions details
@@ -318,377 +320,1141 @@ const INITIAL_14_DIMENSIONS: EWISRDimension[] = [
 export const SURVEY_QUESTIONS = {
   leader: {
     title: "School Leaders Strategic Survey",
-    desc: "Verification of compliance cycles, pedagogy audits, and CBSE structural alignments.",
+    desc: "Comprehensive diagnostic verification of leadership, pedagogy audits, NEP 2020 alignment, and CBSE SQAAF structural compliance.",
     questions: [
+      // Part I: Governance, Leadership & Vision
       {
-        id: "ew_8_leader",
-        id_actual: "ew_8",
-        label: "Q1: Leadership / Management",
-        text: "How would you rate the school's performance in Leadership / Management?",
-        options: [
-          { val: 2, label: "Reactive, disorganized, poor vision" },
-          { val: 4, label: "Stable, standard operational management" },
-          { val: 5, label: "Visionary, proactive, and highly effective leadership" }
-        ]
-      },
-      {
-        id: "ew_1_leader",
-        id_actual: "ew_1",
-        label: "Q2: Competence of Faculty",
-        text: "How would you rate the school's performance in Competence of Faculty?",
-        options: [
-          { val: 2, label: "Poorly qualified/No ongoing training" },
-          { val: 4, label: "Adequately qualified with basic training" },
-          { val: 5, label: "Highly qualified with continuous professional development" }
-        ]
-      },
-      {
-        id: "ew_2_leader",
-        id_actual: "ew_2",
-        label: "Q3: Teacher Welfare & Dev",
-        text: "How would you rate the school's performance in Teacher Welfare & Dev?",
-        options: [
-          { val: 2, label: "High stress, low pay, poor benefits" },
-          { val: 4, label: "Average pay, standard benefits, acceptable workload" },
-          { val: 5, label: "Competitive pay, excellent benefits, well-managed workload" }
-        ]
-      },
-      {
-        id: "ew_11_leader",
-        id_actual: "ew_11",
-        label: "Q4: Internationalism",
-        text: "How would you rate the school's performance in Internationalism?",
-        options: [
-          { val: 2, label: "No global exposure or partnerships" },
-          { val: 4, label: "Occasional international events or basic partnerships" },
-          { val: 5, label: "Strong international exchange programs and global curriculum integration" }
-        ]
-      },
-      {
-        id: "ew_13_leader",
+        id: "ew_13_leader_q1",
         id_actual: "ew_13",
-        label: "Q5: Value for Money",
-        text: "How would you rate the school's performance in Value for Money?",
+        section: "Part I: Governance, Leadership & Vision",
+        label: "Q1.1: Strategic Audits & Vision Roadmap",
+        text: "How frequently does school leadership conduct central academic/operational audits and review the 5-year strategic growth map?",
         options: [
-          { val: 2, label: "High fees with mismatched facilities/outcomes" },
-          { val: 4, label: "Fair fees for the services provided" },
-          { val: 5, label: "Exceptional educational outcomes and facilities relative to the fee" }
+          { val: 1, label: "Level 1: No structured strategic plan or formal operational audits conducted" },
+          { val: 2, label: "Level 2: Annual informal review with limited operational data tracking" },
+          { val: 3, label: "Level 3: Biannual formal audits with active operational logging" },
+          { val: 4, label: "Level 4: Comprehensive quarterly audits with data-driven KPI dashboards" },
+          { val: 5, label: "Level 5: Monthly automated audits mapped to CBSE SQAAF & EWISR national benchmarks" }
         ]
       },
       {
-        id: "ew_10_leader",
-        id_actual: "ew_10",
-        label: "Q6: Infrastructure Provision",
-        text: "How would you rate the school's performance in Infrastructure Provision?",
+        id: "ew_13_leader_q2",
+        id_actual: "ew_13",
+        section: "Part I: Governance, Leadership & Vision",
+        label: "Q1.2: CBSE SQAAF & DPDP Data Privacy Compliance",
+        text: "What is the status of the school's structural compliance with CBSE SQAAF standards and the DPDP (Digital Personal Data Protection) Act 2023?",
         options: [
-          { val: 2, label: "Aging facilities, basic amenities" },
-          { val: 4, label: "Well-maintained standard classrooms and labs" },
-          { val: 5, label: "World-class, modern, and highly equipped campus" }
+          { val: 1, label: "Level 1: Minimal awareness / non-compliant with standard DPDP policies" },
+          { val: 2, label: "Level 2: Partial compliance with manual paperwork and basic policy postings" },
+          { val: 3, label: "Level 3: Substantial compliance with dedicated safety & data privacy officers" },
+          { val: 4, label: "Level 4: Full compliance with digital audit trails and annual verification" },
+          { val: 5, label: "Level 5: Exemplary DPDP-certified digital infrastructure with 100% automated regulatory readiness" }
+        ]
+      },
+      // Part II: Faculty Competence, Teacher Welfare & NEP 2020 CPD
+      {
+        id: "ew_1_leader_q1",
+        id_actual: "ew_1",
+        section: "Part II: Faculty Competence, Teacher Welfare & NEP 2020 CPD",
+        label: "Q2.1: Faculty Credentials & Clinical Pedagogy",
+        text: "What proportion of core faculty members hold advanced domain degrees (Post-Graduate/B.Ed/CTET) and undergo regular lesson evaluations?",
+        options: [
+          { val: 1, label: "Level 1: Under 50% certified; no structured classroom lesson observations" },
+          { val: 2, label: "Level 2: 50%–70% certified; occasional informal lesson reviews" },
+          { val: 3, label: "Level 3: 70%–85% certified; scheduled annual lesson observation cycles" },
+          { val: 4, label: "Level 4: 85%–95% certified; quarterly structured feedback & master teacher mentoring" },
+          { val: 5, label: "Level 5: Over 95% certified with monthly clinical pedagogy audits" }
+        ]
+      },
+      {
+        id: "ew_1_leader_q2",
+        id_actual: "ew_1",
+        section: "Part II: Faculty Competence, Teacher Welfare & NEP 2020 CPD",
+        label: "Q2.2: NEP 2020 Mandatory 50 Hours CPD Compliance",
+        text: "How effectively does the school track and enforce NEP 2020's mandate of 50 hours of annual Continuous Professional Development (CPD) per teacher?",
+        options: [
+          { val: 1, label: "Level 1: Less than 10 hours logged annually per teacher; no central tracking" },
+          { val: 2, label: "Level 2: 10–25 hours logged; sporadic workshop attendance" },
+          { val: 3, label: "Level 3: 25–40 hours logged; tracked manually by academic coordinators" },
+          { val: 4, label: "Level 4: 40–50 hours logged; mandatory Podar Innovation Lab / CBSE certified modules" },
+          { val: 5, label: "Level 5: 50+ hours fully verified & logged digitally with peer demonstration requirements" }
+        ]
+      },
+      {
+        id: "ew_2_leader_q1",
+        id_actual: "ew_5",
+        section: "Part II: Faculty Competence, Teacher Welfare & NEP 2020 CPD",
+        label: "Q2.3: Compensation, Burnout Index & Planning Allocation",
+        text: "How does the institution manage teacher compensation, weekly lesson planning time, and burnout prevention?",
+        options: [
+          { val: 1, label: "Level 1: High workload (>35 teaching periods/week), below-market pay, zero planning hours" },
+          { val: 2, label: "Level 2: Average workload, standard pay scale, <3 hours weekly planning time" },
+          { val: 3, label: "Level 3: Managed workload (25–30 periods), competitive pay, 4–6 planning hours weekly" },
+          { val: 4, label: "Level 4: Balanced workload (<25 periods), above-market pay & benefits, 6–8 planning hours" },
+          { val: 5, label: "Level 5: Industry-leading compensation, dedicated wellness programs, >8 uninterrupted planning hours" }
+        ]
+      },
+      // Part III: Academic Rigor, Curriculum & Competency-Based Pedagogy
+      {
+        id: "ew_3_leader_q1",
+        id_actual: "ew_3",
+        section: "Part III: Academic Rigor, Curriculum & Competency-Based Pedagogy",
+        label: "Q3.1: Board Exam Outcomes & Academic Percentile",
+        text: "What is the 3-year average academic performance and board examination percentile across senior cohorts relative to regional benchmarks?",
+        options: [
+          { val: 1, label: "Level 1: Below regional average (<65% average score); high variation across classes" },
+          { val: 2, label: "Level 2: Regional average (65%–75% average score); standard board results" },
+          { val: 3, label: "Level 3: Above regional average (75%–85% score); strong subject pass rates" },
+          { val: 4, label: "Level 4: High performing (85%–90% score); top 10% position in district" },
+          { val: 5, label: "Level 5: Nationally benchmarked (>90% score percentile); top-tier distinction & competitive ranks" }
+        ]
+      },
+      {
+        id: "ew_2_leader_q2",
+        id_actual: "ew_2",
+        section: "Part III: Academic Rigor, Curriculum & Competency-Based Pedagogy",
+        label: "Q3.2: NEP 2020 Competency-Based & Experiential Pedagogy",
+        text: "To what degree are competency-based assessments, project-based learning (PBL), and smart classroom tools integrated into daily lesson plans?",
+        options: [
+          { val: 1, label: "Level 1: Purely textbook-driven rote learning; no digital classroom tools" },
+          { val: 2, label: "Level 2: Basic textbook reliance with occasional smart-board displays" },
+          { val: 3, label: "Level 3: Structured syllabus mapping with 1 PBL unit per term per grade" },
+          { val: 4, label: "Level 4: Blended learning modules with 2–3 PBL units & digital interactive tools" },
+          { val: 5, label: "Level 5: Full NEP 2020 alignment with active experiential learning, robotics/STEM integration, and digital maps" }
+        ]
+      },
+      {
+        id: "ew_4_leader_q1",
+        id_actual: "ew_4",
+        section: "Part III: Academic Rigor, Curriculum & Competency-Based Pedagogy",
+        label: "Q3.3: Quality of Alumni & Graduate Career Placement",
+        text: "How systematically does the school track graduating cohorts, alumni higher education admissions, and alumni mentorship programs?",
+        options: [
+          { val: 1, label: "Level 1: No alumni network or placement tracking" },
+          { val: 2, label: "Level 2: Informal contact with select alumni; no central database" },
+          { val: 3, label: "Level 3: Active alumni directory tracking tier-1 university admissions" },
+          { val: 4, label: "Level 4: Structured annual alumni mentorship sessions & university counseling pipelines" },
+          { val: 5, label: "Level 5: Comprehensive digital alumni portal with active career mentorship, scholarship endowment, and global networking" }
+        ]
+      },
+      // Part IV: Individual Attention, Inclusivity & Student Retention
+      {
+        id: "ew_8_leader_q1",
+        id_actual: "ew_8",
+        section: "Part IV: Individual Attention, Inclusivity & Student Retention",
+        label: "Q4.1: Pupil-Teacher Ratio & Differentiated Instruction",
+        text: "What is the average Pupil-Teacher Ratio (PTR) in core academic classes, and how are slower learners supported?",
+        options: [
+          { val: 1, label: "Level 1: PTR > 35:1; uniform pace with no individual differentiation" },
+          { val: 2, label: "Level 2: PTR 30–35:1; occasional after-school doubt sessions" },
+          { val: 3, label: "Level 3: PTR 25–30:1; structured remedial groups for bottom 15% cohort" },
+          { val: 4, label: "Level 4: PTR 20–25:1; dedicated assistant teachers & personalized homework tracks" },
+          { val: 5, label: "Level 5: Elite PTR < 18:1; fully customized learning paths & 1-on-1 academic coaching" }
+        ]
+      },
+      {
+        id: "ew_6_leader_q1",
+        id_actual: "ew_6",
+        section: "Part IV: Individual Attention, Inclusivity & Student Retention",
+        label: "Q4.2: Student Wellbeing, Counseling & Mental Health",
+        text: "What licensed counseling resources, emotional wellbeing circle-time minutes, and confidential support systems exist for students?",
+        options: [
+          { val: 1, label: "Level 1: No licensed counselor or mental health filing system" },
+          { val: 2, label: "Level 2: Part-time counselor with basic ad-hoc student meetings" },
+          { val: 3, label: "Level 3: Full-time counselor with weekly circle-time support modules" },
+          { val: 4, label: "Level 4: Dedicated psychological center, peer support groups, and annual mental health screening" },
+          { val: 5, label: "Level 5: Clinical wellbeing framework, daily Conglom check-ins (Riverside model), and 24/7 helpline" }
+        ]
+      },
+      {
+        id: "ew_5_leader_q1",
+        id_actual: "ew_8",
+        section: "Part IV: Individual Attention, Inclusivity & Student Retention",
+        label: "Q4.3: Early Warning Dropout & Attendance SLA",
+        text: "How quickly does the school identify and intervene for students showing chronic absenteeism (>3 days unexcused) or retention risks?",
+        options: [
+          { val: 1, label: "Level 1: Reactive tracking; dropouts or attendance issues noticed only at term end" },
+          { val: 2, label: "Level 2: Manual weekly registers; phone call follow-ups after 5+ absent days" },
+          { val: 3, label: "Level 3: Digital attendance logs; automated alert sent after 3 consecutive absences" },
+          { val: 4, label: "Level 4: Proactive SLA tracking; counselor call & home-visit protocol within 48 hours" },
+          { val: 5, label: "Level 5: AI-driven early-warning retention system flagging academic, financial, and attendance risk scores in real-time" }
+        ]
+      },
+      // Part V: Stakeholder SLA, Parent Engagement & Financial Transparency
+      {
+        id: "ew_12_leader_q1",
+        id_actual: "ew_12",
+        section: "Part V: Stakeholder SLA, Parent Engagement & Financial Transparency",
+        label: "Q5.1: Parent Inquiry SLA & Ticket Resolution",
+        text: "What is the average turnaround time for resolving parent inquiries, app tickets, and administrative grievances?",
+        options: [
+          { val: 1, label: "Level 1: > 48 hours response lag; unorganized WhatsApp groups or physical notes" },
+          { val: 2, label: "Level 2: 24–48 hours turnaround; basic helpdesk ticketing" },
+          { val: 3, label: "Level 3: 12–24 hours turnaround; structured Parent App with ticket tracking" },
+          { val: 4, label: "Level 4: 4–12 hours resolution time; dedicated parent relationship manager" },
+          { val: 5, label: "Level 5: Strict < 4 hours SLA resolution with real-time escalation matrix and monthly satisfaction auditing" }
+        ]
+      },
+      {
+        id: "ew_14_leader_q1",
+        id_actual: "ew_14",
+        section: "Part V: Stakeholder SLA, Parent Engagement & Financial Transparency",
+        label: "Q5.2: Value for Money & Fee Capital Reinvestment",
+        text: "What percentage of annual fee revenue is directly reinvested into classroom technology, faculty bonuses, campus facilities, and lab infrastructure?",
+        options: [
+          { val: 1, label: "Level 1: < 15% reinvested; aging equipment and fee-facility mismatch" },
+          { val: 2, label: "Level 2: 15%–25% reinvested; routine maintenance and minimal tech updates" },
+          { val: 3, label: "Level 3: 25%–35% reinvested; ongoing lab upgrades and fair teacher compensation" },
+          { val: 4, label: "Level 4: 35%–45% reinvested; state-of-the-art tech adoption and competitive salaries" },
+          { val: 5, label: "Level 5: Over 45% reinvested; premium infrastructure, zero hidden costs, and exceptional return on parent investment" }
+        ]
+      },
+      // Part VI: Campus Infrastructure, Safety & Physical Facilities
+      {
+        id: "ew_7_leader_q1",
+        id_actual: "ew_7",
+        section: "Part VI: Campus Infrastructure, Safety & Physical Facilities",
+        label: "Q6.1: Campus Safety, CCTV & Emergency Fire Clearances",
+        text: "Are all physical safety certificates (Fire Safety, Structural Stability, Transport GPS, CCTV) up to date with zero compliance lapses?",
+        options: [
+          { val: 1, label: "Level 1: Expired safety certificates or significant CCTV coverage blind spots" },
+          { val: 2, label: "Level 2: Valid safety clearances with manual security registers" },
+          { val: 3, label: "Level 3: Annual fire safety drills, complete perimeter CCTV, and basic bus tracking" },
+          { val: 4, label: "Level 4: Quarterly safety audits, full HD CCTV, and parent live bus GPS tracking" },
+          { val: 5, label: "Level 5: Centralized Podar network clearance, automated emergency response, biometric gates, and 100% zero-blindspot campus" }
+        ]
+      },
+      {
+        id: "ew_10_leader_q1",
+        id_actual: "ew_7",
+        section: "Part VI: Campus Infrastructure, Safety & Physical Facilities",
+        label: "Q6.2: Modern Laboratories, STEM & Campus Hygiene",
+        text: "How would you rate the state of science laboratories, computer infrastructure, robotics hubs, and sanitation hygiene?",
+        options: [
+          { val: 1, label: "Level 1: Outdated labs, broken equipment, or poor toilet sanitation hygiene" },
+          { val: 2, label: "Level 2: Basic functional science/computer labs and standard hygiene" },
+          { val: 3, label: "Level 3: Well-equipped labs, dedicated computer centers, and clean facilities" },
+          { val: 4, label: "Level 4: Advanced STEM labs, interactive smart classrooms, and sanitized amenities" },
+          { val: 5, label: "Level 5: World-class robotics hub, high-speed fiber internet, green energy campus, and pristine hygiene" }
+        ]
+      },
+      // Part VII: Holistic Development, Sports, Community & Global Exposure
+      {
+        id: "ew_9_leader_q1",
+        id_actual: "ew_9",
+        section: "Part VII: Holistic Development, Sports & Global Exposure",
+        label: "Q7.1: Co-Curricular Arts, Performing Ensembles & Debates",
+        text: "How much weekly schedule time is allocated to structured arts, dramatic performances, music ensembles, and debate/MUN clubs?",
+        options: [
+          { val: 1, label: "Level 1: Less than 1 period/week; minimal non-academic activity" },
+          { val: 2, label: "Level 2: 1–2 periods/week; basic annual cultural day event" },
+          { val: 3, label: "Level 3: 3–4 periods/week; active clubs and regional competition entries" },
+          { val: 4, label: "Level 4: 4–5 periods/week; professional art/music instructors and state-level accolades" },
+          { val: 5, label: "Level 5: > 5 periods/week; dedicated theater/arts studio, national/international showcase entries, and student-led publications" }
+        ]
+      },
+      {
+        id: "ew_10_leader_q2",
+        id_actual: "ew_10",
+        section: "Part VII: Holistic Development, Sports & Global Exposure",
+        label: "Q7.2: Sports Infrastructure, PE Coaches & Fitness Metrics",
+        text: "What is the quality of sports grounds, certified coaching faculty, and physical stamina/health monitoring?",
+        options: [
+          { val: 1, label: "Level 1: Limited play area; uncertified staff; no structured physical education curriculum" },
+          { val: 2, label: "Level 2: Standard multi-purpose playground; basic sports equipment and general PE teacher" },
+          { val: 3, label: "Level 3: Dedicated sports turfs/courts; specialized coaches for 2+ major sports" },
+          { val: 4, label: "Level 4: Multi-sport complex (swimming/turf/indoor court); certified coaches and annual athletic tracking" },
+          { val: 5, label: "Level 5: Olympic-standard sports facilities, sports science/BMI tracking, national tournament representation, and elite academy partnerships" }
+        ]
+      },
+      {
+        id: "ew_11_leader_q1",
+        id_actual: "ew_11",
+        section: "Part VII: Holistic Development, Sports & Global Exposure",
+        label: "Q7.3: Mandatory Community Service & Environmental CSR",
+        text: "Is community service mandatory for graduation, and how actively do students lead local neighborhood impact projects?",
+        options: [
+          { val: 1, label: "Level 1: No community service programs or environmental drives" },
+          { val: 2, label: "Level 2: Occasional annual donation drives or cleanup days" },
+          { val: 3, label: "Level 3: Structured community service hours required (10–20 hours/year)" },
+          { val: 4, label: "Level 4: Student-led environmental/social campaigns with active local NGO partnerships" },
+          { val: 5, label: "Level 5: Deeply embedded community impact curriculum (>30 hours/year), solar/zero-waste campus, and recognized social innovation projects" }
+        ]
+      },
+      {
+        id: "ew_11_leader_q2",
+        id_actual: "ew_11",
+        section: "Part VII: Holistic Development, Sports & Global Exposure",
+        label: "Q7.4: Internationalism & Global Curriculum Integration",
+        text: "How does the school expose students to global cultures, international exchange initiatives, and global curriculum perspectives?",
+        options: [
+          { val: 1, label: "Level 1: No international exposure, global partner ties, or MUN programs" },
+          { val: 2, label: "Level 2: Occasional international day celebrations or foreign language electives" },
+          { val: 3, label: "Level 3: Active Model UN participation and global current affairs workshops" },
+          { val: 4, label: "Level 4: Virtual student exchange programs and partner school collaborations abroad" },
+          { val: 5, label: "Level 5: Comprehensive global immersion, physical student/faculty exchanges, international curriculum certification options, and global civic projects" }
         ]
       }
     ]
   },
   teacher: {
     title: "Teacher Assessment & Workplace Audit",
-    desc: "Feedback on professional development, student attention, and inclusion.",
+    desc: "In-depth diagnostic of instructional support, CPD retraining, workload balance, inclusion, safety, and leadership trust.",
     questions: [
+      // Part I: Professional Pedagogy & Continuous Growth
       {
-        id: "ew_1_teacher",
+        id: "ew_1_teacher_q1",
         id_actual: "ew_1",
-        label: "Q1: Competence of Faculty",
-        text: "How would you rate the school's performance in Competence of Faculty?",
+        section: "Part I: Professional Pedagogy & Continuous Growth",
+        label: "Q1.1: Annual CPD & Training Hours",
+        text: "How many structured Continuous Professional Development (CPD) and pedagogy training hours did you complete in the last 12 months?",
         options: [
-          { val: 2, label: "Poorly qualified/No ongoing training" },
-          { val: 4, label: "Adequately qualified with basic training" },
-          { val: 5, label: "Highly qualified with continuous professional development" }
+          { val: 1, label: "Level 1: Under 10 hours of training; minimal access to professional learning modules" },
+          { val: 2, label: "Level 2: 10–25 hours; basic compliance workshops with limited practical follow-up" },
+          { val: 3, label: "Level 3: 25–40 hours; structured annual workshops and domain training" },
+          { val: 4, label: "Level 4: 40–50 hours; mandatory CBSE/NCERT certified skill modules" },
+          { val: 5, label: "Level 5: Over 50 hours fully verified; active peer mentorship & demonstration teaching" }
         ]
       },
       {
-        id: "ew_2_teacher",
+        id: "ew_2_teacher_q1",
         id_actual: "ew_2",
-        label: "Q2: Teacher Welfare & Dev",
-        text: "How would you rate the school's performance in Teacher Welfare & Dev?",
+        section: "Part I: Professional Pedagogy & Continuous Growth",
+        label: "Q1.2: Blended Curriculum Tools & Project-Based Pedagogy",
+        text: "How frequently do you utilize digital smart boards, blended lesson plans, and Project-Based Learning (PBL) units in daily classes?",
         options: [
-          { val: 2, label: "High stress, low pay, poor benefits" },
-          { val: 4, label: "Average pay, standard benefits, acceptable workload" },
-          { val: 5, label: "Competitive pay, excellent benefits, well-managed workload" }
+          { val: 1, label: "Level 1: Purely textbook-based rote instruction; zero digital or PBL tools available" },
+          { val: 2, label: "Level 2: Occasional smart board usage; physical textbook remains primary focus" },
+          { val: 3, label: "Level 3: Structured digital lesson plans; at least 1 PBL unit integrated per term" },
+          { val: 4, label: "Level 4: Blended learning modules with interactive digital labs & 2–3 PBL units per grade" },
+          { val: 5, label: "Level 5: Full NEP 2020 experiential learning with digital maps, simulations & interdisciplinary projects" }
+        ]
+      },
+      // Part II: Faculty Welfare, Workload Balance & Compensation
+      {
+        id: "ew_5_teacher_q1",
+        id_actual: "ew_5",
+        section: "Part II: Faculty Welfare, Workload Balance & Compensation",
+        label: "Q2.1: Weekly Lesson Planning Allocation & Workload",
+        text: "How many uninterrupted hours per week are allocated in your timetable for lesson planning, grading, and curriculum mapping?",
+        options: [
+          { val: 1, label: "Level 1: Zero dedicated planning hours (<1 hr); heavy non-teaching admin chores (>35 teaching periods)" },
+          { val: 2, label: "Level 2: 1–3 planning hours/week; frequent substitution duties and manual registers" },
+          { val: 3, label: "Level 3: 4–6 planning hours/week; manageable class schedule (28–30 periods)" },
+          { val: 4, label: "Level 4: 6–8 planning hours/week; automated attendance logging & minimal clerical overhead" },
+          { val: 5, label: "Level 5: > 8 uninterrupted planning hours/week; dedicated departmental workspace & assistant support" }
         ]
       },
       {
-        id: "ew_6_teacher",
-        id_actual: "ew_6",
-        label: "Q3: Life Skills Education",
-        text: "How would you rate the school's performance in Life Skills Education?",
+        id: "ew_5_teacher_q2",
+        id_actual: "ew_5",
+        section: "Part II: Faculty Welfare, Workload Balance & Compensation",
+        label: "Q2.2: Compensation Equity & Burnout Prevention",
+        text: "How satisfied are you with your salary package, medical benefits, performance bonuses, and burnout support from management?",
         options: [
-          { val: 2, label: "Not included in the curriculum" },
-          { val: 4, label: "Some basic life skills taught occasionally" },
-          { val: 5, label: "Integrated comprehensively into daily learning and activities" }
+          { val: 1, label: "Level 1: Dissatisfied; below-market scale, zero health benefits, high burnout stress" },
+          { val: 2, label: "Level 2: Somewhat satisfied; standard pay scale with basic leaves and high workload" },
+          { val: 3, label: "Level 3: Satisfied; competitive regional salary, standard health cover, annual increments" },
+          { val: 4, label: "Level 4: Very satisfied; 7th CPC aligned pay, medical insurance, wellness allowances" },
+          { val: 5, label: "Level 5: Highly satisfied; top 10% regional pay scale, performance bonuses & wellness programs" }
         ]
       },
+      // Part III: Academic Rigor, Remedial Tracking & Inclusion
       {
-        id: "ew_7_teacher",
-        id_actual: "ew_7",
-        label: "Q4: Individual Attention",
-        text: "How would you rate the school's performance in Individual Attention?",
-        options: [
-          { val: 2, label: "High student-teacher ratio, generic teaching" },
-          { val: 4, label: "Average class sizes, some differentiation" },
-          { val: 5, label: "Low student-teacher ratio, highly personalized learning plans" }
-        ]
-      },
-      {
-        id: "ew_12_teacher",
-        id_actual: "ew_12",
-        label: "Q5: Special Needs Education",
-        text: "How would you rate the school's performance in Special Needs Education?",
-        options: [
-          { val: 2, label: "No support for SEN students" },
-          { val: 4, label: "Basic SEN support and some trained staff" },
-          { val: 5, label: "Comprehensive inclusion policies, dedicated SEN department and resources" }
-        ]
-      },
-      {
-        id: "ew_3_teacher",
+        id: "ew_3_teacher_q1",
         id_actual: "ew_3",
-        label: "Q6: Academic Reputation",
-        text: "How would you rate the school's performance in Academic Reputation?",
+        section: "Part III: Academic Rigor, Remedial Tracking & Inclusion",
+        label: "Q3.1: Academic Rigor & Board Exam Preparedness",
+        text: "How effectively does the school support faculty in tracking student learning gaps and preparing cohorts for board exams?",
         options: [
-          { val: 2, label: "Below average results, poor local perception" },
-          { val: 4, label: "Average results, acceptable perception" },
-          { val: 5, label: "Consistently excellent results, highly prestigious" }
+          { val: 1, label: "Level 1: No systematic tracking of learning gaps; syllabus coverage is rushed" },
+          { val: 2, label: "Level 2: Informal test reviews; mock exams conducted right before final boards" },
+          { val: 3, label: "Level 3: Termly academic performance audits; structured doubt-clearing sessions" },
+          { val: 4, label: "Level 4: Bi-weekly diagnostic gap analysis with targeted remedial workbooks" },
+          { val: 5, label: "Level 5: Real-time analytics tracking student mastery percentiles with customized board revision strategies" }
+        ]
+      },
+      {
+        id: "ew_8_teacher_q1",
+        id_actual: "ew_8",
+        section: "Part III: Academic Rigor, Remedial Tracking & Inclusion",
+        label: "Q3.2: Pupil-Teacher Ratio & Differentiated Instruction Support",
+        text: "Does class size permit individual attention, and do you receive assistant teacher support for diverse learning paces?",
+        options: [
+          { val: 1, label: "Level 1: Overcrowded classrooms (>40 students); impossible to offer individual feedback" },
+          { val: 2, label: "Level 2: Class size 35–40 students; generic single-pace instruction for all" },
+          { val: 3, label: "Level 3: Class size 28–35 students; occasional small-group remedial focus" },
+          { val: 4, label: "Level 4: Class size 20–28 students; dedicated co-teachers for primary/remedial groups" },
+          { val: 5, label: "Level 5: Optimal class size (<20 students); individual learning plans (IEPs) & assistant support" }
+        ]
+      },
+      // Part IV: Well-being, Safety & Special Needs Inclusion
+      {
+        id: "ew_6_teacher_q1",
+        id_actual: "ew_6",
+        section: "Part IV: Well-being, Safety & Special Needs Inclusion",
+        label: "Q4.1: Mental Health, Counseling & Circle Time Integration",
+        text: "How well-equipped are you and the school to handle student emotional distress, behavioral issues, or cyberbullying?",
+        options: [
+          { val: 1, label: "Level 1: No counselor on staff; teachers receive no training on student mental health" },
+          { val: 2, label: "Level 2: Part-time counselor; informal handling of discipline or emotional issues" },
+          { val: 3, label: "Level 3: Full-time licensed counselor; regular referral mechanisms and class check-ins" },
+          { val: 4, label: "Level 4: Structured weekly Circle-Time/Conglom sessions & trained faculty advocates" },
+          { val: 5, label: "Level 5: Comprehensive mental health protocol with daily emotional check-ins & 24/7 student support" }
+        ]
+      },
+      {
+        id: "ew_8_teacher_q2",
+        id_actual: "ew_8",
+        section: "Part IV: Well-being, Safety & Special Needs Inclusion",
+        label: "Q4.2: SEN Inclusion & Special Education Department Support",
+        text: "What level of specialized support exists for students with Special Educational Needs (SEN) or learning disabilities in your class?",
+        options: [
+          { val: 1, label: "Level 1: Zero SEN support or specialized accommodations provided" },
+          { val: 2, label: "Level 2: Basic accommodation on exams; no dedicated special educators on campus" },
+          { val: 3, label: "Level 3: Dedicated SEN department; periodic consultations with special educators" },
+          { val: 4, label: "Level 4: Co-teaching with special educators and tailored IEP (Individualized Education Program) tracks" },
+          { val: 5, label: "Level 5: Full inclusive education framework with resource rooms, assistive technologies, and specialized faculty" }
+        ]
+      },
+      // Part V: Campus Infrastructure, Safety & Technology
+      {
+        id: "ew_7_teacher_q1",
+        id_actual: "ew_7",
+        section: "Part V: Campus Infrastructure, Safety & Technology",
+        label: "Q5.1: Classroom Ergonomics, Digital Hardware & Labs",
+        text: "How would you rate the quality of classroom furniture, lighting, smart hardware, and laboratory equipment provided for your subjects?",
+        options: [
+          { val: 1, label: "Level 1: Outdated, damaged furniture; non-functional projectors/labs" },
+          { val: 2, label: "Level 2: Basic functional classrooms; shared computer labs with limited internet" },
+          { val: 3, label: "Level 3: Well-lit classrooms, working AV equipment, and standard science labs" },
+          { val: 4, label: "Level 4: High-speed fiber Wi-Fi, modern interactive smart boards, and advanced science/robotics labs" },
+          { val: 5, label: "Level 5: World-class ergonomic furniture, 1:1 digital devices, green energy campus, and state-of-the-art labs" }
+        ]
+      },
+      // Part VI: Leadership Vision, Governance & Stakeholder SLA
+      {
+        id: "ew_13_teacher_q1",
+        id_actual: "ew_13",
+        section: "Part VI: Leadership Vision, Governance & Stakeholder SLA",
+        label: "Q6.1: Open-Door Leadership Culture & Academic Autonomy",
+        text: "Does school leadership maintain an open, transparent culture where teachers can express concerns without fear of reprisal?",
+        options: [
+          { val: 1, label: "Level 1: Authoritarian leadership; faculty feedback is ignored or penalized" },
+          { val: 2, label: "Level 2: Formal top-down hierarchy; limited opportunity for teachers to suggest changes" },
+          { val: 3, label: "Level 3: Regular staff meetings where concerns are logged and discussed" },
+          { val: 4, label: "Level 4: Transparent leadership team with open-door policies and constructive peer feedback" },
+          { val: 5, label: "Level 5: Collaborative academic council where faculty actively participate in strategic school policy decisions" }
+        ]
+      },
+      {
+        id: "ew_12_teacher_q1",
+        id_actual: "ew_12",
+        section: "Part VI: Leadership Vision, Governance & Stakeholder SLA",
+        label: "Q6.2: Parent Partnership & Communication Responsiveness",
+        text: "How structured and manageable is parent-teacher communication through official app channels?",
+        options: [
+          { val: 1, label: "Level 1: Chaotic WhatsApp groups with after-hours messages & unmanaged parent expectations" },
+          { val: 2, label: "Level 2: Physical student diaries; occasional PTMs with long waiting times" },
+          { val: 3, label: "Level 3: Official Parent App for messaging during defined school hours" },
+          { val: 4, label: "Level 4: Structured ticketing helpdesk with 24-hour response SLAs & quarterly PTM reviews" },
+          { val: 5, label: "Level 5: Seamless Parent Portal with real-time progress sharing, scheduled appointments, and high mutual trust" }
+        ]
+      },
+      // Part VII: Co-Curriculars, Sports, CSR & Value
+      {
+        id: "ew_9_teacher_q1",
+        id_actual: "ew_9",
+        section: "Part VII: Co-Curriculars, Sports, CSR & Value",
+        label: "Q7.1: Co-Curricular Arts & Drama Integration",
+        text: "How actively are visual arts, performing ensembles, drama, and public speaking integrated into school life?",
+        options: [
+          { val: 1, label: "Level 1: Co-curriculars are treated as filler periods and frequently cancelled for test prep" },
+          { val: 2, label: "Level 2: Basic annual day performance; limited weekly club choices" },
+          { val: 3, label: "Level 3: Structured weekly art/music/drama periods with annual school showcases" },
+          { val: 4, label: "Level 4: Specialized instructors, active debate clubs, and state-level competition entries" },
+          { val: 5, label: "Level 5: Dedicated performing arts academy, national MUN accolades, and student-produced publications" }
+        ]
+      },
+      {
+        id: "ew_10_teacher_q1",
+        id_actual: "ew_10",
+        section: "Part VII: Co-Curriculars, Sports, CSR & Value",
+        label: "Q7.2: Physical Education & Sports Integration",
+        text: "Does the school provide dedicated PE time, certified coaches, and physical fitness tracking for students?",
+        options: [
+          { val: 1, label: "Level 1: Irregular sports periods; no certified physical education coaches" },
+          { val: 2, label: "Level 2: Standard playground time; basic sports equipment for recess" },
+          { val: 3, label: "Level 3: Structured weekly PE timetable with dedicated coaches for core sports" },
+          { val: 4, label: "Level 4: Multi-sport facilities, health/BMI tracking, and district tournament entries" },
+          { val: 5, label: "Level 5: Professional sports academy partnerships, floodlit turfs, and national athletic achievements" }
+        ]
+      },
+      {
+        id: "ew_11_teacher_q1",
+        id_actual: "ew_11",
+        section: "Part VII: Co-Curriculars, Sports, CSR & Value",
+        label: "Q7.3: Community Service & Environmental CSR Engagement",
+        text: "To what extent do students engage in community service projects, recycling drives, or social outreach programs?",
+        options: [
+          { val: 1, label: "Level 1: No community service or social outreach initiatives" },
+          { val: 2, label: "Level 2: Occasional annual donation drive or festive charity collection" },
+          { val: 3, label: "Level 3: Scheduled community service projects (10–20 hours/year requirement)" },
+          { val: 4, label: "Level 4: Active environmental campaigns, zero-waste campus drives, and local NGO ties" },
+          { val: 5, label: "Level 5: Student-led social innovation enterprises, village adoption programs, and recognized community impact" }
+        ]
+      },
+      {
+        id: "ew_4_teacher_q1",
+        id_actual: "ew_4",
+        section: "Part VII: Co-Curriculars, Sports, CSR & Value",
+        label: "Q7.4: Alumni Guidance & Career Pipeline Involvement",
+        text: "How actively do teachers collaborate with alumni networks to guide graduating cohorts on higher education?",
+        options: [
+          { val: 1, label: "Level 1: No alumni interaction or higher education career counseling" },
+          { val: 2, label: "Level 2: Ad-hoc career talks by guest speakers once a year" },
+          { val: 3, label: "Level 3: Structured university counseling pipeline and annual alumni interaction day" },
+          { val: 4, label: "Level 4: Dedicated career guidance center with active alumni mentorship pairings" },
+          { val: 5, label: "Level 5: Global alumni placement network, university application mentorship, and scholarship guidance" }
+        ]
+      },
+      {
+        id: "ew_14_teacher_q1",
+        id_actual: "ew_14",
+        section: "Part VII: Co-Curriculars, Sports, CSR & Value",
+        label: "Q7.5: Reinvestment in Classroom Resources & Educational Value",
+        text: "Do you feel school management reinvests tuition revenues adequately into classroom teaching materials, software, and lab consumables?",
+        options: [
+          { val: 1, label: "Level 1: Strict budget caps on basic stationery, paper, and lab supplies" },
+          { val: 2, label: "Level 2: Essential supplies provided; delays in purchasing new equipment" },
+          { val: 3, label: "Level 3: Adequate teaching budget for standard classroom needs" },
+          { val: 4, label: "Level 4: Generous departmental budgets for experimental kits, books, and software" },
+          { val: 5, label: "Level 5: Continuous capital reinvestment in cutting-edge classroom tech, digital subscriptions, and premium resources" }
         ]
       }
     ]
   },
   parent: {
-    title: "Parental Sentiment & Satisfaction Tracker",
-    desc: "Evaluating academic reputation, involvement, and holistic education.",
+    title: "Parental Experience, Transparency & Academic Value Survey",
+    desc: "Comprehensive diagnostic evaluating academic outcome satisfaction, campus safety, communication responsiveness, holistic development, and overall value.",
     questions: [
+      // Part I: Academic Excellence & Faculty Quality
       {
-        id: "ew_3_parent",
+        id: "ew_3_parent_q1",
         id_actual: "ew_3",
-        label: "Q1: Academic Reputation",
-        text: "How would you rate the school's performance in Academic Reputation?",
+        section: "Part I: Academic Excellence & Faculty Quality",
+        label: "Q1.1: Academic Rigor & Exam Preparedness",
+        text: "How satisfied are you with the academic rigor, board exam results, and competitive exam preparation provided by the school?",
         options: [
-          { val: 2, label: "Below average results, poor local perception" },
-          { val: 4, label: "Average results, acceptable perception" },
-          { val: 5, label: "Consistently excellent results, highly prestigious" }
+          { val: 1, label: "Level 1: Unfavorable; child requires extensive external tuition to keep up with standard board exams" },
+          { val: 2, label: "Level 2: Average; standard textbook coverage but lacks competitive exam depth" },
+          { val: 3, label: "Level 3: Satisfactory; solid board exam preparation and regular assessment feedback" },
+          { val: 4, label: "Level 4: High quality; strong academic percentile rank in district with mock test support" },
+          { val: 5, label: "Level 5: Top tier; top 5% board distinction rates, olympiad training, and zero need for private tuition" }
         ]
       },
       {
-        id: "ew_9_parent",
-        id_actual: "ew_9",
-        label: "Q2: Parents Involvement",
-        text: "How would you rate the school's performance in Parents Involvement?",
+        id: "ew_1_parent_q1",
+        id_actual: "ew_1",
+        section: "Part I: Academic Excellence & Faculty Quality",
+        label: "Q1.2: Perception of Teacher Knowledge & Pedagogy",
+        text: "Do you feel your child's teachers are highly knowledgeable, approachable, and effective at explaining complex concepts?",
         options: [
-          { val: 2, label: "Minimal communication, parents feel disconnected" },
-          { val: 4, label: "Regular PTMs, standard communication" },
-          { val: 5, label: "Deep partnership, transparent communication, active parent body" }
+          { val: 1, label: "Level 1: Poor; teachers struggle with subject clarity or lack professional teaching credentials" },
+          { val: 2, label: "Level 2: Fair; teachers cover syllabus but communication is rigid or transactional" },
+          { val: 3, label: "Level 3: Good; teachers are qualified and respond adequately to student doubts" },
+          { val: 4, label: "Level 4: Very Good; energetic teachers who use engaging examples and encourage curiosity" },
+          { val: 5, label: "Level 5: Exceptional; master educators who inspire lifelong learning and provide personalized academic guidance" }
         ]
       },
       {
-        id: "ew_13_parent",
-        id_actual: "ew_13",
-        label: "Q3: Value for Money",
-        text: "How would you rate the school's performance in Value for Money?",
+        id: "ew_2_parent_q1",
+        id_actual: "ew_2",
+        section: "Part I: Academic Excellence & Faculty Quality",
+        label: "Q1.3: Quality of Homework, Digital Portals & STEM Curriculum",
+        text: "How well balanced and engaging are the homework assignments, digital learning apps, and STEM/project units assigned to your child?",
         options: [
-          { val: 2, label: "High fees with mismatched facilities/outcomes" },
-          { val: 4, label: "Fair fees for the services provided" },
-          { val: 5, label: "Exceptional educational outcomes and facilities relative to the fee" }
+          { val: 1, label: "Level 1: Overwhelming repetitive worksheets or complete lack of digital learning materials" },
+          { val: 2, label: "Level 2: Routine textbook exercises; basic homework notices on app" },
+          { val: 3, label: "Level 3: Meaningful homework assignments with structured project units once per term" },
+          { val: 4, label: "Level 4: Interactive digital portal, blended STEM projects, and balanced weekend workloads" },
+          { val: 5, label: "Level 5: Innovative NEP 2020 project-based learning, adaptive learning app, and zero mechanical homework" }
+        ]
+      },
+      // Part II: Child Well-being, Safety & Individual Attention
+      {
+        id: "ew_8_parent_q1",
+        id_actual: "ew_8",
+        section: "Part II: Child Well-being, Safety & Individual Attention",
+        label: "Q2.1: Individualized Academic Attention & Progress Feedback",
+        text: "Does your child receive personal attention when struggling, and are learning gaps addressed proactively by teachers?",
+        options: [
+          { val: 1, label: "Level 1: No individual attention; slower learners are ignored in large classes" },
+          { val: 2, label: "Level 2: Reactive help only after child fails a major term examination" },
+          { val: 3, label: "Level 3: Regular PTM updates with remedial recommendations for core subjects" },
+          { val: 4, label: "Level 4: Proactive early-gap alerts and dedicated after-school doubt sessions" },
+          { val: 5, label: "Level 5: Fully customized learning paths, low student-teacher ratio, and 1-on-1 academic coaching" }
         ]
       },
       {
-        id: "ew_7_parent",
+        id: "ew_6_parent_q1",
+        id_actual: "ew_6",
+        section: "Part II: Child Well-being, Safety & Individual Attention",
+        label: "Q2.2: Emotional Safety, Counseling & Anti-Bullying Vigilance",
+        text: "How confident are you in the school's emotional safety nets, counselor accessibility, and zero-tolerance policy for bullying?",
+        options: [
+          { val: 1, label: "Level 1: High concern; unaddressed bullying incidents and no counselor support" },
+          { val: 2, label: "Level 2: Basic discipline rules; counselor available on request" },
+          { val: 3, label: "Level 3: Full-time counselor on campus with structured anti-bullying awareness workshops" },
+          { val: 4, label: "Level 4: Proactive mental health programs, peer support networks, and transparent incident handling" },
+          { val: 5, label: "Level 5: World-class psychological safety, daily circle time, anonymous complaint app, and total peace of mind" }
+        ]
+      },
+      {
+        id: "ew_7_parent_q1",
         id_actual: "ew_7",
-        label: "Q4: Individual Attention",
-        text: "How would you rate the school's performance in Individual Attention?",
+        section: "Part II: Child Well-being, Safety & Individual Attention",
+        label: "Q2.3: Physical Campus Security, CCTV, Transport & Sanitation",
+        text: "How would you rate physical campus security, gate access control, school bus live GPS tracking, and restroom hygiene?",
         options: [
-          { val: 2, label: "High student-teacher ratio, generic teaching" },
-          { val: 4, label: "Average class sizes, some differentiation" },
-          { val: 5, label: "Low student-teacher ratio, highly personalized learning plans" }
+          { val: 1, label: "Level 1: Safety concerns; lax gate security, unhygienic washrooms, or unmonitored bus transport" },
+          { val: 2, label: "Level 2: Standard security guards and basic bus attendants" },
+          { val: 3, label: "Level 3: Perimeter CCTV monitoring, verified bus attendants, and clean sanitation facilities" },
+          { val: 4, label: "Level 4: Parent live bus GPS tracking, biometric gate access, and sanitized campus amenities" },
+          { val: 5, label: "Level 5: 100% CCTV coverage, automated parent entry alerts, pristine hygiene standards, and emergency response protocols" }
+        ]
+      },
+      // Part III: Parent-School Communication & Governance
+      {
+        id: "ew_12_parent_q1",
+        id_actual: "ew_12",
+        section: "Part III: Parent-School Communication & Governance",
+        label: "Q3.1: Query SLA & Helpdesk Ticket Resolution Speed",
+        text: "What is your experience regarding responsiveness when submitting administrative or academic inquiries to the school?",
+        options: [
+          { val: 1, label: "Level 1: Unresponsive (>48 hours delay); calls ignored or uncoordinated WhatsApp groups" },
+          { val: 2, label: "Level 2: 24–48 hours turnaround; physical diary notes or basic helpdesk" },
+          { val: 3, label: "Level 3: 12–24 hours turnaround via official Parent App with ticket tracking" },
+          { val: 4, label: "Level 4: 4–12 hours turnaround; dedicated parent relationship executive" },
+          { val: 5, label: "Level 5: Guaranteed < 4 hours SLA resolution with executive escalation matrix and high transparency" }
         ]
       },
       {
-        id: "ew_4_parent",
+        id: "ew_13_parent_q1",
+        id_actual: "ew_13",
+        section: "Part III: Parent-School Communication & Governance",
+        label: "Q3.2: Principal Accessibility & Leadership Vision",
+        text: "Do you trust the principal's vision, administrative leadership, and open accessibility to parents?",
+        options: [
+          { val: 1, label: "Level 1: Distant or non-accessible leadership; decisions communicated arbitrarily" },
+          { val: 2, label: "Level 2: Standard administrative updates sent via circulars; principal accessible only during annual PTM" },
+          { val: 3, label: "Level 3: Clear leadership vision shared at start of year; regular parent feedback surveys" },
+          { val: 4, label: "Level 4: Open-door principal hours, active PTA association, and transparent policy changes" },
+          { val: 5, label: "Level 5: Visionary, inspiring leadership with monthly townhalls, active parent advisory board, and complete trust" }
+        ]
+      },
+      // Part IV: Holistic Growth, Sports & Co-Curriculars
+      {
+        id: "ew_9_parent_q1",
+        id_actual: "ew_9",
+        section: "Part IV: Holistic Growth, Sports & Co-Curriculars",
+        label: "Q4.1: Visual Arts, Performing Ensembles & Drama",
+        text: "How satisfied are you with the quality of music, art, theater, debate, and cultural exposure offered to students?",
+        options: [
+          { val: 1, label: "Level 1: Minimal or non-existent co-curricular exposure" },
+          { val: 2, label: "Level 2: Basic annual cultural event; limited choice of clubs" },
+          { val: 3, label: "Level 3: Regular weekly art/music periods and active public speaking clubs" },
+          { val: 4, label: "Level 4: Specialized music studios, professional theater coaches, and state-level accolades" },
+          { val: 5, label: "Level 5: World-class performing arts center, national MUN representation, and rich holistic exposure" }
+        ]
+      },
+      {
+        id: "ew_10_parent_q1",
+        id_actual: "ew_10",
+        section: "Part IV: Holistic Growth, Sports & Co-Curriculars",
+        label: "Q4.2: Sports Infrastructure, Turf Quality & Professional Coaching",
+        text: "How would you rate the sports grounds, certified coaching faculty, and physical fitness tracking provided by the school?",
+        options: [
+          { val: 1, label: "Level 1: Poor; cramped or unsafe playground with no specialized sports coaches" },
+          { val: 2, label: "Level 2: Standard multi-purpose playground with basic sports equipment" },
+          { val: 3, label: "Level 3: Dedicated sports courts, certified PE staff, and annual sports day competitions" },
+          { val: 4, label: "Level 4: Synthetic turfs, indoor sports arena, certified coaches for 3+ sports, and health/BMI logs" },
+          { val: 5, label: "Level 5: Olympic-standard facilities, elite sports academy partnerships, and national tournament records" }
+        ]
+      },
+      {
+        id: "ew_11_parent_q1",
+        id_actual: "ew_11",
+        section: "Part IV: Holistic Growth, Sports & Co-Curriculars",
+        label: "Q4.3: Character Building, Values & Community CSR",
+        text: "Does the school instill strong moral values, civic empathy, and environmental consciousness in your child?",
+        options: [
+          { val: 1, label: "Level 1: No noticeable emphasis on value education or community service" },
+          { val: 2, label: "Level 2: Basic moral science textbook lectures once a week" },
+          { val: 3, label: "Level 3: Active community donation drives and environmental awareness projects" },
+          { val: 4, label: "Level 4: Mandatory community service hours and active student-led sustainability campaigns" },
+          { val: 5, label: "Level 5: Deeply embedded ethical culture, zero-waste green campus, and recognized social impact" }
+        ]
+      },
+      // Part V: Alumni Outcomes, Turnover & Value for Money
+      {
+        id: "ew_4_parent_q1",
         id_actual: "ew_4",
-        label: "Q5: Co-curricular Education",
-        text: "How would you rate the school's performance in Co-curricular Education?",
+        section: "Part V: Alumni Outcomes, Turnover & Value for Money",
+        label: "Q5.1: Alumni Higher Education Placement & Career Guidance",
+        text: "How confident are you that the school's brand and career guidance pipeline will help your child enter top universities?",
         options: [
-          { val: 2, label: "Minimal activities outside academics" },
-          { val: 4, label: "Standard clubs and activities available" },
-          { val: 5, label: "Rich, diverse, and nationally recognized co-curricular programs" }
+          { val: 1, label: "Level 1: Low confidence; no university counseling or alumni placement records available" },
+          { val: 2, label: "Level 2: Basic college guidance seminars for Grade 12 students" },
+          { val: 3, label: "Level 3: Active university admissions counselor and visible alumni admissions tracking" },
+          { val: 4, label: "Level 4: Structured university counseling, SAT/JEE/NEET test prep support, and alumni mentoring" },
+          { val: 5, label: "Level 5: Outstanding alumni network with guaranteed placements in tier-1 global universities and scholarship endowments" }
         ]
       },
       {
-        id: "ew_5_parent",
+        id: "ew_5_parent_q1",
         id_actual: "ew_5",
-        label: "Q6: Sports Education",
-        text: "How would you rate the school's performance in Sports Education?",
+        section: "Part V: Alumni Outcomes, Turnover & Value for Money",
+        label: "Q5.2: Faculty Stability & Absence of Mid-Year Turnover",
+        text: "How stable is the teaching staff in your child's grade, and do teachers remain with the school for long tenures?",
         options: [
-          { val: 2, label: "Limited facilities and no structured training" },
-          { val: 4, label: "Standard playground with basic sports programs" },
-          { val: 5, label: "State-of-the-art facilities with professional coaching" }
+          { val: 1, label: "Level 1: High teacher turnover; frequent mid-term resignations causing subject disruptions" },
+          { val: 2, label: "Level 2: Occasional mid-term replacements with temporary substitute teachers" },
+          { val: 3, label: "Level 3: Stable faculty cohort; minimal teacher changes during academic year" },
+          { val: 4, label: "Level 4: High faculty retention; key subject teachers remain for 3+ consecutive years" },
+          { val: 5, label: "Level 5: Long-tenured master teachers (5+ years average tenure) ensuring seamless continuity and warmth" }
+        ]
+      },
+      {
+        id: "ew_14_parent_q1",
+        id_actual: "ew_14",
+        section: "Part V: Alumni Outcomes, Turnover & Value for Money",
+        label: "Q5.3: Overall Value for Money & Fee Transparency",
+        text: "How would you rate the overall educational value, facilities, and child development received relative to the fee structure?",
+        options: [
+          { val: 1, label: "Level 1: Overpriced; high fee structure with hidden charges and unsatisfactory facilities" },
+          { val: 2, label: "Level 2: Average value; fees match standard private school expectations" },
+          { val: 3, label: "Level 3: Good value; fair fee structure with well-maintained facilities and reliable teaching" },
+          { val: 4, label: "Level 4: High value; excellent return on fee investment with premium tech, sports, and academics" },
+          { val: 5, label: "Level 5: Outstanding value for money; elite holistic outcomes, zero hidden costs, and exceptional quality" }
         ]
       }
     ]
   },
   student: {
-    title: "Student Experience & Engagement",
-    desc: "Feedback on co-curriculars, infrastructure, and life skills.",
+    title: "Student Learning Experience, Campus Climate & Wellbeing Pulse",
+    desc: "Direct feedback from students on classroom engagement, teacher support, physical safety, peer relationships, sports, and future readiness.",
     questions: [
+      // Part I: Classroom Learning & Teaching Quality
       {
-        id: "ew_4_student",
-        id_actual: "ew_4",
-        label: "Q1: Co-curricular Education",
-        text: "How would you rate the school's performance in Co-curricular Education?",
+        id: "ew_1_student_q1",
+        id_actual: "ew_1",
+        section: "Part I: Classroom Learning & Teaching Quality",
+        label: "Q1.1: Teacher Support, Clarity & Encouragement",
+        text: "Do your teachers explain difficult subjects clearly and help you patiently when you are confused?",
         options: [
-          { val: 2, label: "Minimal activities outside academics" },
-          { val: 4, label: "Standard clubs and activities available" },
-          { val: 5, label: "Rich, diverse, and nationally recognized co-curricular programs" }
+          { val: 1, label: "Level 1: Teachers rush through lessons and scold students who ask questions" },
+          { val: 2, label: "Level 2: Teachers cover the textbook but rarely check if everyone understood" },
+          { val: 3, label: "Level 3: Teachers explain concepts well and answer questions during class" },
+          { val: 4, label: "Level 4: Teachers make learning exciting with real-life examples and encourage curiosity" },
+          { val: 5, label: "Level 5: Teachers are amazing mentors who give personal feedback and make every student feel valued" }
         ]
       },
       {
-        id: "ew_5_student",
-        id_actual: "ew_5",
-        label: "Q2: Sports Education",
-        text: "How would you rate the school's performance in Sports Education?",
+        id: "ew_2_student_q1",
+        id_actual: "ew_2",
+        section: "Part I: Classroom Learning & Teaching Quality",
+        label: "Q1.2: Smart Classes, Experiments & Engaging Lessons",
+        text: "How often do you use smart screens, conduct lab experiments, or work on group projects in your classes?",
         options: [
-          { val: 2, label: "Limited facilities and no structured training" },
-          { val: 4, label: "Standard playground with basic sports programs" },
-          { val: 5, label: "State-of-the-art facilities with professional coaching" }
+          { val: 1, label: "Level 1: Almost never; classes consist only of copying notes from the board" },
+          { val: 2, label: "Level 2: Occasional smart board videos; science experiments demonstrated by teacher only" },
+          { val: 3, label: "Level 3: Regular interactive smart lessons and hands-on science/computer lab sessions" },
+          { val: 4, label: "Level 4: Fun project-based learning, digital quizzes, and collaborative group presentations" },
+          { val: 5, label: "Level 5: Full digital learning environment with 3D simulations, robotics, and creative design projects" }
         ]
       },
       {
-        id: "ew_6_student",
+        id: "ew_8_student_q1",
+        id_actual: "ew_8",
+        section: "Part I: Classroom Learning & Teaching Quality",
+        label: "Q1.3: Help for Slower Learners & Personalized Homework",
+        text: "If you get a low grade or struggle with a concept, do your teachers offer extra help or personalized support?",
+        options: [
+          { val: 1, label: "Level 1: No extra help offered; students are left to figure it out on their own" },
+          { val: 2, label: "Level 2: Advised to read textbook again or take external coaching" },
+          { val: 3, label: "Level 3: Teachers offer short doubt-clearing sessions before exams" },
+          { val: 4, label: "Level 4: Dedicated remedial help sessions and customized practice worksheets" },
+          { val: 5, label: "Level 5: Personalized academic guidance track ensuring no student ever gets left behind" }
+        ]
+      },
+      // Part II: School Safety, Wellbeing & Cleanliness
+      {
+        id: "ew_6_student_q1",
         id_actual: "ew_6",
-        label: "Q3: Life Skills Education",
-        text: "How would you rate the school's performance in Life Skills Education?",
+        section: "Part II: School Safety, Wellbeing & Cleanliness",
+        label: "Q2.1: Emotional Safety, Trusted Counselors & Anti-Bullying",
+        text: "Do you feel safe from bullying at school, and do you know a trusted teacher or counselor you can talk to?",
         options: [
-          { val: 2, label: "Not included in the curriculum" },
-          { val: 4, label: "Some basic life skills taught occasionally" },
-          { val: 5, label: "Integrated comprehensively into daily learning and activities" }
+          { val: 1, label: "Level 1: Bullying happens often and teachers rarely intervene; I feel unsafe" },
+          { val: 2, label: "Level 2: Bullying rules exist on paper, but students hesitate to report issues" },
+          { val: 3, label: "Level 3: School has clear anti-bullying rules and a counselor available if needed" },
+          { val: 4, label: "Level 4: Friendly school culture with weekly circle time and accessible student counselors" },
+          { val: 5, label: "Level 5: Total emotional safety, peer support ambassadors, anonymous grievance box, and zero bullying" }
         ]
       },
       {
-        id: "ew_14_student",
-        id_actual: "ew_14",
-        label: "Q4: Community Service",
-        text: "How would you rate the school's performance in Community Service?",
+        id: "ew_7_student_q1",
+        id_actual: "ew_7",
+        section: "Part II: School Safety, Wellbeing & Cleanliness",
+        label: "Q2.2: Cleanliness of Washrooms, Desks & Campus Facilities",
+        text: "Are the school washrooms, drinking water stations, sports grounds, and classrooms clean and well-maintained?",
         options: [
-          { val: 2, label: "No structured community service programs" },
-          { val: 4, label: "Occasional local community initiatives" },
-          { val: 5, label: "Deeply embedded service programs driving significant local impact" }
+          { val: 1, label: "Level 1: Dirty washrooms, broken desks, or non-functional drinking water filters" },
+          { val: 2, label: "Level 2: Basic cleanliness; washrooms run out of soap or water occasionally" },
+          { val: 3, label: "Level 3: Clean washrooms, well-maintained desks, and hygienic drinking water" },
+          { val: 4, label: "Level 4: Very clean facilities, modern furniture, and well-kept green campus grounds" },
+          { val: 5, label: "Level 5: Pristine hygiene, automated water purifiers, air-conditioned smart labs, and spotless campus" }
+        ]
+      },
+      // Part III: Sports, Arts, Clubs & Community
+      {
+        id: "ew_9_student_q1",
+        id_actual: "ew_9",
+        section: "Part III: Sports, Arts, Clubs & Community",
+        label: "Q3.1: School Clubs, Drama, Music & Public Speaking",
+        text: "Are there exciting school clubs, theater, music, art, and debate activities that you enjoy participating in?",
+        options: [
+          { val: 1, label: "Level 1: No active clubs or art/music activities; periods are converted to extra study time" },
+          { val: 2, label: "Level 2: Few basic clubs with rare events; art/music periods are very limited" },
+          { val: 3, label: "Level 3: Regular weekly club activities and opportunities to perform in annual day functions" },
+          { val: 4, label: "Level 4: Vibrant debate clubs, music bands, theater workshops, and inter-school competitions" },
+          { val: 5, label: "Level 5: Student-led clubs, national MUN conferences, music recording studio, and art exhibitions" }
         ]
       },
       {
-        id: "ew_10_student",
+        id: "ew_10_student_q1",
         id_actual: "ew_10",
-        label: "Q5: Infrastructure Provision",
-        text: "How would you rate the school's performance in Infrastructure Provision?",
+        section: "Part III: Sports, Arts, Clubs & Community",
+        label: "Q3.2: Sports Facilities, Playground Time & Coaching",
+        text: "Do you get regular sports periods on a good field with encouraging coaches and real equipment?",
         options: [
-          { val: 2, label: "Aging facilities, basic amenities" },
-          { val: 4, label: "Well-maintained standard classrooms and labs" },
-          { val: 5, label: "World-class, modern, and highly equipped campus" }
+          { val: 1, label: "Level 1: Cramped or broken playground; sports periods are rarely given" },
+          { val: 2, label: "Level 2: Basic playground time for free play; limited sports gear available" },
+          { val: 3, label: "Level 3: Dedicated sports periods every week with trained PE coaches for core games" },
+          { val: 4, label: "Level 4: Synthetic turfs, basketball courts, swimming pool, and active sports teams" },
+          { val: 5, label: "Level 5: Elite sports infrastructure, professional tournament coaching, and national sports representation" }
+        ]
+      },
+      {
+        id: "ew_11_student_q1",
+        id_actual: "ew_11",
+        section: "Part III: Sports, Arts, Clubs & Community",
+        label: "Q3.3: Community Service, Recycling & Social Impact",
+        text: "Have you participated in tree planting, charity drives, cleanups, or helping nearby communities through school?",
+        options: [
+          { val: 1, label: "Level 1: Never participated in any community service or social projects" },
+          { val: 2, label: "Level 2: Donated items during an annual festive charity drive" },
+          { val: 3, label: "Level 3: Participated in local tree planting, recycling drives, or community cleanups" },
+          { val: 4, label: "Level 4: Active member of eco-club or community service project with regular outreach" },
+          { val: 5, label: "Level 5: Led a student social initiative or community improvement campaign recognized locally" }
+        ]
+      },
+      // Part IV: Board Exam Confidence, Leadership & Future Vision
+      {
+        id: "ew_3_student_q1",
+        id_actual: "ew_3",
+        section: "Part IV: Exam Confidence, Leadership & Future Vision",
+        label: "Q4.1: Board Exam Confidence & Academic Pride",
+        text: "How confident do you feel about scoring high in board exams or competitive tests compared to students from other schools?",
+        options: [
+          { val: 1, label: "Level 1: Low confidence; feel unprepared and worried about exam syllabus coverage" },
+          { val: 2, label: "Level 2: Moderately confident; rely heavily on external tuition guides" },
+          { val: 3, label: "Level 3: Confident; school revision tests and sample papers prepare us well" },
+          { val: 4, label: "Level 4: Very confident; consistently perform well in mock exams and Olympiads" },
+          { val: 5, label: "Level 5: Top tier confidence; school training targets top district ranks and competitive success" }
+        ]
+      },
+      {
+        id: "ew_13_student_q1",
+        id_actual: "ew_13",
+        section: "Part IV: Exam Confidence, Leadership & Future Vision",
+        label: "Q4.2: Fair Rules, School Pride & Student Council Voice",
+        text: "Are school rules fair, and does the principal and student council listen to student ideas and feedback?",
+        options: [
+          { val: 1, label: "Level 1: Rules feel overly strict or unfair; student opinions are completely ignored" },
+          { val: 2, label: "Level 2: Student council exists in name only; little change comes from student ideas" },
+          { val: 3, label: "Level 3: Student council represents student views and meets regularly with school leaders" },
+          { val: 4, label: "Level 4: Principals actively listen to student council and implement popular student suggestions" },
+          { val: 5, label: "Level 5: High student empowerment, active student leadership in school events, and immense school pride" }
+        ]
+      },
+      {
+        id: "ew_4_student_q1",
+        id_actual: "ew_4",
+        section: "Part IV: Exam Confidence, Leadership & Future Vision",
+        label: "Q4.3: Inspiration from Alumni & Career Mentors",
+        text: "Do you know successful school alumni who inspire you, or have you attended alumni career guidance sessions?",
+        options: [
+          { val: 1, label: "Level 1: Never heard about school alumni or university career guidance" },
+          { val: 2, label: "Level 2: Saw alumni names on an honor board at school" },
+          { val: 3, label: "Level 3: Attended an annual career talk by guest alumni speakers" },
+          { val: 4, label: "Level 4: Regular career guidance sessions with alumni studying in top universities" },
+          { val: 5, label: "Level 5: Active alumni mentorship network guiding us on college applications, entrance tests, and career paths" }
+        ]
+      },
+      {
+        id: "ew_12_student_q1",
+        id_actual: "ew_12",
+        section: "Part IV: Exam Confidence, Leadership & Future Vision",
+        label: "Q4.4: Teacher-Parent Partnership Harmony",
+        text: "Do your parents and teachers communicate smoothly and work together to support your progress?",
+        options: [
+          { val: 1, label: "Level 1: Communication only happens when there is a complaint or disciplinary issue" },
+          { val: 2, label: "Level 2: Brief updates given during formal PTMs twice a year" },
+          { val: 3, label: "Level 3: Regular progress reports shared on parent app with balanced feedback" },
+          { val: 4, label: "Level 4: Positive collaboration where teachers and parents celebrate my progress together" },
+          { val: 5, label: "Level 5: Strong supportive triangle between child, teacher, and parent fostering joy in learning" }
+        ]
+      },
+      {
+        id: "ew_5_student_q1",
+        id_actual: "ew_5",
+        section: "Part IV: Exam Confidence, Leadership & Future Vision",
+        label: "Q4.5: Teacher Energy & Classroom Enthusiasm",
+        text: "Do your teachers seem happy, energetic, and excited to teach you every day?",
+        options: [
+          { val: 1, label: "Level 1: Teachers look exhausted, stressed, or frequently absent" },
+          { val: 2, label: "Level 2: Teachers perform duties standardly but lack enthusiasm" },
+          { val: 3, label: "Level 3: Teachers are energetic, punctual, and keep the classroom positive" },
+          { val: 4, label: "Level 4: Teachers bring high enthusiasm and creative activities to daily lessons" },
+          { val: 5, label: "Level 5: Vibrant, passionate educators who make school a joy to attend every day" }
+        ]
+      },
+      {
+        id: "ew_14_student_q1",
+        id_actual: "ew_14",
+        section: "Part IV: Exam Confidence, Leadership & Future Vision",
+        label: "Q4.6: Quality of Books, Tech & Lab Resources",
+        text: "Do you have access to modern textbooks, library books, computers, and science lab materials whenever needed?",
+        options: [
+          { val: 1, label: "Level 1: Missing textbooks, outdated library, or broken computers in the lab" },
+          { val: 2, label: "Level 2: Basic library and shared computers during designated class slots" },
+          { val: 3, label: "Level 3: Well-stocked library, working computers, and complete lab equipment" },
+          { val: 4, label: "Level 4: High-speed internet, e-library access, and modern STEM equipment" },
+          { val: 5, label: "Level 5: World-class digital library, 1:1 tablets, advanced robotics kits, and unlimited learning resources" }
         ]
       }
     ]
   },
   admin: {
-    title: "Admin Staff & Operations",
-    desc: "Infrastructure maintenance, support workflows, and operational efficiency.",
+    title: "Administrative & Operational Infrastructure Efficiency Audit",
+    desc: "Internal assessment of facility upkeep, regulatory safety compliance, technology infrastructure, procurement speed, and operational workflow.",
     questions: [
+      // Part I: Infrastructure Maintenance & Facility Management
       {
-        id: "ew_10_admin",
-        id_actual: "ew_10",
-        label: "Q1: Infrastructure Provision",
-        text: "How would you rate the school's performance in Infrastructure Provision?",
+        id: "ew_7_admin_q1",
+        id_actual: "ew_7",
+        section: "Part I: Infrastructure Maintenance & Facility Management",
+        label: "Q1.1: Physical Campus Upkeep, Utilities & Sanitation",
+        text: "How reliably are electrical utilities, water supply, air conditioning, and washroom sanitation maintained across campus?",
         options: [
-          { val: 2, label: "Aging facilities, basic amenities" },
-          { val: 4, label: "Well-maintained standard classrooms and labs" },
-          { val: 5, label: "World-class, modern, and highly equipped campus" }
+          { val: 1, label: "Level 1: Frequent utility disruptions, delayed repair work, or sanitation complaints" },
+          { val: 2, label: "Level 2: Reactive maintenance; repairs fixed only after staff log written complaints" },
+          { val: 3, label: "Level 3: Scheduled maintenance logs; clean washrooms and functional campus utilities" },
+          { val: 4, label: "Level 4: Preventive maintenance software, rapid 2-hour facility repair SLA, and spotless hygiene" },
+          { val: 5, label: "Level 5: Smart building management system, 100% utility uptime, green energy, and zero-defect maintenance" }
         ]
       },
       {
-        id: "ew_2_admin",
-        id_actual: "ew_2",
-        label: "Q2: Teacher Welfare & Dev",
-        text: "How would you rate the school's performance in Teacher Welfare & Dev?",
+        id: "ew_7_admin_q2",
+        id_actual: "ew_7",
+        section: "Part I: Infrastructure Maintenance & Facility Management",
+        label: "Q1.2: Safety Certification Audits (Fire, Transport, CCTV)",
+        text: "Are all mandatory municipal and board safety certificates (Fire Safety, Structural Stability, Transport GPS, CCTV) up to date?",
         options: [
-          { val: 2, label: "High stress, low pay, poor benefits" },
-          { val: 4, label: "Average pay, standard benefits, acceptable workload" },
-          { val: 5, label: "Competitive pay, excellent benefits, well-managed workload" }
+          { val: 1, label: "Level 1: Compliance lapses or expired safety certificates awaiting renewal" },
+          { val: 2, label: "Level 2: Valid safety clearances with manual record-keeping" },
+          { val: 3, label: "Level 3: Annual fire safety drills, complete perimeter CCTV, and verified bus speed governors" },
+          { val: 4, label: "Level 4: Bi-annual third-party safety audits, live bus GPS tracking, and HD CCTV logging" },
+          { val: 5, label: "Level 5: Podar network grade safety clearance, 100% zero-blindspot campus, and biometric gate security" }
+        ]
+      },
+      // Part II: Administrative Technology, Data Privacy & SLA
+      {
+        id: "ew_12_admin_q1",
+        id_actual: "ew_12",
+        section: "Part II: Administrative Technology & SLA",
+        label: "Q2.1: Parent Ticketing Helpdesk SLA & Inquiry Resolution",
+        text: "What is the average turnaround time for administrative staff to resolve parent billing, fee queries, or transport tickets?",
+        options: [
+          { val: 1, label: "Level 1: Slow turnaround (>48 hours); manual paper receipts and long office queues" },
+          { val: 2, label: "Level 2: 24–48 hours turnaround; basic email or phone query logging" },
+          { val: 3, label: "Level 3: 12–24 hours turnaround; integrated ERP ticketing system" },
+          { val: 4, label: "Level 4: 4–12 hours turnaround; automated online fee payment portal and instant SMS receipts" },
+          { val: 5, label: "Level 5: Strict < 4 hours helpdesk SLA resolution with automated escalation matrix" }
         ]
       },
       {
-        id: "ew_8_admin",
-        id_actual: "ew_8",
-        label: "Q3: Leadership / Management",
-        text: "How would you rate the school's performance in Leadership / Management?",
-        options: [
-          { val: 2, label: "Reactive, disorganized, poor vision" },
-          { val: 4, label: "Stable, standard operational management" },
-          { val: 5, label: "Visionary, proactive, and highly effective leadership" }
-        ]
-      },
-      {
-        id: "ew_13_admin",
+        id: "ew_13_admin_q1",
         id_actual: "ew_13",
-        label: "Q4: Value for Money",
-        text: "How would you rate the school's performance in Value for Money?",
+        section: "Part II: Administrative Technology & SLA",
+        label: "Q2.2: CBSE SQAAF Compliance & DPDP Act Data Privacy",
+        text: "How systematically are school records, student health data, and staff logs secured in compliance with data protection laws?",
         options: [
-          { val: 2, label: "High fees with mismatched facilities/outcomes" },
-          { val: 4, label: "Fair fees for the services provided" },
-          { val: 5, label: "Exceptional educational outcomes and facilities relative to the fee" }
+          { val: 1, label: "Level 1: Physical paper registers with no digital backup or data privacy controls" },
+          { val: 2, label: "Level 2: Basic password-protected Excel sheets on individual admin desktop computers" },
+          { val: 3, label: "Level 3: Centralized school ERP with role-based user access controls" },
+          { val: 4, label: "Level 4: Cloud ERP compliant with CBSE SQAAF standards and encrypted backups" },
+          { val: 5, label: "Level 5: Full DPDP Act 2023 compliance, end-to-end encrypted database, and automated regulatory audit trails" }
+        ]
+      },
+      // Part III: Operational Support & Financial Efficiency
+      {
+        id: "ew_5_admin_q1",
+        id_actual: "ew_5",
+        section: "Part III: Operational Support & Financial Efficiency",
+        label: "Q3.1: Timely Payroll, HR Benefits & Teacher Support",
+        text: "How smoothly are faculty payroll, provident fund, medical insurance claims, and staff leave requests processed?",
+        options: [
+          { val: 1, label: "Level 1: Payroll delays, manual leave calculations, or unresolved HR grievances" },
+          { val: 2, label: "Level 2: Standard monthly salary dispatches with occasional paperwork delays" },
+          { val: 3, label: "Level 3: On-time salary disbursement via direct bank transfer and automated leave tracking" },
+          { val: 4, label: "Level 4: Digital HR self-service portal, automated tax filings, and prompt medical claim processing" },
+          { val: 5, label: "Level 5: Flawless HR operations, performance bonus dispatches, and outstanding faculty welfare support" }
+        ]
+      },
+      {
+        id: "ew_14_admin_q1",
+        id_actual: "ew_14",
+        section: "Part III: Operational Support & Financial Efficiency",
+        label: "Q3.2: Procurement Speed for Classroom & Lab Supplies",
+        text: "How quickly are departmental requisitions for science chemicals, computer hardware, stationery, and sports equipment fulfilled?",
+        options: [
+          { val: 1, label: "Level 1: Severe procurement delays (>4 weeks); classrooms frequently lack basic supplies" },
+          { val: 2, label: "Level 2: 2–3 weeks turnaround; multi-layered manual approval paperwork" },
+          { val: 3, label: "Level 3: 1–2 weeks turnaround; structured annual vendor contracts" },
+          { val: 4, label: "Level 4: 3–5 days turnaround; digital procurement portal with pre-approved departmental budgets" },
+          { val: 5, label: "Level 5: 24–48 hours rapid fulfillment SLA with vendor quality rating and bulk cost savings" }
+        ]
+      },
+      // Part IV: Resource Utilization & Special Needs Infrastructure
+      {
+        id: "ew_10_admin_q1",
+        id_actual: "ew_10",
+        section: "Part IV: Resource Utilization & Inclusion Infrastructure",
+        label: "Q4.1: Sports Field & Auditorium Facility Utilization",
+        text: "How effectively are sports fields, indoor courts, computer labs, and auditoriums scheduled and utilized?",
+        options: [
+          { val: 1, label: "Level 1: Facilities remain locked or underutilized due to lack of scheduling software" },
+          { val: 2, label: "Level 2: Basic timetable allocation; occasional double-booking conflicts" },
+          { val: 3, label: "Level 3: Structured weekly facility allocation schedule covering all grade levels" },
+          { val: 4, label: "Level 4: Optimized digital facility booking calendar including after-school sports academies" },
+          { val: 5, label: "Level 5: Maximum capacity utilization with community events, sports leagues, and revenue-generating weekend hubs" }
+        ]
+      },
+      {
+        id: "ew_8_admin_q1",
+        id_actual: "ew_8",
+        section: "Part IV: Resource Utilization & Inclusion Infrastructure",
+        label: "Q4.2: Special Needs Accessibility (Ramps, Lifts, Restrooms)",
+        text: "Is the physical campus fully accessible for students or visitors with physical disabilities (wheelchair ramps, elevators, sensory rooms)?",
+        options: [
+          { val: 1, label: "Level 1: No wheelchair ramps, elevators, or accessible washrooms on campus" },
+          { val: 2, label: "Level 2: Ramps available at main entrance only; upper floors inaccessible" },
+          { val: 3, label: "Level 3: Elevator access to key academic floors and accessible ground-floor washrooms" },
+          { val: 4, label: "Level 4: Complete barrier-free campus with tactile paths, elevators, and sensory integration rooms" },
+          { val: 5, label: "Level 5: Benchmark inclusive infrastructure meeting international accessibility standards" }
+        ]
+      },
+      {
+        id: "ew_11_admin_q1",
+        id_actual: "ew_11",
+        section: "Part IV: Resource Utilization & Inclusion Infrastructure",
+        label: "Q4.3: Campus Environmental Sustainability (Solar, Zero-Waste)",
+        text: "What administrative systems exist for solar power generation, rainwater harvesting, and waste segregation on campus?",
+        options: [
+          { val: 1, label: "Level 1: No environmental sustainability measures in place" },
+          { val: 2, label: "Level 2: Basic trash bin segregation; high electricity grid consumption" },
+          { val: 3, label: "Level 3: Rainwater harvesting pits and active paper recycling drives" },
+          { val: 4, label: "Level 4: Rooftop solar panel grid, composting unit, and LED campus lighting" },
+          { val: 5, label: "Level 5: Certified zero-waste green campus, net-zero carbon footprint, and automated energy management" }
         ]
       }
     ]
   },
   other: {
-    title: "Others (Alumni & Partners)",
-    desc: "Feedback from alumni, local community, and partners.",
+    title: "Alumni & External Stakeholder Diagnostic Evaluation",
+    desc: "Perceptions from school alumni, local community leaders, and partner organizations on institutional reputation, graduate trajectory, and social impact.",
     questions: [
       {
-        id: "ew_14_other",
-        id_actual: "ew_14",
-        label: "Q1: Community Service",
-        text: "How would you rate the school's performance in Community Service?",
+        id: "ew_4_other_q1",
+        id_actual: "ew_4",
+        section: "Part I: Graduate Impact & Academic Legacy",
+        label: "Q1.1: Alumni Higher Education & Career Success Trajectory",
+        text: "How successfully do graduates from this school transition into top universities and prominent professional careers?",
         options: [
-          { val: 2, label: "No structured community service programs" },
-          { val: 4, label: "Occasional local community initiatives" },
-          { val: 5, label: "Deeply embedded service programs driving significant local impact" }
+          { val: 1, label: "Level 1: Low visibility; alumni struggle to secure admission in tier-1 higher education institutions" },
+          { val: 2, label: "Level 2: Moderate success; graduates enter regional colleges with average career outcomes" },
+          { val: 3, label: "Level 3: Strong trajectory; consistent alumni admissions in leading national universities" },
+          { val: 4, label: "Level 4: High distinction; alumni excel in premier national and international universities and corporate roles" },
+          { val: 5, label: "Level 5: Elite global network; alumni hold leadership positions, found startups, and actively mentor students" }
         ]
       },
       {
-        id: "ew_11_other",
-        id_actual: "ew_11",
-        label: "Q2: Internationalism",
-        text: "How would you rate the school's performance in Internationalism?",
-        options: [
-          { val: 2, label: "No global exposure or partnerships" },
-          { val: 4, label: "Occasional international events or basic partnerships" },
-          { val: 5, label: "Strong international exchange programs and global curriculum integration" }
-        ]
-      },
-      {
-        id: "ew_3_other",
+        id: "ew_3_other_q1",
         id_actual: "ew_3",
-        label: "Q3: Academic Reputation",
-        text: "How would you rate the school's performance in Academic Reputation?",
+        section: "Part I: Graduate Impact & Academic Legacy",
+        label: "Q1.2: Institutional Brand Reputation & Academic Prestige",
+        text: "What is the overall academic standing and public brand prestige of the school in the local and national community?",
         options: [
-          { val: 2, label: "Below average results, poor local perception" },
-          { val: 4, label: "Average results, acceptable perception" },
-          { val: 5, label: "Consistently excellent results, highly prestigious" }
+          { val: 1, label: "Level 1: Poor reputation; perceived as lagging in academic standards and discipline" },
+          { val: 2, label: "Level 2: Average local standing; considered an ordinary neighborhood school" },
+          { val: 3, label: "Level 3: Well-respected institution with reliable academic results and good community standing" },
+          { val: 4, label: "Level 4: Highly prestigious school; top choice for admissions in the district" },
+          { val: 5, label: "Level 5: Nationally benchmarked flagship institution renowned for academic innovation and leadership" }
         ]
       },
       {
-        id: "ew_8_other",
-        id_actual: "ew_8",
-        label: "Q4: Leadership / Management",
-        text: "How would you rate the school's performance in Leadership / Management?",
+        id: "ew_11_other_q1",
+        id_actual: "ew_11",
+        section: "Part II: Community Engagement & CSR",
+        label: "Q2.1: Local Community Social Impact & Environmental CSR",
+        text: "How actively does the school contribute to local community welfare, neighborhood cleanups, and social causes?",
         options: [
-          { val: 2, label: "Reactive, disorganized, poor vision" },
-          { val: 4, label: "Stable, standard operational management" },
-          { val: 5, label: "Visionary, proactive, and highly effective leadership" }
+          { val: 1, label: "Level 1: Insular institution with zero interaction or benefit to the local community" },
+          { val: 2, label: "Level 2: Occasional charitable events or holiday donation drives" },
+          { val: 3, label: "Level 3: Regular community outreach programs, health camps, and neighborhood awareness drives" },
+          { val: 4, label: "Level 4: Active NGO partnerships, village adoption programs, and environmental restoration projects" },
+          { val: 5, label: "Level 5: Exemplary community pillar driving measurable local social transformation and sustainability" }
+        ]
+      },
+      {
+        id: "ew_13_other_q1",
+        id_actual: "ew_13",
+        section: "Part II: Community Engagement & CSR",
+        label: "Q2.2: Visionary Leadership & Governance Ethics",
+        text: "How would you rate the ethical integrity, governance standards, and long-term vision of the school management?",
+        options: [
+          { val: 1, label: "Level 1: Governance concerns, frequent administrative conflicts, or unethical practices" },
+          { val: 2, label: "Level 2: Standard commercial school administration with routine operational focus" },
+          { val: 3, label: "Level 3: Ethical management team with transparent policies and stable governance" },
+          { val: 4, label: "Level 4: Visionary leadership team actively innovating and expanding educational standards" },
+          { val: 5, label: "Level 5: Industry benchmark for ethical governance, visionary leadership, and institutional integrity" }
+        ]
+      },
+      {
+        id: "ew_14_other_q1",
+        id_actual: "ew_14",
+        section: "Part II: Community Engagement & CSR",
+        label: "Q2.3: Educational Value & Community ROI",
+        text: "Do you consider the institution to deliver exceptional educational value and holistic return on investment for families?",
+        options: [
+          { val: 1, label: "Level 1: Mismatched return; high cost with mediocre educational outcomes" },
+          { val: 2, label: "Level 2: Standard value corresponding to baseline tuition costs" },
+          { val: 3, label: "Level 3: Solid value for money with dependable academic and co-curricular outcomes" },
+          { val: 4, label: "Level 4: Outstanding educational value creating strong student competitive advantages" },
+          { val: 5, label: "Level 5: Benchmark return on educational investment, producing well-rounded global leaders" }
         ]
       }
     ]
@@ -781,6 +1547,21 @@ export const DeepDiveAssessment = ({
 
   // Active Stakeholder survey being manually completed
   const [activeSurveyStakeholder, setActiveSurveyStakeholder] = useState<'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other' | null>(null);
+  const [surveyExpressMode, setSurveyExpressMode] = useState<boolean>(false);
+  const [surveyBilingualMode, setSurveyBilingualMode] = useState<boolean>(false);
+  const [surveyQualitativeFeedback, setSurveyQualitativeFeedback] = useState<string>('');
+  const [surveyReadingQId, setSurveyReadingQId] = useState<string | null>(null);
+  const [manualRespondent, setManualRespondent] = useState({
+    fullName: '',
+    contactNumber: '',
+    email: '',
+    schoolName: '',
+    board: '',
+    city: '',
+    classGrade: '',
+    sectionDept: ''
+  });
+  const [manualDpdpConsent, setManualDpdpConsent] = useState<boolean>(true);
 
   const areAllStakeholdersAnswered = answeredStakeholders.leader && answeredStakeholders.teacher && answeredStakeholders.parent && answeredStakeholders.student && answeredStakeholders.admin && answeredStakeholders.other;
   const areCheckpointsVerified = confirmedCheckpoints.boardAffiliation && confirmedCheckpoints.teacherAttendance && confirmedCheckpoints.academicResults && confirmedCheckpoints.infrastructureSafety;
@@ -818,8 +1599,19 @@ export const DeepDiveAssessment = ({
         initialTemps[q.id] = answers[q.id] || 4;
       });
       setTemporaryAnswers(initialTemps);
+      setManualRespondent({
+        fullName: '',
+        contactNumber: '',
+        email: '',
+        schoolName: activeSchool?.name || '',
+        board: activeSchool?.board || 'CBSE',
+        city: activeSchool?.city || '',
+        classGrade: '',
+        sectionDept: ''
+      });
+      setManualDpdpConsent(true);
     }
-  }, [activeSurveyStakeholder]);
+  }, [activeSurveyStakeholder, activeSchool]);
 
   const handleDeployAssessment = () => {
     setIsDeploying(true);
@@ -849,14 +1641,98 @@ export const DeepDiveAssessment = ({
     }, 450);
   };
 
-  const handleSurveySubmit = (st: 'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other', ratings: Record<string, number>) => {
+  const handleSurveySubmit = async (st: 'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other', ratings: Record<string, number>) => {
     const newAnswers = { ...answers };
+    const sums: Record<string, number> = {};
+    const counts: Record<string, number> = {};
+
     Object.entries(ratings).forEach(([key, val]) => {
       const qConfig = SURVEY_QUESTIONS[st].questions.find(q => q.id === key) as any;
       const actualId = (qConfig && qConfig.id_actual) ? qConfig.id_actual : key;
-      newAnswers[`${actualId}_${st}`] = val;
+      if (!sums[actualId]) {
+        sums[actualId] = 0;
+        counts[actualId] = 0;
+      }
+      sums[actualId] += val;
+      counts[actualId] += 1;
     });
+
+    const avgMap: Record<string, number> = {};
+    Object.keys(sums).forEach(actualId => {
+      const avgScore = Math.round((sums[actualId] / counts[actualId]) * 10) / 10;
+      newAnswers[`${actualId}_${st}`] = avgScore;
+      avgMap[actualId] = avgScore;
+    });
+
     setAnswers(newAnswers);
+    dimensions.forEach(dim => {
+      updateDimensionScore(dim.id, newAnswers);
+    });
+
+    // Save to Firestore if school ID is present
+    if (activeSchool?.id) {
+      try {
+        await setDoc(doc(db, `surveys_${activeSchool.id}`, st), {
+          answers: avgMap,
+          rawAnswers: ratings,
+          qualitativeFeedback: surveyQualitativeFeedback.trim(),
+          respondent: {
+            fullName: manualRespondent.fullName.trim() || 'Internal School Assessor',
+            contactNumber: manualRespondent.contactNumber.trim() || 'N/A',
+            email: manualRespondent.email.trim() || 'N/A',
+            schoolName: manualRespondent.schoolName.trim() || activeSchool.name,
+            board: manualRespondent.board.trim() || activeSchool.board || 'CBSE',
+            city: manualRespondent.city.trim() || activeSchool.city,
+            classGrade: manualRespondent.classGrade.trim(),
+            sectionDept: manualRespondent.sectionDept.trim()
+          },
+          dpdpConsent: manualDpdpConsent,
+          dpdpConsentTimestamp: new Date().toISOString(),
+          modeUsed: surveyExpressMode ? 'express' : 'full_diagnostic',
+          submittedAt: new Date().toISOString()
+        }, { merge: true });
+
+        const subId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const subRecord = {
+          id: subId,
+          schoolId: activeSchool.id,
+          schoolName: manualRespondent.schoolName.trim() || activeSchool.name,
+          board: manualRespondent.board.trim() || activeSchool.board || 'CBSE',
+          city: manualRespondent.city.trim() || activeSchool.city,
+          stakeholder: st,
+          stakeholderLabel: SURVEY_QUESTIONS[st]?.title || st,
+          respondent: {
+            fullName: manualRespondent.fullName.trim() || 'Internal School Assessor',
+            contactNumber: manualRespondent.contactNumber.trim() || 'N/A',
+            email: manualRespondent.email.trim() || 'N/A',
+            schoolName: manualRespondent.schoolName.trim() || activeSchool.name,
+            board: manualRespondent.board.trim() || activeSchool.board || 'CBSE',
+            city: manualRespondent.city.trim() || activeSchool.city,
+            classGrade: manualRespondent.classGrade.trim(),
+            sectionDept: manualRespondent.sectionDept.trim()
+          },
+          rawAnswers: ratings,
+          calculatedScores: avgMap,
+          qualitativeFeedback: surveyQualitativeFeedback.trim(),
+          dpdpConsent: manualDpdpConsent,
+          dpdpConsentTimestamp: new Date().toISOString(),
+          modeUsed: surveyExpressMode ? 'express' : 'full_diagnostic',
+          submittedAt: new Date().toISOString()
+        };
+
+        await setDoc(doc(db, `surveys_${activeSchool.id}_submissions`, subId), subRecord);
+
+        // Local cache write
+        try {
+          const lKey = `disha_submissions_${activeSchool.id}`;
+          const current = JSON.parse(localStorage.getItem(lKey) || '[]');
+          localStorage.setItem(lKey, JSON.stringify([subRecord, ...current]));
+        } catch (e) {}
+
+      } catch (err) {
+        console.warn("Could not save survey doc to firestore:", err);
+      }
+    }
     
     markStakeholderAnswered(st);
     setActiveSurveyStakeholder(null);
@@ -1210,13 +2086,25 @@ export const DeepDiveAssessment = ({
     setSimulateStakeholderLoading(stakeholder);
     setTimeout(() => {
       const newAnswers = { ...answers };
-      // Randomly adjust answers for all dimensions of that stakeholder
+      const sums: Record<string, number> = {};
+      const counts: Record<string, number> = {};
+
       SURVEY_QUESTIONS[stakeholder].questions.forEach(q => {
         const actualId = q.id_actual || q.id;
-        newAnswers[`${actualId}_${stakeholder}`] = Math.floor(Math.random() * 2) + 4; // 4 or 5
+        const score = Math.floor(Math.random() * 2) + 4; // 4 or 5
+        if (!sums[actualId]) {
+          sums[actualId] = 0;
+          counts[actualId] = 0;
+        }
+        sums[actualId] += score;
+        counts[actualId] += 1;
       });
+
+      Object.keys(sums).forEach(actualId => {
+        newAnswers[`${actualId}_${stakeholder}`] = Math.round((sums[actualId] / counts[actualId]) * 10) / 10;
+      });
+
       setAnswers(newAnswers);
-      // Update all dimensions
       dimensions.forEach(dim => {
         updateDimensionScore(dim.id, newAnswers);
       });
@@ -1229,15 +2117,27 @@ export const DeepDiveAssessment = ({
     setSimulateStakeholderLoading('leader');
     setTimeout(() => {
       const newAnswers = { ...answers };
-      // Randomly fill answers for all 14 dimensions and all 4 stakeholders
-      dimensions.forEach(dim => {
-        newAnswers[`${dim.id}_leader`] = Math.floor(Math.random() * 2) + 4;
-        newAnswers[`${dim.id}_teacher`] = Math.floor(Math.random() * 2) + 4;
-        newAnswers[`${dim.id}_parent`] = Math.floor(Math.random() * 2) + 4;
-        newAnswers[`${dim.id}_student`] = Math.floor(Math.random() * 2) + 4;
+      const stakeholders: ('leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other')[] = ['leader', 'teacher', 'parent', 'student', 'admin', 'other'];
+
+      stakeholders.forEach(st => {
+        const sums: Record<string, number> = {};
+        const counts: Record<string, number> = {};
+        SURVEY_QUESTIONS[st].questions.forEach(q => {
+          const actualId = q.id_actual || q.id;
+          const score = Math.floor(Math.random() * 2) + 4;
+          if (!sums[actualId]) {
+            sums[actualId] = 0;
+            counts[actualId] = 0;
+          }
+          sums[actualId] += score;
+          counts[actualId] += 1;
+        });
+        Object.keys(sums).forEach(actualId => {
+          newAnswers[`${actualId}_${st}`] = Math.round((sums[actualId] / counts[actualId]) * 10) / 10;
+        });
       });
+
       setAnswers(newAnswers);
-      // Update all dimensions
       dimensions.forEach(dim => {
         updateDimensionScore(dim.id, newAnswers);
       });
@@ -1245,7 +2145,9 @@ export const DeepDiveAssessment = ({
         leader: true,
         teacher: true,
         parent: true,
-        student: true
+        student: true,
+        admin: true,
+        other: true
       });
       setConfirmedCheckpoints({
         boardAffiliation: true,
@@ -1784,72 +2686,339 @@ export const DeepDiveAssessment = ({
               </div>
 
               {/* Active Survey Questionnaire Form Card */}
-              {activeSurveyStakeholder && (
-                <div className="p-5 bg-slate-50 rounded-2xl border border-indigo-150 space-y-4 animate-in fade-in slide-in-from-top-3 duration-350">
-                  <div className="flex justify-between items-start border-b border-gray-100 pb-2">
-                    <div className="space-y-0.5 text-left">
-                      <span className="bg-indigo-100 text-indigo-800 text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded">
-                        Active Multilateral Channel Input Form
-                      </span>
-                      <h4 className="font-extrabold text-sm text-gray-900">{SURVEY_QUESTIONS[activeSurveyStakeholder].title}</h4>
-                      <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">{SURVEY_QUESTIONS[activeSurveyStakeholder].desc}</p>
-                    </div>
-                    <button
-                      onClick={() => setActiveSurveyStakeholder(null)}
-                      className="text-gray-400 hover:text-gray-600 text-xs font-black p-1"
-                    >
-                      ✕ Close
-                    </button>
-                  </div>
+              {activeSurveyStakeholder && (() => {
+                const currentConfig = SURVEY_QUESTIONS[activeSurveyStakeholder];
+                const allQs = currentConfig.questions;
+                const questionsToRender = surveyExpressMode
+                  ? allQs.filter((q: any, idx: number) => {
+                      if (idx === 0) return true;
+                      const prevQ = allQs[idx - 1];
+                      return q.section && prevQ.section !== q.section;
+                    })
+                  : allQs;
 
-                  <div className="space-y-4 text-left">
-                    {SURVEY_QUESTIONS[activeSurveyStakeholder].questions.map((q) => (
-                      <div key={q.id} className="space-y-2">
-                        <p className="text-xs font-black text-gray-800 leading-tight">{q.label}: {q.text}</p>
-                        <div className="grid grid-cols-1 gap-2">
-                          {q.options.map((opt) => {
-                            const isSelected = temporaryAnswers[q.id] === opt.val;
-                            return (
-                              <button
-                                key={opt.val}
-                                onClick={() => setTemporaryAnswers(prev => ({ ...prev, [q.id]: opt.val }))}
-                                className={`p-2.5 rounded-xl border text-left text-[11px] leading-relaxed transition-all flex items-center justify-between font-semibold cursor-pointer ${
-                                  isSelected 
-                                    ? 'border-indigo-600 bg-indigo-50/20 text-indigo-950 font-bold shadow-xs' 
-                                    : 'border-gray-200 bg-white hover:bg-slate-50 text-gray-600'
-                                }`}
-                              >
-                                <span>{opt.label}</span>
-                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 ${
-                                  isSelected ? 'bg-indigo-600 text-white' : 'bg-gray-150 text-gray-500'
-                                }`}>
-                                  Score Value: {opt.val}
-                                </span>
-                              </button>
-                            );
-                          })}
+                const tempVals = Object.values(temporaryAnswers);
+                const isStraightLining = tempVals.length >= 5 && tempVals.every(v => v === tempVals[0]);
+
+                const handleSpeakQuestion = (q: any) => {
+                  if (!('speechSynthesis' in window)) {
+                    alert("Text-to-speech is not supported in this browser.");
+                    return;
+                  }
+                  window.speechSynthesis.cancel();
+                  if (surveyReadingQId === q.id) {
+                    setSurveyReadingQId(null);
+                    return;
+                  }
+                  const textToRead = `${q.label || ''}. ${q.text}. Options are: ${q.options.map((o: any) => o.label).join('. ')}`;
+                  const utterance = new SpeechSynthesisUtterance(textToRead);
+                  utterance.rate = 0.95;
+                  utterance.onend = () => setSurveyReadingQId(null);
+                  utterance.onerror = () => setSurveyReadingQId(null);
+                  setSurveyReadingQId(q.id);
+                  window.speechSynthesis.speak(utterance);
+                };
+
+                let lastSectionName = '';
+
+                return (
+                  <div className="p-5 bg-slate-50 rounded-2xl border border-indigo-150 space-y-4 animate-in fade-in slide-in-from-top-3 duration-350 text-left">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                      <div className="space-y-0.5">
+                        <span className="bg-indigo-100 text-indigo-800 text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded">
+                          Active Diagnostic Questionnaire Form
+                        </span>
+                        <h4 className="font-extrabold text-sm text-gray-900">{currentConfig.title}</h4>
+                        <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">{currentConfig.desc}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSurveyBilingualMode(!surveyBilingualMode)}
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                            surveyBilingualMode 
+                              ? 'bg-amber-400 text-indigo-950 shadow-xs' 
+                              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}
+                          title="Toggle Hindi Guidance"
+                        >
+                          <Languages className="w-3 h-3" />
+                          <span>{surveyBilingualMode ? 'Hindi Help ON' : 'Bilingual'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => setSurveyExpressMode(!surveyExpressMode)}
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                            surveyExpressMode 
+                              ? 'bg-emerald-500 text-white shadow-xs' 
+                              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}
+                          title="Toggle Express Core vs Full Diagnostic"
+                        >
+                          <Zap className="w-3 h-3" />
+                          <span>{surveyExpressMode ? 'Express 5-Q' : 'Full Diagnostic'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => setActiveSurveyStakeholder(null)}
+                          className="text-gray-400 hover:text-gray-600 text-xs font-black p-1 ml-1"
+                        >
+                          ✕ Close
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* STRAIGHTLINING BIAS NUDGE */}
+                    {isStraightLining && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-amber-900">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold block text-amber-950">Diagnostic Quality Alert</span>
+                          Identical levels selected across all questions. Differentiating scores across operational areas ensures higher diagnostic report precision.
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
 
-                  <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 text-xs">
-                    <button
-                      onClick={() => setActiveSurveyStakeholder(null)}
-                      className="bg-gray-150 hover:bg-gray-200 text-gray-700 font-extrabold px-4 py-2 rounded-xl transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => handleSurveySubmit(activeSurveyStakeholder, temporaryAnswers)}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-5 py-2 rounded-xl transition-all shadow-md cursor-pointer"
-                    >
-                      Submit Verified Answers
-                    </button>
+                    <div className="space-y-4">
+                      {questionsToRender.map((q: any, idx: number) => {
+                        const showSectionHeader = q.section && q.section !== lastSectionName;
+                        if (q.section) lastSectionName = q.section;
+
+                        return (
+                          <div key={q.id} className="space-y-2">
+                            {showSectionHeader && (
+                              <div className="bg-slate-900 text-white px-3 py-2 rounded-xl flex items-center justify-between mt-4">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-300">
+                                  {q.section}
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="flex items-start justify-between gap-2 pt-1">
+                              <div>
+                                <p className="text-xs font-black text-gray-800 leading-tight">
+                                  <span className="text-indigo-600 font-black mr-1">{q.label || `Q${idx + 1}`}:</span>
+                                  {q.text}
+                                </p>
+                                {surveyBilingualMode && (
+                                  <p className="text-[10px] text-indigo-700 font-medium bg-indigo-50/60 p-1.5 rounded-lg italic mt-1">
+                                    हिंदी मार्गदर्शन: अपने स्कूल के व्यावहारिक अनुभव के आधार पर सही स्तर का चयन करें।
+                                  </p>
+                                )}
+                              </div>
+
+                              <button
+                                onClick={() => handleSpeakQuestion(q)}
+                                className={`p-1.5 rounded-lg border transition-all shrink-0 cursor-pointer ${
+                                  surveyReadingQId === q.id 
+                                    ? 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse' 
+                                    : 'bg-white hover:bg-indigo-50 text-slate-500 border-slate-200'
+                                }`}
+                                title="Read question aloud"
+                              >
+                                <Volume2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2">
+                              {q.options.map((opt: any) => {
+                                const isSelected = temporaryAnswers[q.id] === opt.val;
+                                return (
+                                  <button
+                                    key={opt.val}
+                                    onClick={() => setTemporaryAnswers(prev => ({ ...prev, [q.id]: opt.val }))}
+                                    className={`p-2.5 rounded-xl border text-left text-[11px] leading-relaxed transition-all flex items-center justify-between font-semibold cursor-pointer ${
+                                      isSelected 
+                                        ? 'border-indigo-600 bg-indigo-50/40 text-indigo-950 font-bold shadow-xs' 
+                                        : 'border-gray-200 bg-white hover:bg-slate-50 text-gray-600'
+                                    }`}
+                                  >
+                                    <span>{opt.label}</span>
+                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 ${
+                                      isSelected ? 'bg-indigo-600 text-white' : 'bg-gray-150 text-gray-500'
+                                    }`}>
+                                      Score Value: {opt.val}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* QUALITATIVE FEEDBACK FIELD */}
+                    <div className="pt-3 border-t border-slate-200 space-y-1">
+                      <label className="block text-[11px] font-bold text-slate-800">
+                        Optional Strategic Comments / Specific Observations
+                      </label>
+                      <textarea
+                        value={surveyQualitativeFeedback}
+                        onChange={(e) => setSurveyQualitativeFeedback(e.target.value)}
+                        placeholder="Share any key highlight, concern, or priority improvement area for school management..."
+                        className="w-full p-2.5 border border-slate-200 bg-white rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[60px]"
+                      />
+                    </div>
+
+                    {/* RESPONDENT PERSONAL DETAILS & DPDP COMPLIANCE (MANUAL ASSESSOR ENTRY) */}
+                    <div className="pt-3 border-t border-slate-200 space-y-3 bg-white p-4 rounded-xl border border-slate-200">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-indigo-600" />
+                          Respondent Profile & DPDP Compliance
+                        </span>
+                        <span className="text-[9px] font-bold uppercase text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-150">
+                          DPDP Act 2023 Verified
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                        <div className="space-y-0.5">
+                          <label className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
+                            <User className="w-3 h-3 text-slate-400" /> Full Name
+                          </label>
+                          <input
+                            type="text"
+                            value={manualRespondent.fullName}
+                            onChange={(e) => setManualRespondent(prev => ({ ...prev, fullName: e.target.value }))}
+                            placeholder="e.g. Dr. Sunita Sharma"
+                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <label className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-slate-400" /> Contact Number
+                          </label>
+                          <input
+                            type="tel"
+                            value={manualRespondent.contactNumber}
+                            onChange={(e) => setManualRespondent(prev => ({ ...prev, contactNumber: e.target.value }))}
+                            placeholder="e.g. +91 98765 00000"
+                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <label className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-slate-400" /> Email Address
+                          </label>
+                          <input
+                            type="email"
+                            value={manualRespondent.email}
+                            onChange={(e) => setManualRespondent(prev => ({ ...prev, email: e.target.value }))}
+                            placeholder="e.g. contact@school.edu.in"
+                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          />
+                        </div>
+
+                        {/* School Name Auto-filled */}
+                        <div className="space-y-0.5 sm:col-span-2 bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-150">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black text-indigo-950 flex items-center gap-1">
+                              <Building2 className="w-3 h-3 text-indigo-600" /> School Official Name
+                            </label>
+                            <span className="text-[9px] font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded border border-indigo-200">
+                              Auto-filled from Registration
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            readOnly
+                            value={manualRespondent.schoolName || activeSchool?.name || ''}
+                            className="w-full p-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-950"
+                          />
+                        </div>
+
+                        {/* Board & City */}
+                        <div className="space-y-0.5 bg-indigo-50/50 p-2 rounded-xl border border-indigo-100">
+                          <label className="text-[10px] font-extrabold text-indigo-900 flex items-center gap-1">
+                            <Award className="w-3 h-3 text-indigo-600" /> Board / Affiliation
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            value={manualRespondent.board || activeSchool?.board || 'CBSE'}
+                            className="w-full p-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-950"
+                          />
+                        </div>
+
+                        <div className="space-y-0.5 bg-indigo-50/50 p-2 rounded-xl border border-indigo-100">
+                          <label className="text-[10px] font-extrabold text-indigo-900 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-indigo-600" /> City / Location
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            value={manualRespondent.city || activeSchool?.city || ''}
+                            className="w-full p-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-950"
+                          />
+                        </div>
+
+                        {/* Stakeholder Specific Details: Class / Grade & Section / Department */}
+                        <div className="space-y-0.5 bg-amber-50/60 p-2 rounded-xl border border-amber-200">
+                          <label className="text-[10px] font-extrabold text-amber-950 flex items-center gap-1">
+                            <BookOpen className="w-3 h-3 text-amber-600" /> Class / Grade Level
+                          </label>
+                          <input
+                            type="text"
+                            value={manualRespondent.classGrade}
+                            onChange={(e) => setManualRespondent(prev => ({ ...prev, classGrade: e.target.value }))}
+                            placeholder="e.g. Grade 10 / Class 8"
+                            className="w-full p-1.5 bg-white border border-amber-300 rounded-lg text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="space-y-0.5 bg-amber-50/60 p-2 rounded-xl border border-amber-200">
+                          <label className="text-[10px] font-extrabold text-amber-950 flex items-center gap-1">
+                            <Layers className="w-3 h-3 text-amber-600" /> Section / Department
+                          </label>
+                          <input
+                            type="text"
+                            value={manualRespondent.sectionDept}
+                            onChange={(e) => setManualRespondent(prev => ({ ...prev, sectionDept: e.target.value }))}
+                            placeholder="e.g. Section A / Physics Dept"
+                            className="w-full p-1.5 bg-white border border-amber-300 rounded-lg text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="checkbox"
+                          id="manualDpdpConsent"
+                          checked={manualDpdpConsent}
+                          onChange={(e) => setManualDpdpConsent(e.target.checked)}
+                          className="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                        />
+                        <label htmlFor="manualDpdpConsent" className="text-[10px] font-bold text-slate-700 cursor-pointer select-none">
+                          DPDP Act 2023 Consent Verified: Respondent agreed to collection for educational diagnostic analysis.
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 text-xs">
+                      <button
+                        onClick={() => setActiveSurveyStakeholder(null)}
+                        className="bg-gray-150 hover:bg-gray-200 text-gray-700 font-extrabold px-4 py-2 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleSurveySubmit(activeSurveyStakeholder, temporaryAnswers)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-5 py-2 rounded-xl transition-all shadow-md cursor-pointer"
+                      >
+                        Submit Verified Answers
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
+
+            {/* SCHOOL DATA HUB & SUB-COMPONENT DATABASE EXPLORER */}
+            <SchoolDataHub activeSchool={activeSchool} />
 
             {/* Digital Data Online Collection */}
             <div className="bg-white p-6 rounded-2xl border border-gray-150 shadow-xs space-y-4">

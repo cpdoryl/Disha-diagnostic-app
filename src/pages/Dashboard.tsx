@@ -1,8 +1,9 @@
 import React from 'react';
 import { useAppStore } from '../store';
-import { Target, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight, HeartPulse, Sparkles, ArrowRight } from 'lucide-react';
+import { Target, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight, HeartPulse, Sparkles, ArrowRight, Building2, MapPin, Award } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { SchoolDataHub } from '../components/SchoolDataHub';
 
 const mockTrendData = [
   { name: 'Jan', score: 72 },
@@ -128,6 +129,9 @@ export const Dashboard = () => {
           <ArrowRight className="w-4.5 h-4.5 text-white" />
         </button>
       </div>
+
+      {/* EXCLUSIVE SCHOOL DATABASE & STAKEHOLDER RETRIEVAL HUB */}
+      <SchoolDataHub activeSchool={activeSchool} />
 
       {/* School Operations Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">

@@ -5,7 +5,7 @@ import { cn } from '../lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export const CompareStage = () => {
-  const { dimensions, gaps, domains } = useAppStore();
+  const { dimensions, gaps, domains, activeSchool } = useAppStore();
 
   const chartData = dimensions.slice(0, 6).map(d => ({
     name: d.name,
@@ -15,9 +15,20 @@ export const CompareStage = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900">Stage 2: Compare</h2>
-        <p className="text-gray-500 mt-1">Benchmarking against national standards and district best-performers.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Stage 2: Compare (Diagnose & Benchmark)</h2>
+          <p className="text-gray-500 mt-1">Benchmarking against national standards, board standards ({activeSchool?.board || 'CBSE'}), and peer school clusters.</p>
+        </div>
+        {activeSchool && (
+          <div className="bg-blue-50 border border-blue-200 px-4 py-2 rounded-xl text-xs text-blue-900 flex items-center gap-2 shrink-0">
+            <span className="font-extrabold text-blue-950">{activeSchool.name}</span>
+            <span className="text-blue-300">|</span>
+            <span className="font-bold">{activeSchool.board}</span>
+            <span className="text-blue-300">|</span>
+            <span className="text-blue-700">{activeSchool.city}</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

@@ -12,7 +12,7 @@ const generateMockTrend = (base: number, volatility: number) => {
 };
 
 export const Monitoring = () => {
-  const { domains } = useAppStore();
+  const { domains, activeSchool } = useAppStore();
 
   const getTrendIcon = (trend: string) => {
     switch(trend) {
@@ -26,11 +26,20 @@ export const Monitoring = () => {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Ongoing Monitoring</h2>
-          <p className="text-gray-500 mt-1 font-medium">Continuous metric tracking and alert system</p>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Ongoing Monitoring & Compliance</h2>
+          <p className="text-gray-500 mt-1 font-medium">Continuous metric tracking, survey velocity, and live audit telemetry.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-white border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 flex items-center gap-2 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          {activeSchool && (
+            <div className="bg-slate-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+              <span className="text-blue-400 font-extrabold">{activeSchool.name}</span>
+              <span className="text-slate-500">|</span>
+              <span>{activeSchool.board}</span>
+              <span className="text-slate-500">|</span>
+              <span className="text-slate-300">{activeSchool.city}</span>
+            </div>
+          )}
+          <div className="bg-white border border-gray-200 px-4 py-2 rounded-xl text-xs font-bold text-gray-700 flex items-center gap-2 shadow-sm">
             <Calendar className="w-4 h-4 text-gray-400" />
             Last 30 Days
           </div>

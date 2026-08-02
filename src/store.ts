@@ -9,6 +9,8 @@ import { saveSchoolToFirestore, deleteSchoolFromFirestore, fetchSchoolsFromFires
 interface AppState {
   currentView: ViewState;
   setCurrentView: (view: ViewState) => void;
+  customDomain: string;
+  setCustomDomain: (domain: string) => void;
   isAdmin: boolean;
   setIsAdmin: (val: boolean) => void;
   activeSchool: School | null;
@@ -161,6 +163,13 @@ const initialActiveSchool = loadSavedActiveSchool(initialSchools);
 export const useAppStore = create<AppState>((set) => ({
   currentView: 'DASHBOARD',
   setCurrentView: (view) => set({ currentView: view }),
+  customDomain: typeof localStorage !== 'undefined' ? (localStorage.getItem('disha_custom_domain') || 'disha.rylneuroacademy.com') : 'disha.rylneuroacademy.com',
+  setCustomDomain: (domain) => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('disha_custom_domain', domain);
+    }
+    set({ customDomain: domain });
+  },
   isAdmin: false,
   setIsAdmin: (val) => set({ isAdmin: val }),
   activeSchool: initialActiveSchool,
@@ -275,14 +284,14 @@ export const useAppStore = create<AppState>((set) => ({
         localStorage.setItem('disha_registered_schools', JSON.stringify(mergedSchools));
 
         return {
-          domains: domainsSnap.docs.map(d => d.data() as ChallengeDomain),
-          dimensions: dimensionsSnap.docs.map(d => d.data() as Dimension),
-          gaps: gapsSnap.docs.map(d => d.data() as GapPrediction),
-          simulations: simSnap.docs.map(d => d.data() as SimulationModel),
-          students: studentsSnap.docs.map(d => d.data() as Student),
-          staff: staffSnap.docs.map(d => d.data() as StaffMember),
-          attendance: attendanceSnap.docs.map(d => d.data() as AttendanceRecord),
-          communications: communicationsSnap.docs.map(d => d.data() as CommunicationMessage),
+          domains: domainsSnap.docs.length > 0 ? domainsSnap.docs.map(d => d.data() as ChallengeDomain) : MOCK_DOMAINS,
+          dimensions: dimensionsSnap.docs.length > 0 ? dimensionsSnap.docs.map(d => d.data() as Dimension) : MOCK_DIMENSIONS,
+          gaps: gapsSnap.docs.length > 0 ? gapsSnap.docs.map(d => d.data() as GapPrediction) : MOCK_GAPS,
+          simulations: simSnap.docs.length > 0 ? simSnap.docs.map(d => d.data() as SimulationModel) : MOCK_SIMULATIONS,
+          students: studentsSnap.docs.length > 0 ? studentsSnap.docs.map(d => d.data() as Student) : MOCK_STUDENTS,
+          staff: staffSnap.docs.length > 0 ? staffSnap.docs.map(d => d.data() as StaffMember) : MOCK_STAFF,
+          attendance: attendanceSnap.docs.length > 0 ? attendanceSnap.docs.map(d => d.data() as AttendanceRecord) : MOCK_ATTENDANCE,
+          communications: communicationsSnap.docs.length > 0 ? communicationsSnap.docs.map(d => d.data() as CommunicationMessage) : MOCK_COMMUNICATIONS,
           schools: mergedSchools,
           activeSchool: currentActive,
           isLoadingData: false

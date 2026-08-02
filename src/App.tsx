@@ -6,9 +6,6 @@ import { CaptureStage } from './pages/CaptureStage';
 import { CompareStage } from './pages/CompareStage';
 import { SimulateStage } from './pages/SimulateStage';
 import { Monitoring } from './pages/Monitoring';
-import { Students } from './pages/Students';
-import { Staff } from './pages/Staff';
-import { Attendance } from './pages/Attendance';
 import { Communications } from './pages/Communications';
 import { Login } from './pages/Login';
 import { LandingPage } from './pages/LandingPage';
@@ -113,12 +110,6 @@ export default function App() {
         return <SimulateStage />;
       case 'MONITORING':
         return <Monitoring />;
-      case 'STUDENTS':
-        return <Students />;
-      case 'STAFF':
-        return <Staff />;
-      case 'ATTENDANCE':
-        return <Attendance />;
       case 'COMMUNICATIONS':
         return <Communications />;
       case 'ADMIN':

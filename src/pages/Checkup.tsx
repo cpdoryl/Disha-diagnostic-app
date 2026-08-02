@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import JSZip from 'jszip';
 import { useAppStore } from '../store';
 import { DeepDiveAssessment } from '../components/DeepDiveAssessment';
 import { 
@@ -33,7 +34,8 @@ import {
   Info,
   Sliders,
   Target,
-  Check
+  Check,
+  Download
 } from 'lucide-react';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -978,6 +980,9 @@ export const Checkup = () => {
   // Custom Answers Store
   const [answers, setAnswers] = useState<Record<string, string>>({});
   
+  // Validation State for Compulsory Screening Questions
+  const [validationError, setValidationError] = useState<string | null>(null);
+  
   // Upload State
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -985,7 +990,7 @@ export const Checkup = () => {
   // UI Loading/Transition states
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isDeepScanning, setIsDeepScanning] = useState<boolean>(false);
-  
+
   // Active Root Cause node
   const [activeRootNode, setActiveRootNode] = useState<string>('workload');
 
@@ -1015,7 +1020,172 @@ export const Checkup = () => {
   useEffect(() => {
     // Start with clean state so selected challenges and answers dynamically drive scores
     setAnswers({});
+    setValidationError(null);
   }, []);
+
+  // Download Sample CSV helper
+  const downloadSampleCSV = (fileType: 'ledger' | 'dimensions' | 'feedback') => {
+    let filename = '';
+    let content = '';
+
+    if (fileType === 'ledger') {
+      filename = 'DISHA_Sample_Operational_Ledger.csv';
+      content = `Metric_Category,Metric_Name,Recorded_Value,Benchmark_Standard,Alert_Status,Notes
+Operational_SLA,Parent_Query_Response_Time_Hours,28.5,4.0,CRITICAL_LAG,Requires dedicated parent helpdesk SLA protocol
+Teacher_Development,Annual_CPD_Training_Hours_Per_Teacher,18.0,50.0,BELOW_NEP2020_BENCHMARK,Aligned with NEP 2020 50hr annual mandate
+Academic_Remedial,Students_Covered_In_Remedial_Program_Pct,32.0,85.0,MODERATE_GAP,Identified learning gaps from term exams
+Student_Retention,Unexcused_Absence_Rate_Pct,14.2,5.0,HIGH_RISK_FLAG,Early indicator for potential mid-year dropouts`;
+    } else if (fileType === 'dimensions') {
+      filename = 'DISHA_Sample_14_Dimensions_Audit.csv';
+      content = `Dimension_ID,Dimension_Name,Current_Score_Out_Of_100,Peer_Benchmark_Avg,Risk_Level,Recommended_Action
+D01,Academic_Reputation_Rigour,74,82,Low,Implement project-based learning assessments
+D02,Teacher_Welfare_Development,58,76,High,Increase annual CPD budget to 50 hours per teacher
+D03,Leadership_Governance_Quality,65,78,Medium,Establish weekly SLA monitoring for department heads
+D04,Parent_Engagement_SLA,42,80,Critical,Deploy automated ticket escalation for parent inquiries
+D05,Student_Safety_Wellness,88,85,Healthy,Maintain anti-bullying and mental health counselor access`;
+    } else {
+      filename = 'DISHA_Sample_Stakeholder_Feedback.csv';
+      content = `Stakeholder_Group,Respondent_Role,Satisfaction_Score_Out_Of_10,Primary_Complaint_Area,Key_Suggestion
+Parent,Grade_8_Parent,4.5,Communication_Delays,Faster response on WhatsApp and phone queries
+Teacher,Senior_Secondary_Teacher,5.2,Administrative_Workload,Reduce non-teaching clerical report filing
+Student,Grade_10_Student,8.1,Sports_Infrastructure,Upgrade outdoor sports equipment and field access
+Staff,Administrative_Office_Staff,6.0,Fee_Followup_Process,Automate online fee payment reminders`;
+    }
+
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Download All Sample Files in a ZIP Bundle
+  const downloadAllAsZIP = async () => {
+    try {
+      const zip = new JSZip();
+
+      // 1. Operational Ledger
+      zip.file(
+        '01_DISHA_First_Opinion_Operational_Ledger.csv',
+        `Metric_Category,Metric_Name,Recorded_Value,Benchmark_Standard,Alert_Status,Notes
+Operational_SLA,Parent_Query_Response_Time_Hours,28.5,4.0,CRITICAL_LAG,Requires dedicated parent helpdesk SLA protocol
+Teacher_Development,Annual_CPD_Training_Hours_Per_Teacher,18.0,50.0,BELOW_NEP2020_BENCHMARK,Aligned with NEP 2020 50hr annual mandate
+Academic_Remedial,Students_Covered_In_Remedial_Program_Pct,32.0,85.0,MODERATE_GAP,Identified learning gaps from term exams
+Student_Retention,Unexcused_Absence_Rate_Pct,14.2,5.0,HIGH_RISK_FLAG,Early indicator for potential mid-year dropouts`
+      );
+
+      // 2. 14 Dimensions Audit
+      zip.file(
+        '02_DISHA_14_Dimensions_Audit_Report.csv',
+        `Dimension_ID,Dimension_Name,Current_Score_Out_Of_100,Peer_Benchmark_Avg,Risk_Level,Recommended_Action
+D01,Academic_Reputation_Rigour,74,82,Low,Implement project-based learning assessments
+D02,Teacher_Welfare_Development,58,76,High,Increase annual CPD budget to 50 hours per teacher
+D03,Leadership_Governance_Quality,65,78,Medium,Establish weekly SLA monitoring for department heads
+D04,Parent_Engagement_SLA,42,80,Critical,Deploy automated ticket escalation for parent inquiries
+D05,Student_Safety_Wellness,88,85,Healthy,Maintain anti-bullying and mental health counselor access
+D06,Infrastructure_Facilities,80,84,Low,Upgrade science lab digital equipment
+D07,CoCurricular_Education,72,75,Low,Expand inter-school debate and robotics clubs
+D08,Individual_Attention_Ratio,60,78,Medium,Reduce student-teacher ratio in secondary sections
+D09,Value_For_Money_Parents,54,72,High,Improve parent enquiry communication speed
+D10,Inclusive_Special_Needs,68,70,Low,Appoint additional certified special educator
+D11,Community_Service_Social,85,80,Healthy,Maintain student outreach programs
+D12,Faculty_Competence_Retain,62,75,Medium,Provide competitive teacher salary increment tiers
+D13,Internationalism_Culture,70,73,Low,Initiate global virtual exchange sessions
+D14,Management_Vision_Growth,78,81,Low,Conduct quarterly strategic review with board`
+      );
+
+      // 3. Stakeholder Feedback
+      zip.file(
+        '03_DISHA_360_Stakeholder_Feedback_Surveys.csv',
+        `Stakeholder_Group,Respondent_Role,Satisfaction_Score_Out_Of_10,Primary_Complaint_Area,Key_Suggestion
+Parent,Grade_8_Parent,4.5,Communication_Delays,Faster response on WhatsApp and phone queries
+Teacher,Senior_Secondary_Teacher,5.2,Administrative_Workload,Reduce non-teaching clerical report filing
+Student,Grade_10_Student,8.1,Sports_Infrastructure,Upgrade outdoor sports equipment and field access
+Staff,Administrative_Office_Staff,6.0,Fee_Followup_Process,Automate online fee payment reminders`
+      );
+
+      // 4. Student Dropout & Absence Logs
+      zip.file(
+        '04_DISHA_Student_Dropout_And_Absence_Logs.csv',
+        `Student_ID,Class_Section,Consecutive_Unexcused_Days,Fee_Due_Months,Academic_Performance_Band,Dropout_Risk_Level
+STU_1042,Grade_9_B,8,2,Below_Average,HIGH
+STU_2081,Grade_10_A,12,3,Average,CRITICAL
+STU_3012,Grade_7_C,5,1,Above_Average,MODERATE
+STU_4105,Grade_11_Science,2,0,Excellent,LOW`
+      );
+
+      // 5. Teacher CPD Training Records
+      zip.file(
+        '05_DISHA_Teacher_CPD_Training_Records.csv',
+        `Teacher_ID,Department,Annual_CPD_Hours_Completed,NEP2020_Mandate_50h_Status,Last_Workshop_Attended
+TCH_101,Mathematics,22,NON_COMPLIANT,Pedagogy in Algebra (12h)
+TCH_102,Science,48,NEAR_COMPLIANT,Stem Lab Practices (24h)
+TCH_103,English,54,FULL_COMPLIANT,CBSE Inclusive Education (30h)
+TCH_104,Social_Studies,15,NON_COMPLIANT,Differentiated Learning (10h)`
+      );
+
+      // 6. User Guide README
+      zip.file(
+        'README_How_To_Use_These_Sample_Files.txt',
+        `========================================================================
+             DISHA SCHOOL DIAGNOSTIC ENGINE - TEST DATASETS BUNDLE
+========================================================================
+
+Thank you for testing DISHA! This ZIP package contains ready-to-use sample CSV
+files formatted specifically for testing DISHA features.
+
+FILES INCLUDED IN THIS ZIP:
+------------------------------------------------------------------------
+1. 01_DISHA_First_Opinion_Operational_Ledger.csv
+   -> USE IN: First Opinion Diagnostic -> Document Upload Step.
+   -> WHAT IT TESTS: Calculates real-time 0-100 Health Scores by analyzing parent query
+      response times, teacher CPD training, remedial academic coverage, and absence rates.
+
+2. 02_DISHA_14_Dimensions_Audit_Report.csv
+   -> USE IN: 14-Dimension Holistic School Benchmarking & Audit.
+   -> WHAT IT TESTS: Benchmarks your institution against peer CBSE / EWISR standards
+      across all 14 core educational and governance dimensions.
+
+3. 03_DISHA_360_Stakeholder_Feedback_Surveys.csv
+   -> USE IN: 360° Multilateral Survey Analytics.
+   -> WHAT IT TESTS: Analyzes perception gaps and complaint areas from Parents,
+      Teachers, Students, and Administrative Staff.
+
+4. 04_DISHA_Student_Dropout_And_Absence_Logs.csv
+   -> USE IN: Student Retention & SLA Monitoring.
+   -> WHAT IT TESTS: Flags high-risk students showing chronic absenteeism and fee delays.
+
+5. 05_DISHA_Teacher_CPD_Training_Records.csv
+   -> USE IN: NEP 2020 Teacher Development Tracking.
+   -> WHAT IT TESTS: Evaluates compliance against NEP 2020's 50-hour annual mandate.
+
+HOW TO USE IN DISHA:
+------------------------------------------------------------------------
+1. Extract this ZIP archive on your computer.
+2. In DISHA's "First Opinion Triage", select your symptoms and answer the mandatory
+   screening questions.
+3. Click "Upload Supporting Data Document" and upload any of these extracted CSV files!
+4. DISHA will automatically parse the data document and render your customized report!
+`
+      );
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'DISHA_Sample_Test_Datasets_Bundle.zip');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Error generating zip bundle:", err);
+    }
+  };
 
   const toggleChallenge = (id: string) => {
     setSelectedChallenges(prev => {
@@ -1029,8 +1199,33 @@ export const Checkup = () => {
     });
   };
 
+  const getRequiredQuestions = () => {
+    const req: { id: string; label: string; challengeTitle: string }[] = [];
+    selectedChallenges.forEach(cid => {
+      const cObj = CHALLENGES.find(c => c.id === cid);
+      if (cObj) {
+        cObj.questions.forEach(q => {
+          req.push({
+            id: q.id,
+            label: q.label,
+            challengeTitle: cObj.label
+          });
+        });
+      }
+    });
+    return req;
+  };
+
   const handleAnswerChange = (qId: string, val: string) => {
-    setAnswers(prev => ({ ...prev, [qId]: val }));
+    setAnswers(prev => {
+      const updated = { ...prev, [qId]: val };
+      const req = getRequiredQuestions();
+      const stillMissing = req.filter(q => !updated[q.id] || updated[q.id].trim() === '');
+      if (stillMissing.length === 0) {
+        setValidationError(null);
+      }
+      return updated;
+    });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1057,6 +1252,23 @@ export const Checkup = () => {
 
   // DIAGNOSTIC ENGING CALCULATION
   const runFirstOpinionDiagnostic = () => {
+    const required = getRequiredQuestions();
+    const missing = required.filter(q => !answers[q.id] || answers[q.id].trim() === '');
+
+    if (missing.length > 0) {
+      setValidationError(
+        `Action Required: You must answer all ${missing.length} remaining compulsory screening question${missing.length > 1 ? 's' : ''} before generating your First Opinion. Uploading data documents alone is not sufficient.`
+      );
+      const elem = document.getElementById('screening-questions-container');
+      if (elem) {
+        elem.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+
+    setValidationError(null);
     setIsProcessing(true);
     setTimeout(() => {
       setIsProcessing(false);
@@ -1685,24 +1897,70 @@ export const Checkup = () => {
       {step === 1 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6" id="screening-questions-container">
               
               <div className="border-b border-gray-100 pb-4">
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {selectedChallenges.map(cid => {
-                    const c = CHALLENGES.find(item => item.id === cid);
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedChallenges.map(cid => {
+                      const c = CHALLENGES.find(item => item.id === cid);
+                      return (
+                        <span key={cid} className="bg-blue-50 text-blue-700 text-[10px] px-2.5 py-1 rounded-md font-bold border border-blue-100">
+                          Symptom: {c?.label.split('/')[0]}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {/* Status Badge */}
+                  {(() => {
+                    const req = getRequiredQuestions();
+                    const missing = req.filter(q => !answers[q.id] || answers[q.id].trim() === '');
+                    const isComplete = missing.length === 0;
                     return (
-                      <span key={cid} className="bg-blue-50 text-blue-700 text-[10px] px-2.5 py-1 rounded-md font-bold border border-blue-100">
-                        Symptom: {c?.label.split('/')[0]}
+                      <span className={cn(
+                        "text-xs px-3 py-1 rounded-full font-black flex items-center gap-1.5 border",
+                        isComplete 
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                          : "bg-amber-50 text-amber-800 border-amber-200"
+                      )}>
+                        {isComplete ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>All {req.length} Questions Answered</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                            <span>{req.length - missing.length} of {req.length} Answered (Compulsory)</span>
+                          </>
+                        )}
                       </span>
                     );
-                  })}
+                  })()}
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Focused Screening Questions</h3>
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <span>Focused Screening Questions</span>
+                  <span className="text-xs font-black text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-100">
+                    Mandatory *
+                  </span>
+                </h3>
                 <p className="text-xs text-gray-500 leading-relaxed font-medium mt-1">
-                  Answer these short follow-up questions to benchmark your challenges against district indices.
+                  Answering all customized screening questions below is compulsory to generate your First Opinion. Uploading supporting documents provides additional evidence but cannot replace these responses.
                 </p>
               </div>
+
+              {/* Validation Warning Alert Banner if missing answers */}
+              {validationError && (
+                <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-200 text-rose-800 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                  <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-extrabold text-sm text-rose-900">Compulsory Questions Unanswered</p>
+                    <p className="text-xs font-semibold text-rose-700 leading-relaxed">
+                      {validationError}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Minimal School Profile Baseline */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
@@ -1757,26 +2015,56 @@ export const Checkup = () => {
                   if (!challengeObj) return null;
                   return (
                     <div key={cid} className="p-4 rounded-xl border border-gray-100 bg-white shadow-xs space-y-4">
-                      <p className="font-black text-xs text-blue-600 uppercase tracking-widest border-b border-gray-50 pb-1">
-                        Screening: {challengeObj.label.split('/')[0]}
+                      <p className="font-black text-xs text-blue-600 uppercase tracking-widest border-b border-gray-50 pb-1 flex items-center justify-between">
+                        <span>Screening: {challengeObj.label.split('/')[0]}</span>
+                        <span className="text-[10px] text-rose-600 bg-rose-50 px-2 py-0.5 rounded font-bold border border-rose-100">
+                          Compulsory Questions
+                        </span>
                       </p>
-                      {challengeObj.questions.map(q => (
-                        <div key={q.id} className="space-y-1.5">
-                          <label className="block text-sm font-bold text-gray-800 leading-tight">
-                            {q.label}
-                          </label>
-                          <select
-                            value={answers[q.id] || ''}
-                            onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 font-semibold"
-                          >
-                            <option value="">Select an option...</option>
-                            {q.options?.map((opt, oIdx) => (
-                              <option key={oIdx} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                      ))}
+                      {challengeObj.questions.map(q => {
+                        const isAnswered = Boolean(answers[q.id] && answers[q.id].trim() !== '');
+                        const isMissing = Boolean(validationError && !isAnswered);
+                        return (
+                          <div key={q.id} className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <label className="block text-sm font-bold text-gray-800 leading-tight">
+                                {q.label} <span className="text-rose-500 font-black">*</span>
+                              </label>
+                              {isAnswered ? (
+                                <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-extrabold flex items-center gap-1 shrink-0 border border-emerald-100">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Answered
+                                </span>
+                              ) : (
+                                <span className={cn(
+                                  "text-[10px] px-2 py-0.5 rounded font-extrabold shrink-0 border",
+                                  isMissing 
+                                    ? "text-rose-700 bg-rose-100 border-rose-300 animate-pulse" 
+                                    : "text-amber-700 bg-amber-50 border-amber-200"
+                                )}>
+                                  Required *
+                                </span>
+                              )}
+                            </div>
+                            <select
+                              value={answers[q.id] || ''}
+                              onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                              className={cn(
+                                "w-full bg-gray-50 border rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:ring-2 font-semibold transition-all",
+                                isMissing
+                                  ? "border-rose-500 bg-rose-50/20 ring-2 ring-rose-500/20 text-rose-900"
+                                  : isAnswered
+                                    ? "border-emerald-300 bg-emerald-50/10 focus:ring-emerald-500"
+                                    : "border-gray-200 focus:ring-blue-500"
+                              )}
+                            >
+                              <option value="">-- Select an Option (Compulsory) --</option>
+                              {q.options?.map((opt, oIdx) => (
+                                <option key={oIdx} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -1787,10 +2075,10 @@ export const Checkup = () => {
                 <div>
                   <h4 className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
                     <Upload className="w-4 h-4 text-indigo-500" />
-                    Share Supporting Information (Optional & Highly Recommended)
+                    Share Supporting Information (Optional Data Document)
                   </h4>
                   <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                    Drop a spreadsheet or register file (e.g. fee payment logs, faculty substitution rosters, report card exports), or upload a smartphone snapshot of a handwritten ledger file. Disha automatically parses the text.
+                    Drop a spreadsheet or register file (e.g. fee payment logs, faculty rosters, report card exports). <strong className="text-slate-800">Note:</strong> Uploading data documents boosts diagnostic confidence but does not replace answering the compulsory screening questions above.
                   </p>
                 </div>
 
@@ -1847,9 +2135,19 @@ export const Checkup = () => {
 
             </div>
 
-            <div className="flex justify-between items-center">
+            {validationError && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
+                <span>Assessment locked: Please answer all mandatory screening questions above to move further.</span>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-2">
               <button
-                onClick={() => setStep(0)}
+                onClick={() => {
+                  setValidationError(null);
+                  setStep(0);
+                }}
                 className="text-gray-500 hover:text-gray-800 font-bold text-sm"
               >
                 Back to Worries

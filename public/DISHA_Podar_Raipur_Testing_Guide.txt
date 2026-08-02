@@ -1,0 +1,26 @@
+================================================================================
+  PODAR INTERNATIONAL SCHOOL, RAIPUR (CBSE) - DISHA TESTING & DATASET GUIDE
+================================================================================
+
+WHERE & HOW TO USE EACH DATASET IN DISHA:
+
+1. Dataset File Name: 01_Podar_Raipur_Operational_Ledger.csv
+   Where to Upload in DISHA: Disha Checkup (Triage) Step 2 -> (Upload Supporting Data Document)
+   What DISHA Analyzes & Displays: Calculates real-time 0–100 Overall Health Score, flags SLA response lags (e.g. parent inquiries), checks NEP 2020 teacher CPD hours, and detects remedial academic gaps.
+
+2. Dataset File Name: 02_Podar_Raipur_14_Dimensions_Audit_Report.csv
+   Where to Upload in DISHA: 14-Dimension Audit Section or Checkup Document Upload
+   What DISHA Analyzes & Displays: Benchmarks Podar International School, Raipur against national EWISR / CBSE peer averages across all 14 core educational and governance dimensions.
+
+3. Dataset File Name: 03_Podar_Raipur_360_Stakeholder_Feedback.csv
+   Where to Upload in DISHA: 360° Perception Survey Module or Checkup Document Upload
+   What DISHA Analyzes & Displays: Analyzes satisfaction scores and primary complaint areas from Parents (e.g. Parent App SLA), Teachers (administrative load), Students (lab access), and Staff.
+
+4. Dataset File Name: 04_Podar_Raipur_Student_Absence_And_Risk_Logs.csv
+   Where to Upload in DISHA: Retention & SLA Tracking or Checkup Document Upload
+   What DISHA Analyzes & Displays: Identifies students with chronic absenteeism and fee delays to flag CRITICAL or HIGH dropout risks before mid-term.
+
+5. Dataset File Name: 05_Podar_Raipur_Teacher_CPD_And_PIL_Training.csv
+   Where to Upload in DISHA: NEP 2020 Teacher CPD Tracker or Checkup Document Upload
+   What DISHA Analyzes & Displays: Evaluates faculty compliance against NEP 2020's mandatory 50-hour annual training requirement via Podar Innovation Lab (PIL) workshops.
+================================================================================

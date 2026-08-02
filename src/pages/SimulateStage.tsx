@@ -3,7 +3,7 @@ import { useAppStore } from '../store';
 import { Settings2, ArrowRight, Zap, Target, Activity, Search, ShieldCheck } from 'lucide-react';
 
 export const SimulateStage = () => {
-  const { simulations, updateSimulationTarget } = useAppStore();
+  const { simulations, updateSimulationTarget, activeSchool } = useAppStore();
   const [selectedSimId, setSelectedSimId] = useState(simulations[0]?.id || '');
   const sim = simulations.find(s => s.id === selectedSimId) || simulations[0];
   const [targetVal, setTargetVal] = useState(sim?.targetValue || 0);
@@ -37,9 +37,20 @@ export const SimulateStage = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900">Stage 3: Simulate</h2>
-        <p className="text-gray-500 mt-1">Reverse outcome modeling and target feasibility validation.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Stage 3: Simulate (Model & Strategize)</h2>
+          <p className="text-gray-500 mt-1">Predictive outcome modeling and target feasibility simulation for 14 diagnostic dimensions.</p>
+        </div>
+        {activeSchool && (
+          <div className="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl text-xs text-emerald-950 flex items-center gap-2 shrink-0">
+            <span className="font-extrabold text-emerald-950">{activeSchool.name}</span>
+            <span className="text-emerald-300">|</span>
+            <span className="font-bold">{activeSchool.board}</span>
+            <span className="text-emerald-300">|</span>
+            <span className="text-emerald-700">{activeSchool.city}</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
