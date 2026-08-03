@@ -65,7 +65,8 @@ jobs:
           firebase deploy \
             --project=${{ secrets.FIREBASE_PROJECT_ID }} \
             --token=${{ secrets.FIREBASE_TOKEN }} \
-            --only hosting,functions
+            --only hosting,functions \
+            --force
           echo "Deployment completed"
         continue-on-error: false
 
