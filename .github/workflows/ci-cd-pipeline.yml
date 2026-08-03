@@ -148,7 +148,6 @@ jobs:
 
     permissions:
       contents: read
-      id-token: write
 
     steps:
       - name: Checkout code
@@ -168,12 +167,6 @@ jobs:
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account_email: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       - name: Deploy to Firebase Production
         run: |
