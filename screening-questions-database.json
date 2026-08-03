@@ -1,0 +1,1740 @@
+{
+  "questions": [
+    {
+      "questionId": "Q1.1",
+      "challengeId": "C1",
+      "challengeName": "Enrollment Decline",
+      "domain": "Growth & Enrollment",
+      "question": "What is the trend of new enrollments in the last 3 years?",
+      "metric": "New Student Intake Rate (%)",
+      "questionNumber": 1,
+      "challengeNumber": 1,
+      "order": 1,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q1.1_opt_1",
+          "text": "Strong growth (>20% YoY)",
+          "weight": 1,
+          "severity": "Low",
+          "description": "Excellent enrollment growth"
+        },
+        {
+          "optionId": "Q1.1_opt_2",
+          "text": "Moderate growth (10-20% YoY)",
+          "weight": 2,
+          "severity": "Low",
+          "description": "Good enrollment growth"
+        },
+        {
+          "optionId": "Q1.1_opt_3",
+          "text": "Flat/minimal growth (<10% YoY)",
+          "weight": 4,
+          "severity": "Medium",
+          "description": "Stagnant enrollment"
+        },
+        {
+          "optionId": "Q1.1_opt_4",
+          "text": "Slight decline (-5% to -10%)",
+          "weight": 6,
+          "severity": "High",
+          "description": "Minor enrollment decline"
+        },
+        {
+          "optionId": "Q1.1_opt_5",
+          "text": "Moderate decline (-10% to -20%)",
+          "weight": 8,
+          "severity": "High",
+          "description": "Significant enrollment decline"
+        },
+        {
+          "optionId": "Q1.1_opt_6",
+          "text": "Severe decline (<-20%)",
+          "weight": 10,
+          "severity": "Critical",
+          "description": "Critical enrollment decline"
+        }
+      ]
+    },
+    {
+      "questionId": "Q1.2",
+      "challengeId": "C1",
+      "challengeName": "Enrollment Decline",
+      "domain": "Growth & Enrollment",
+      "question": "How competitive is enrollment vs peer schools in your market?",
+      "metric": "Competitive Position",
+      "questionNumber": 2,
+      "challengeNumber": 1,
+      "order": 2,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q1.2_opt_1",
+          "text": "More competitive than peers",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q1.2_opt_2",
+          "text": "Equally competitive",
+          "weight": 3,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q1.2_opt_3",
+          "text": "Less competitive than peers",
+          "weight": 5,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q1.2_opt_4",
+          "text": "Significantly less competitive",
+          "weight": 8,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q1.2_opt_5",
+          "text": "Major disadvantage vs competitors",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q1.3",
+      "challengeId": "C1",
+      "challengeName": "Enrollment Decline",
+      "domain": "Growth & Enrollment",
+      "question": "What is your student retention rate from Grade 1 to Grade 12?",
+      "metric": "Student Retention Rate (%)",
+      "questionNumber": 3,
+      "challengeNumber": 1,
+      "order": 3,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q1.3_opt_1",
+          "text": "90%+ retention",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q1.3_opt_2",
+          "text": "80-90% retention",
+          "weight": 3,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q1.3_opt_3",
+          "text": "70-80% retention",
+          "weight": 5,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q1.3_opt_4",
+          "text": "60-70% retention",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q1.3_opt_5",
+          "text": "<60% retention",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q2.1",
+      "challengeId": "C2",
+      "challengeName": "Student Attrition",
+      "domain": "Growth & Enrollment",
+      "question": "What percentage of students leave mid-year?",
+      "metric": "Mid-Year Dropout Rate (%)",
+      "questionNumber": 1,
+      "challengeNumber": 2,
+      "order": 4,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q2.1_opt_1",
+          "text": "0-2% mid-year attrition",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q2.1_opt_2",
+          "text": "2-5% mid-year attrition",
+          "weight": 3,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q2.1_opt_3",
+          "text": "5-8% mid-year attrition",
+          "weight": 5,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q2.1_opt_4",
+          "text": "8-12% mid-year attrition",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q2.1_opt_5",
+          "text": ">12% mid-year attrition",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q2.2",
+      "challengeId": "C2",
+      "challengeName": "Student Attrition",
+      "domain": "Growth & Enrollment",
+      "question": "What are the primary reasons for student exit?",
+      "metric": "Exit Reason Categories",
+      "questionNumber": 2,
+      "challengeNumber": 2,
+      "order": 5,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q2.2_opt_1",
+          "text": "Academic/personal - isolated cases",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q2.2_opt_2",
+          "text": "Mixed reasons, mostly controllable",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q2.2_opt_3",
+          "text": "Mostly controllable (affordability, safety)",
+          "weight": 6,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q2.2_opt_4",
+          "text": "Major controllable issues (staff, quality)",
+          "weight": 8,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q2.2_opt_5",
+          "text": "Systemic failure in core offering",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q2.3",
+      "challengeId": "C2",
+      "challengeName": "Student Attrition",
+      "domain": "Growth & Enrollment",
+      "question": "How many students shift to competitor schools annually?",
+      "metric": "Outflow to Competitors (%)",
+      "questionNumber": 3,
+      "challengeNumber": 2,
+      "order": 6,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q2.3_opt_1",
+          "text": "Very few (<2%)",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q2.3_opt_2",
+          "text": "Some (2-5%)",
+          "weight": 3,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q2.3_opt_3",
+          "text": "Noticeable (5-10%)",
+          "weight": 5,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q2.3_opt_4",
+          "text": "Significant (10-15%)",
+          "weight": 8,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q2.3_opt_5",
+          "text": "Severe (>15%)",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q3.1",
+      "challengeId": "C3",
+      "challengeName": "Fee Collection Challenges",
+      "domain": "Growth & Enrollment",
+      "question": "What percentage of annual fees is realized?",
+      "metric": "Fee Realization Rate (%)",
+      "questionNumber": 1,
+      "challengeNumber": 3,
+      "order": 7,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q3.1_opt_1",
+          "text": "95-100% realization",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q3.1_opt_2",
+          "text": "90-95% realization",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q3.1_opt_3",
+          "text": "85-90% realization",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q3.1_opt_4",
+          "text": "75-85% realization",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q3.1_opt_5",
+          "text": "<75% realization",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q3.2",
+      "challengeId": "C3",
+      "challengeName": "Fee Collection Challenges",
+      "domain": "Growth & Enrollment",
+      "question": "What is the average payment delay from parents?",
+      "metric": "Days Sales Outstanding (DSO)",
+      "questionNumber": 2,
+      "challengeNumber": 3,
+      "order": 8,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q3.2_opt_1",
+          "text": "On-time or early payment",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q3.2_opt_2",
+          "text": "30 days average delay",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q3.2_opt_3",
+          "text": "60 days average delay",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q3.2_opt_4",
+          "text": "90+ days average delay",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q3.2_opt_5",
+          "text": "Chronic defaults and disputes",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q3.3",
+      "challengeId": "C3",
+      "challengeName": "Fee Collection Challenges",
+      "domain": "Growth & Enrollment",
+      "question": "How many parents request scholarships/fee reduction?",
+      "metric": "Scholarship Request Rate (%)",
+      "questionNumber": 3,
+      "challengeNumber": 3,
+      "order": 9,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q3.3_opt_1",
+          "text": "<5% requesting concession",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q3.3_opt_2",
+          "text": "5-10% requesting concession",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q3.3_opt_3",
+          "text": "10-20% requesting concession",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q3.3_opt_4",
+          "text": "20-30% requesting concession",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q3.3_opt_5",
+          "text": ">30% requesting concession",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q4.1",
+      "challengeId": "C4",
+      "challengeName": "Teacher Attrition",
+      "domain": "People & Staffing",
+      "question": "What is your annual teacher attrition rate?",
+      "metric": "Teacher Turnover Rate (%)",
+      "questionNumber": 1,
+      "challengeNumber": 4,
+      "order": 10,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q4.1_opt_1",
+          "text": "<5% annual turnover",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q4.1_opt_2",
+          "text": "5-10% annual turnover",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q4.1_opt_3",
+          "text": "10-15% annual turnover",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q4.1_opt_4",
+          "text": "15-25% annual turnover",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q4.1_opt_5",
+          "text": ">25% annual turnover",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q4.2",
+      "challengeId": "C4",
+      "challengeName": "Teacher Attrition",
+      "domain": "People & Staffing",
+      "question": "What is the primary reason teachers leave?",
+      "metric": "Exit Reason",
+      "questionNumber": 2,
+      "challengeNumber": 4,
+      "order": 11,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q4.2_opt_1",
+          "text": "Retirement/personal - unavoidable",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q4.2_opt_2",
+          "text": "Career growth opportunities elsewhere",
+          "weight": 3,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q4.2_opt_3",
+          "text": "Better compensation packages",
+          "weight": 5,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q4.2_opt_4",
+          "text": "Management/culture issues",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q4.2_opt_5",
+          "text": "Systemic institutional failure",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q4.3",
+      "challengeId": "C4",
+      "challengeName": "Teacher Attrition",
+      "domain": "People & Staffing",
+      "question": "What is the average teacher tenure at your school?",
+      "metric": "Avg Teacher Tenure (years)",
+      "questionNumber": 3,
+      "challengeNumber": 4,
+      "order": 12,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q4.3_opt_1",
+          "text": "10+ years average",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q4.3_opt_2",
+          "text": "7-10 years average",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q4.3_opt_3",
+          "text": "5-7 years average",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q4.3_opt_4",
+          "text": "3-5 years average",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q4.3_opt_5",
+          "text": "<3 years average",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q5.1",
+      "challengeId": "C5",
+      "challengeName": "Staff Capability Gaps",
+      "domain": "People & Staffing",
+      "question": "What % of your teachers have subject specialist qualifications?",
+      "metric": "Teacher Competency Score (%)",
+      "questionNumber": 1,
+      "challengeNumber": 5,
+      "order": 13,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q5.1_opt_1",
+          "text": ">90% specialists",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q5.1_opt_2",
+          "text": "80-90% specialists",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q5.1_opt_3",
+          "text": "70-80% specialists",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q5.1_opt_4",
+          "text": "50-70% specialists",
+          "weight": 6,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q5.1_opt_5",
+          "text": "<50% specialists",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q5.2",
+      "challengeId": "C5",
+      "challengeName": "Staff Capability Gaps",
+      "domain": "People & Staffing",
+      "question": "How aligned is teacher competency to curriculum needs?",
+      "metric": "Curriculum Alignment",
+      "questionNumber": 2,
+      "challengeNumber": 5,
+      "order": 14,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q5.2_opt_1",
+          "text": "Highly aligned - excellent match",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q5.2_opt_2",
+          "text": "Well aligned - good match",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q5.2_opt_3",
+          "text": "Mostly aligned - acceptable",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q5.2_opt_4",
+          "text": "Gaps in key subjects/areas",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q5.2_opt_5",
+          "text": "Major misalignment issues",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q5.3",
+      "challengeId": "C5",
+      "challengeName": "Staff Capability Gaps",
+      "domain": "People & Staffing",
+      "question": "How often do teachers receive upskilling training?",
+      "metric": "Training Frequency",
+      "questionNumber": 3,
+      "challengeNumber": 5,
+      "order": 15,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q5.3_opt_1",
+          "text": "Regular (monthly+)",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q5.3_opt_2",
+          "text": "Quarterly",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q5.3_opt_3",
+          "text": "Semi-annual",
+          "weight": 3,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q5.3_opt_4",
+          "text": "Annual",
+          "weight": 5,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q5.3_opt_5",
+          "text": "Rarely/never",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q6.1",
+      "challengeId": "C6",
+      "challengeName": "Leadership Capability Gap",
+      "domain": "People & Staffing",
+      "question": "How many years of leadership experience does your top leader have?",
+      "metric": "Leadership Experience (years)",
+      "questionNumber": 1,
+      "challengeNumber": 6,
+      "order": 16,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q6.1_opt_1",
+          "text": "15+ years",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q6.1_opt_2",
+          "text": "10-15 years",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q6.1_opt_3",
+          "text": "7-10 years",
+          "weight": 3,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q6.1_opt_4",
+          "text": "3-7 years",
+          "weight": 5,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q6.1_opt_5",
+          "text": "<3 years",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q6.2",
+      "challengeId": "C6",
+      "challengeName": "Leadership Capability Gap",
+      "domain": "People & Staffing",
+      "question": "How clear is the institutional vision and strategy?",
+      "metric": "Vision Clarity",
+      "questionNumber": 2,
+      "challengeNumber": 6,
+      "order": 17,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q6.2_opt_1",
+          "text": "Crystal clear, well communicated",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q6.2_opt_2",
+          "text": "Clear, mostly aligned",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q6.2_opt_3",
+          "text": "Somewhat clear, partial alignment",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q6.2_opt_4",
+          "text": "Unclear, limited buy-in",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q6.2_opt_5",
+          "text": "No clear vision/direction",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q6.3",
+      "challengeId": "C6",
+      "challengeName": "Leadership Capability Gap",
+      "domain": "People & Staffing",
+      "question": "How effective is decision-making and governance?",
+      "metric": "Decision Making Effectiveness",
+      "questionNumber": 3,
+      "challengeNumber": 6,
+      "order": 18,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q6.3_opt_1",
+          "text": "Excellent - quick, well-informed",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q6.3_opt_2",
+          "text": "Good - timely, mostly sound",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q6.3_opt_3",
+          "text": "Adequate - but some delays",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q6.3_opt_4",
+          "text": "Poor - slow, inconsistent",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q6.3_opt_5",
+          "text": "Dysfunctional - unclear authority",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q7.1",
+      "challengeId": "C7",
+      "challengeName": "Academic Quality Decline",
+      "domain": "Academic & Wellbeing",
+      "question": "What is your board exam pass rate?",
+      "metric": "Board Exam Pass Rate (%)",
+      "questionNumber": 1,
+      "challengeNumber": 7,
+      "order": 19,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q7.1_opt_1",
+          "text": ">95% pass rate",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q7.1_opt_2",
+          "text": "90-95% pass rate",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q7.1_opt_3",
+          "text": "85-90% pass rate",
+          "weight": 3,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q7.1_opt_4",
+          "text": "70-85% pass rate",
+          "weight": 5,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q7.1_opt_5",
+          "text": "<70% pass rate",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q7.2",
+      "challengeId": "C7",
+      "challengeName": "Academic Quality Decline",
+      "domain": "Academic & Wellbeing",
+      "question": "How are your scores trending vs peer institutions?",
+      "metric": "Score Trend vs Peers",
+      "questionNumber": 2,
+      "challengeNumber": 7,
+      "order": 20,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q7.2_opt_1",
+          "text": "Consistently above peer average",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q7.2_opt_2",
+          "text": "At or near peer average",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q7.2_opt_3",
+          "text": "Slightly below peer average",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q7.2_opt_4",
+          "text": "Significantly below peer average",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q7.2_opt_5",
+          "text": "Much lower than peers",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q7.3",
+      "challengeId": "C7",
+      "challengeName": "Academic Quality Decline",
+      "domain": "Academic & Wellbeing",
+      "question": "What % of students score above 70% aggregate?",
+      "metric": "High Achievers (%)",
+      "questionNumber": 3,
+      "challengeNumber": 7,
+      "order": 21,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q7.3_opt_1",
+          "text": ">80% high achievers",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q7.3_opt_2",
+          "text": "70-80% high achievers",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q7.3_opt_3",
+          "text": "50-70% high achievers",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q7.3_opt_4",
+          "text": "30-50% high achievers",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q7.3_opt_5",
+          "text": "<30% high achievers",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q8.1",
+      "challengeId": "C8",
+      "challengeName": "Student Wellbeing Issues",
+      "domain": "Academic & Wellbeing",
+      "question": "How many mental health/psychological issues are reported?",
+      "metric": "Mental Health Incidents (per 1000)",
+      "questionNumber": 1,
+      "challengeNumber": 8,
+      "order": 22,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q8.1_opt_1",
+          "text": "Very few - excellent support",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q8.1_opt_2",
+          "text": "Minimal - good awareness",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q8.1_opt_3",
+          "text": "Some - moderate support",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q8.1_opt_4",
+          "text": "Multiple - limited support",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q8.1_opt_5",
+          "text": "Significant - systemic issues",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q8.2",
+      "challengeId": "C8",
+      "challengeName": "Student Wellbeing Issues",
+      "domain": "Academic & Wellbeing",
+      "question": "How safe do students feel at school?",
+      "metric": "Safety Perception",
+      "questionNumber": 2,
+      "challengeNumber": 8,
+      "order": 23,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q8.2_opt_1",
+          "text": "Extremely safe - zero incidents",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q8.2_opt_2",
+          "text": "Very safe - rare incidents",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q8.2_opt_3",
+          "text": "Safe - occasional issues",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q8.2_opt_4",
+          "text": "Somewhat unsafe - regular issues",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q8.2_opt_5",
+          "text": "Unsafe - frequent incidents",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q8.3",
+      "challengeId": "C8",
+      "challengeName": "Student Wellbeing Issues",
+      "domain": "Academic & Wellbeing",
+      "question": "How strong is peer bullying/harassment prevention?",
+      "metric": "Bullying Prevention",
+      "questionNumber": 3,
+      "challengeNumber": 8,
+      "order": 24,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q8.3_opt_1",
+          "text": "Excellent - proactive culture",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q8.3_opt_2",
+          "text": "Good - reported and addressed",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q8.3_opt_3",
+          "text": "Adequate - some gaps",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q8.3_opt_4",
+          "text": "Poor - incidents go unaddressed",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q8.3_opt_5",
+          "text": "Severe - systemic bullying",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q9.1",
+      "challengeId": "C9",
+      "challengeName": "Remedial Lag",
+      "domain": "Academic & Wellbeing",
+      "question": "What % of students requiring remedial support receive it?",
+      "metric": "Remedial Support Coverage (%)",
+      "questionNumber": 1,
+      "challengeNumber": 9,
+      "order": 25,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q9.1_opt_1",
+          "text": "90%+ support provided",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q9.1_opt_2",
+          "text": "75-90% support provided",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q9.1_opt_3",
+          "text": "50-75% support provided",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q9.1_opt_4",
+          "text": "25-50% support provided",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q9.1_opt_5",
+          "text": "<25% support provided",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q9.2",
+      "challengeId": "C9",
+      "challengeName": "Remedial Lag",
+      "domain": "Academic & Wellbeing",
+      "question": "How effective is remedial intervention (improvement rate)?",
+      "metric": "Improvement Rate (%)",
+      "questionNumber": 2,
+      "challengeNumber": 9,
+      "order": 26,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q9.2_opt_1",
+          "text": "Very effective - 70%+ improve",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q9.2_opt_2",
+          "text": "Effective - 50-70% improve",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q9.2_opt_3",
+          "text": "Moderate - 30-50% improve",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q9.2_opt_4",
+          "text": "Limited - 10-30% improve",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q9.2_opt_5",
+          "text": "Ineffective - <10% improve",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q9.3",
+      "challengeId": "C9",
+      "challengeName": "Remedial Lag",
+      "domain": "Academic & Wellbeing",
+      "question": "How many grade levels receive remedial support?",
+      "metric": "Remedial Coverage",
+      "questionNumber": 3,
+      "challengeNumber": 9,
+      "order": 27,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q9.3_opt_1",
+          "text": "All grades, all subjects",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q9.3_opt_2",
+          "text": "Most grades, key subjects",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q9.3_opt_3",
+          "text": "Some grades, core subjects",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q9.3_opt_4",
+          "text": "Limited grades only",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q9.3_opt_5",
+          "text": "No systematic remedial",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q10.1",
+      "challengeId": "C10",
+      "challengeName": "Parent Communication Issues",
+      "domain": "Reputation & Competition",
+      "question": "How satisfied are parents with communication?",
+      "metric": "Parent Satisfaction Score (%)",
+      "questionNumber": 1,
+      "challengeNumber": 10,
+      "order": 28,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q10.1_opt_1",
+          "text": "Very satisfied - 90%+ positive",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q10.1_opt_2",
+          "text": "Satisfied - 75-90% positive",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q10.1_opt_3",
+          "text": "Neutral - 50-75% positive",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q10.1_opt_4",
+          "text": "Dissatisfied - 25-50% positive",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q10.1_opt_5",
+          "text": "Very dissatisfied - <25% positive",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q10.2",
+      "challengeId": "C10",
+      "challengeName": "Parent Communication Issues",
+      "domain": "Reputation & Competition",
+      "question": "What is your average response time to parent queries?",
+      "metric": "Parent Response Rate (%)",
+      "questionNumber": 2,
+      "challengeNumber": 10,
+      "order": 29,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q10.2_opt_1",
+          "text": "Within 4 hours",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q10.2_opt_2",
+          "text": "Within 12 hours",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q10.2_opt_3",
+          "text": "Within 24 hours",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q10.2_opt_4",
+          "text": "2-3 days",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q10.2_opt_5",
+          "text": ">3 days / no response",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q11.1",
+      "challengeId": "C11",
+      "challengeName": "Competitive Pressure",
+      "domain": "Reputation & Competition",
+      "question": "How intense is competition in your market?",
+      "metric": "Market Competitive Intensity",
+      "questionNumber": 1,
+      "challengeNumber": 11,
+      "order": 30,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q11.1_opt_1",
+          "text": "Limited - clear market leader",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q11.1_opt_2",
+          "text": "Moderate - few strong competitors",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q11.1_opt_3",
+          "text": "High - several strong competitors",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q11.1_opt_4",
+          "text": "Very high - many aggressive competitors",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q11.1_opt_5",
+          "text": "Extreme - commoditized market",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q11.2",
+      "challengeId": "C11",
+      "challengeName": "Competitive Pressure",
+      "domain": "Reputation & Competition",
+      "question": "Are you losing enrollment to specific competitors?",
+      "metric": "Market Share Loss (%)",
+      "questionNumber": 2,
+      "challengeNumber": 11,
+      "order": 31,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q11.2_opt_1",
+          "text": "Not losing market share",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q11.2_opt_2",
+          "text": "Minimal losses (<2% annually)",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q11.2_opt_3",
+          "text": "Noticeable losses (2-5% annually)",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q11.2_opt_4",
+          "text": "Significant losses (5-10% annually)",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q11.2_opt_5",
+          "text": "Severe losses (>10% annually)",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q12.1",
+      "challengeId": "C12",
+      "challengeName": "Brand/Reputation Issues",
+      "domain": "Reputation & Competition",
+      "question": "How is your school perceived by target parents?",
+      "metric": "Brand Perception Score (%)",
+      "questionNumber": 1,
+      "challengeNumber": 12,
+      "order": 32,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q12.1_opt_1",
+          "text": "Excellent reputation - top of mind",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q12.1_opt_2",
+          "text": "Good reputation - well regarded",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q12.1_opt_3",
+          "text": "Neutral reputation - known entity",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q12.1_opt_4",
+          "text": "Poor reputation - perception concerns",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q12.1_opt_5",
+          "text": "Very poor reputation - negative image",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q12.2",
+      "challengeId": "C12",
+      "challengeName": "Brand/Reputation Issues",
+      "domain": "Reputation & Competition",
+      "question": "How often does negative news/media coverage appear?",
+      "metric": "Media Sentiment (%)",
+      "questionNumber": 2,
+      "challengeNumber": 12,
+      "order": 33,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q12.2_opt_1",
+          "text": "Never - only positive coverage",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q12.2_opt_2",
+          "text": "Rare - occasional positive stories",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q12.2_opt_3",
+          "text": "Occasional - mixed coverage",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q12.2_opt_4",
+          "text": "Regular - notable negative stories",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q12.2_opt_5",
+          "text": "Frequent - serious reputation damage",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q13.1",
+      "challengeId": "C13",
+      "challengeName": "Cost Inflation",
+      "domain": "Operations & Finance",
+      "question": "What is your cost inflation rate vs fee increase?",
+      "metric": "Cost Increase YoY (%)",
+      "questionNumber": 1,
+      "challengeNumber": 13,
+      "order": 34,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q13.1_opt_1",
+          "text": "Inflation lower than fee increase",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q13.1_opt_2",
+          "text": "Aligned with fee increase",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q13.1_opt_3",
+          "text": "Slightly higher than fee increase",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q13.1_opt_4",
+          "text": "Significantly higher than fee increase",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q13.1_opt_5",
+          "text": "Costs growing much faster than fees",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q13.2",
+      "challengeId": "C13",
+      "challengeName": "Cost Inflation",
+      "domain": "Operations & Finance",
+      "question": "How healthy is your operating margin?",
+      "metric": "Operating Margin (%)",
+      "questionNumber": 2,
+      "challengeNumber": 13,
+      "order": 35,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q13.2_opt_1",
+          "text": "Excellent - 20%+ margin",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q13.2_opt_2",
+          "text": "Good - 15-20% margin",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q13.2_opt_3",
+          "text": "Adequate - 10-15% margin",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q13.2_opt_4",
+          "text": "Thin - 5-10% margin",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q13.2_opt_5",
+          "text": "Negative - losses or break-even",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q14.1",
+      "challengeId": "C14",
+      "challengeName": "Infrastructure Deficits",
+      "domain": "Operations & Finance",
+      "question": "How would you rate your overall infrastructure quality?",
+      "metric": "Infrastructure Quality Score (%)",
+      "questionNumber": 1,
+      "challengeNumber": 14,
+      "order": 36,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q14.1_opt_1",
+          "text": "Excellent - modern, well-maintained",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q14.1_opt_2",
+          "text": "Good - mostly adequate, minor updates needed",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q14.1_opt_3",
+          "text": "Fair - functional but aging",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q14.1_opt_4",
+          "text": "Poor - significant deficits",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q14.1_opt_5",
+          "text": "Very poor - major infrastructure issues",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q14.2",
+      "challengeId": "C14",
+      "challengeName": "Infrastructure Deficits",
+      "domain": "Operations & Finance",
+      "question": "What is your infrastructure maintenance backlog?",
+      "metric": "Maintenance Backlog (₹)",
+      "questionNumber": 2,
+      "challengeNumber": 14,
+      "order": 37,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q14.2_opt_1",
+          "text": "Current - all maintained",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q14.2_opt_2",
+          "text": "Minimal - minor backlog",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q14.2_opt_3",
+          "text": "Moderate - significant backlog",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q14.2_opt_4",
+          "text": "Large - major deferred maintenance",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q14.2_opt_5",
+          "text": "Severe - critical backlog",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q15.1",
+      "challengeId": "C15",
+      "challengeName": "Compliance & Regulatory Stress",
+      "domain": "Operations & Finance",
+      "question": "How well are you complying with education regulations?",
+      "metric": "Compliance Score (%)",
+      "questionNumber": 1,
+      "challengeNumber": 15,
+      "order": 38,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q15.1_opt_1",
+          "text": "Full compliance - zero violations",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q15.1_opt_2",
+          "text": "Nearly compliant - minor issues",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q15.1_opt_3",
+          "text": "Mostly compliant - some gaps",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q15.1_opt_4",
+          "text": "Non-compliant - multiple violations",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q15.1_opt_5",
+          "text": "Severe violations - regulatory risk",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    },
+    {
+      "questionId": "Q15.2",
+      "challengeId": "C15",
+      "challengeName": "Compliance & Regulatory Stress",
+      "domain": "Operations & Finance",
+      "question": "Are there pending compliance audits or notices?",
+      "metric": "Regulatory Violations (count/year)",
+      "questionNumber": 2,
+      "challengeNumber": 15,
+      "order": 39,
+      "type": "single-choice",
+      "options": [
+        {
+          "optionId": "Q15.2_opt_1",
+          "text": "No pending issues",
+          "weight": 1,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q15.2_opt_2",
+          "text": "Routine audit cycle",
+          "weight": 2,
+          "severity": "Low"
+        },
+        {
+          "optionId": "Q15.2_opt_3",
+          "text": "Minor notices to address",
+          "weight": 4,
+          "severity": "Medium"
+        },
+        {
+          "optionId": "Q15.2_opt_4",
+          "text": "Significant compliance notices",
+          "weight": 7,
+          "severity": "High"
+        },
+        {
+          "optionId": "Q15.2_opt_5",
+          "text": "Serious regulatory action pending",
+          "weight": 10,
+          "severity": "Critical"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "totalQuestions": 39,
+    "totalChallenges": 15,
+    "totalOptions": 186,
+    "createdDate": "2026-08-03",
+    "status": "Ready for Firestore Upload",
+    "version": "1.0"
+  }
+}
