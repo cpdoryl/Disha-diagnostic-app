@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '22'
 
 jobs:
   deploy-firebase:
@@ -66,44 +66,6 @@ jobs:
           echo "✓ Firestore Rules deployed"
           echo "✓ Ready for production use"
 
-      - name: Slack Notification (Success)
+      - name: Deployment Status
         if: success() && github.event_name == 'push'
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "✅ Firebase deployment successful",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Firebase Deployment Successful* 🚀\n\nProject: disha-diagnostics\nBranch: main\nStatus: ✅ Complete"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-      - name: Slack Notification (Failure)
-        if: failure() && github.event_name == 'push'
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "❌ Firebase deployment failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Firebase Deployment Failed* ❌\n\nProject: disha-diagnostics\nBranch: main\nCheck logs for details"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        run: echo "✅ Firebase deployment successful"

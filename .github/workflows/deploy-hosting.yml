@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '22'
 
 jobs:
   build-and-deploy:
@@ -66,44 +66,6 @@ jobs:
         run: |
           echo "url=https://disha-diagnostics.web.app" >> $GITHUB_OUTPUT
 
-      - name: Slack Notification (Success)
+      - name: Deployment Status
         if: success() && github.event_name == 'push'
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "✅ Application deployed successfully",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Application Deployed* 🚀\n\nProject: DISHA Diagnostic Engine\nURL: https://disha-diagnostics.web.app\nStatus: ✅ Live"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-      - name: Slack Notification (Failure)
-        if: failure() && github.event_name == 'push'
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "❌ Application deployment failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Deployment Failed* ❌\n\nProject: DISHA Diagnostic Engine\nBranch: main\nCheck logs for details"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        run: echo "✅ Application deployed to Firebase Hosting"
