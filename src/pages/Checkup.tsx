@@ -2,23 +2,23 @@ import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 import { useAppStore } from '../store';
 import { DeepDiveAssessment } from '../components/DeepDiveAssessment';
-import { 
-  HeartPulse, 
-  HelpCircle, 
-  Upload, 
-  FileText, 
-  Camera, 
-  Activity, 
-  ArrowRight, 
-  CheckCircle2, 
-  ShieldAlert, 
-  Eye, 
-  Globe, 
-  Search, 
-  TrendingDown, 
-  Compass, 
-  Zap, 
-  Clock, 
+import {
+  HeartPulse,
+  HelpCircle,
+  Upload,
+  FileText,
+  Camera,
+  Activity,
+  ArrowRight,
+  CheckCircle2,
+  ShieldAlert,
+  Eye,
+  Globe,
+  Search,
+  TrendingDown,
+  Compass,
+  Zap,
+  Clock,
   ChevronRight,
   Sparkles,
   TrendingUp,
@@ -40,7 +40,7 @@ import {
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { cn } from '../lib/utils';
-import { SCREENING_CHALLENGES } from '../utils/screeningQuestionsLoader';
+import { COMPLETE_SCREENING_QUESTIONS } from '../data/screeningQuestionsData';
 import {
   Radar,
   RadarChart,
@@ -407,31 +407,45 @@ export const Checkup = () => {
     }
   }, [activeSchool]);
 
-  // Load screening challenges from database
-  const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
-  const [loadingChallenges, setLoadingChallenges] = useState(true);
+  // Transform hardcoded screening questions data to component format
+  const transformChallenges = (): ChallengeItem[] => {
+    return COMPLETE_SCREENING_QUESTIONS.map(challenge => ({
+      id: challenge.id,
+      category: challenge.category,
+      label: challenge.label,
+      description: challenge.label,
+      probes: challenge.domain,
+      dataRequired: challenge.metrics.join(', '),
+      questions: challenge.questions.map(q => ({
+        id: q.id,
+        label: q.label,
+        type: 'select' as const,
+        options: q.options
+      })),
+      baselineAnalysis: {
+        gapTitle: `${challenge.label} Assessment`,
+        mismatchTitle: `${challenge.label} Gap Analysis`,
+        diagnosisText: `Assessment for ${challenge.label} across ${challenge.domain} domain`,
+        mismatchText: `Detailed analysis and findings for ${challenge.label}`,
+        recommendedActions: [
+          {
+            title: `Address ${challenge.label}`,
+            desc: `Implement targeted improvements for ${challenge.label}`,
+            cost: 'Variable',
+            effort: 'Medium',
+            roi: '2-3x'
+          }
+        ]
+      }
+    }));
+  };
+
+  const [challenges] = useState<ChallengeItem[]>(() => transformChallenges());
 
   useEffect(() => {
-    SCREENING_CHALLENGES.then(data => {
-      console.log('=== SCREENING CHALLENGES LOADED ===');
-      console.log('Total challenges:', data.length);
-      data.forEach(challenge => {
-        console.log(`\n📍 Challenge: ${challenge.label} (ID: ${challenge.id})`);
-        console.log(`   Questions: ${challenge.questions.length}`);
-        challenge.questions.forEach((q, qIdx) => {
-          console.log(`   Q${qIdx + 1}: "${q.label}" - ${q.options?.length || 0} OPTIONS:`);
-          q.options?.forEach((opt, optIdx) => {
-            console.log(`      ${optIdx + 1}. ${opt.label}`);
-          });
-        });
-      });
-      console.log('=== END CHALLENGES ===\n');
-      setChallenges(data);
-      setLoadingChallenges(false);
-    }).catch(error => {
-      console.error('Failed to load screening questions:', error);
-      setLoadingChallenges(false);
-    });
+    console.log('✅ SCREENING QUESTIONS LOADED');
+    console.log('Total challenges:', challenges.length);
+    console.log('Sample challenge (C1):', challenges[0]?.label, '- Questions:', challenges[0]?.questions.length);
   }, []);
 
   // Initial defaults
@@ -1428,22 +1442,9 @@ HOW TO USE IN DISHA:
 
               {/* Dynamic screening questions based on selected challenges */}
               <div className="space-y-5">
-                {loadingChallenges && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-sm">
-                    Loading screening questions...
-                  </div>
-                )}
-                {!loadingChallenges && challenges.length === 0 && (
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-sm">
-                    ⚠️ No challenges loaded. Check browser console for errors.
-                  </div>
-                )}
                 {selectedChallenges.map(cid => {
                   const challengeObj = challenges.find(c => c.id === cid);
-                  if (!challengeObj) {
-                    console.warn(`Challenge ${cid} not found in loaded data`);
-                    return null;
-                  }
+                  if (!challengeObj) return null;
                   return (
                     <div key={cid} className="p-4 rounded-xl border border-gray-100 bg-white shadow-xs space-y-4">
                       <p className="font-black text-xs text-blue-600 uppercase tracking-widest border-b border-gray-50 pb-1 flex items-center justify-between">
