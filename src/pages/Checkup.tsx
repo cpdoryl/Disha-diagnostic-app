@@ -345,6 +345,7 @@ const OUTCOMES: OutcomeItem[] = [
 ];
 
 export const Checkup = () => {
+  console.log('🔴 CHECKUP COMPONENT LOADED - This is the latest version');
   const { activeSchool } = useAppStore();
   
   // Layout stages:
