@@ -412,14 +412,19 @@ export const Checkup = () => {
 
   useEffect(() => {
     SCREENING_CHALLENGES.then(data => {
-      console.log('Screening challenges loaded:', data);
+      console.log('=== SCREENING CHALLENGES LOADED ===');
       console.log('Total challenges:', data.length);
       data.forEach(challenge => {
-        console.log(`Challenge ${challenge.id}: ${challenge.questions.length} questions`);
-        challenge.questions.forEach(q => {
-          console.log(`  Question ${q.id}: ${q.options?.length || 0} options`);
+        console.log(`\n📍 Challenge: ${challenge.label} (ID: ${challenge.id})`);
+        console.log(`   Questions: ${challenge.questions.length}`);
+        challenge.questions.forEach((q, qIdx) => {
+          console.log(`   Q${qIdx + 1}: "${q.label}" - ${q.options?.length || 0} OPTIONS:`);
+          q.options?.forEach((opt, optIdx) => {
+            console.log(`      ${optIdx + 1}. ${opt.label}`);
+          });
         });
       });
+      console.log('=== END CHALLENGES ===\n');
       setChallenges(data);
       setLoadingChallenges(false);
     }).catch(error => {
