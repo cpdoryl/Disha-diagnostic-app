@@ -40,12 +40,19 @@ export const transformScreeningQuestions = async (): Promise<Challenge[]> => {
   if (cachedQuestions) return cachedQuestions;
 
   try {
+    console.log('🔵 Starting to fetch screening questions database...');
+    alert('🔵 Fetching database from /screening-questions-database.json');
+
     // Fetch the database from public folder
     const response = await fetch('/screening-questions-database.json');
+    console.log('🔵 Fetch response status:', response.status);
+    alert(`Fetch completed with status: ${response.status}`);
+
     if (!response.ok) {
       throw new Error(`Failed to load screening questions: ${response.status}`);
     }
     const data = await response.json();
+    console.log('🔵 Database loaded successfully. Total questions:', data.questions?.length || 0);
 
     const categoriesMap: Record<string, string> = {
       'Growth & Enrollment': 'growth',
