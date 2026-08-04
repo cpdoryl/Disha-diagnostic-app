@@ -1422,9 +1422,22 @@ HOW TO USE IN DISHA:
 
               {/* Dynamic screening questions based on selected challenges */}
               <div className="space-y-5">
+                {loadingChallenges && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-sm">
+                    Loading screening questions...
+                  </div>
+                )}
+                {!loadingChallenges && challenges.length === 0 && (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-sm">
+                    ⚠️ No challenges loaded. Check browser console for errors.
+                  </div>
+                )}
                 {selectedChallenges.map(cid => {
                   const challengeObj = challenges.find(c => c.id === cid);
-                  if (!challengeObj) return null;
+                  if (!challengeObj) {
+                    console.warn(`Challenge ${cid} not found in loaded data`);
+                    return null;
+                  }
                   return (
                     <div key={cid} className="p-4 rounded-xl border border-gray-100 bg-white shadow-xs space-y-4">
                       <p className="font-black text-xs text-blue-600 uppercase tracking-widest border-b border-gray-50 pb-1 flex items-center justify-between">

@@ -4,7 +4,13 @@
       "Bash(git config *)",
       "Bash(git remote *)",
       "Bash(git branch *)",
-      "Bash(git pull *)"
+      "Bash(git pull *)",
+      "Bash(python3 generate-disha-calculator.py)",
+      "Bash(python3 firestore-deploy-complete.py)",
+      "Bash(python3 firestore-deploy-status.py)",
+      "Bash(python3 deploy-firestore-now.py)",
+      "Bash(gcloud firestore *)",
+      "Bash(gcloud auth *)"
     ]
   }
 }

@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+firebase-service-account.json
+*.pptx
+*.xlsx
+GITHUB_ACTIONS_DEPLOYMENT_SUMMARY.md
+PUSH_TO_GIT_COMPLETE.txt
+generate-ppt.js

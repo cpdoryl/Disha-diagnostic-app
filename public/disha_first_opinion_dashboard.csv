@@ -1,6 +1,6 @@
 SECTION,FIELD,VALUE,NOTES
 Management Info,School Name,Acme High School,Enter school name
-Management Info,Date of Assessment,2026-10-15,YYYY-MM-DD
+Management Info,Date of Assessment,15-10-2026,YYYY-MM-DD
 Subjective Input,Q1: Which operational issue currently causes the most friction?,2,1-5 scale (1=Worst)
 Subjective Input,Q2: How frequent are parent complaints?,3,1-5 scale
 Subjective Input,Q3: How would you rate teacher morale?,4,1-5 scale
