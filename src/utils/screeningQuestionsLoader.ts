@@ -55,41 +55,48 @@ export const transformScreeningQuestions = async (): Promise<Challenge[]> => {
       'Operations & Finance': 'operations'
     };
 
-    cachedQuestions = data.challenges.map((challenge: any) => ({
-      id: challenge.challengeId.toLowerCase().replace(/\s+/g, '_'),
-      category: categoriesMap[challenge.domain] || 'growth',
-      label: challenge.name,
-      description: challenge.description,
-      probes: challenge.domain,
-      dataRequired: challenge.metrics.join(', '),
-      questions: data.questions
-        .filter((q: any) => q.challengeId === challenge.challengeId)
-        .map((q: any) => ({
+    cachedQuestions = data.challenges.map((challenge: any) => {
+      const challengeQuestions = data.questions.filter((q: any) => q.challengeId === challenge.challengeId);
+      const transformedQuestions = challengeQuestions.map((q: any) => {
+        const transformedOptions = q.options.map((opt: any) => ({
+          label: opt.text,
+          value: opt.optionId,
+          weight: opt.weight
+        }));
+        console.log(`Question ${q.questionId}: ${transformedOptions.length} options loaded`);
+        return {
           id: q.questionId.toLowerCase().replace(/\./g, '_'),
           label: q.question,
           type: 'select' as const,
-          options: q.options.map((opt: any) => ({
-            label: opt.text,
-            value: opt.optionId,
-            weight: opt.weight
-          }))
-        })),
-      baselineAnalysis: {
-        gapTitle: `${challenge.name} Assessment`,
-        mismatchTitle: `${challenge.name} Gap Analysis`,
-        diagnosisText: `Assessment for ${challenge.name} across ${challenge.domain} domain`,
-        mismatchText: `Detailed analysis and findings for ${challenge.name}`,
-        recommendedActions: [
-          {
-            title: `Address ${challenge.name}`,
-            desc: `Implement targeted improvements for ${challenge.name}`,
-            cost: 'Variable',
-            effort: 'Medium',
-            roi: '2-3x'
-          }
-        ]
-      }
-    }));
+          options: transformedOptions
+        };
+      });
+      console.log(`Challenge ${challenge.challengeId}: ${transformedQuestions.length} questions loaded`);
+      return {
+        id: challenge.challengeId.toLowerCase().replace(/\s+/g, '_'),
+        category: categoriesMap[challenge.domain] || 'growth',
+        label: challenge.name,
+        description: challenge.description,
+        probes: challenge.domain,
+        dataRequired: challenge.metrics.join(', '),
+        questions: transformedQuestions,
+        baselineAnalysis: {
+          gapTitle: `${challenge.name} Assessment`,
+          mismatchTitle: `${challenge.name} Gap Analysis`,
+          diagnosisText: `Assessment for ${challenge.name} across ${challenge.domain} domain`,
+          mismatchText: `Detailed analysis and findings for ${challenge.name}`,
+          recommendedActions: [
+            {
+              title: `Address ${challenge.name}`,
+              desc: `Implement targeted improvements for ${challenge.name}`,
+              cost: 'Variable',
+              effort: 'Medium',
+              roi: '2-3x'
+            }
+          ]
+        }
+      };
+    });
 
     return cachedQuestions;
   } catch (error) {

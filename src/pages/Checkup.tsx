@@ -412,6 +412,14 @@ export const Checkup = () => {
 
   useEffect(() => {
     SCREENING_CHALLENGES.then(data => {
+      console.log('Screening challenges loaded:', data);
+      console.log('Total challenges:', data.length);
+      data.forEach(challenge => {
+        console.log(`Challenge ${challenge.id}: ${challenge.questions.length} questions`);
+        challenge.questions.forEach(q => {
+          console.log(`  Question ${q.id}: ${q.options?.length || 0} options`);
+        });
+      });
       setChallenges(data);
       setLoadingChallenges(false);
     }).catch(error => {
