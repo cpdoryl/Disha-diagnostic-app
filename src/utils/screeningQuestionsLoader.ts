@@ -1,5 +1,5 @@
 // Load and transform screening questions database for use in the app
-import screeningQuestionsData from '../../screening-questions-database.json';
+// Fetch database dynamically to ensure proper loading
 
 export interface QuestionOption {
   label: string;
@@ -32,55 +32,73 @@ export interface Challenge {
   };
 }
 
-// Transform database format to component format
-export const transformScreeningQuestions = (): Challenge[] => {
-  const data = screeningQuestionsData as any;
-  const categoriesMap: Record<string, string> = {
-    'Growth & Enrollment': 'growth',
-    'People & Staffing': 'people',
-    'Academic & Wellbeing': 'academic',
-    'Reputation & Competition': 'reputation',
-    'Operations & Finance': 'operations'
-  };
+let cachedQuestions: Challenge[] | null = null;
 
-  return data.challenges.map((challenge: any) => ({
-    id: challenge.challengeId.toLowerCase().replace(/\s+/g, '_'),
-    category: categoriesMap[challenge.domain] || 'growth',
-    label: challenge.name,
-    description: challenge.description,
-    probes: challenge.domain,
-    dataRequired: challenge.metrics.join(', '),
-    questions: data.questions
-      .filter((q: any) => q.challengeId === challenge.challengeId)
-      .map((q: any) => ({
-        id: q.questionId.toLowerCase().replace(/\./g, '_'),
-        label: q.question,
-        type: 'select' as const,
-        options: q.options.map((opt: any) => ({
-          label: opt.text,
-          value: opt.optionId,
-          weight: opt.weight
-        }))
-      })),
-    baselineAnalysis: {
-      gapTitle: `${challenge.name} Assessment`,
-      mismatchTitle: `${challenge.name} Gap Analysis`,
-      diagnosisText: `Assessment for ${challenge.name} across ${challenge.domain} domain`,
-      mismatchText: `Detailed analysis and findings for ${challenge.name}`,
-      recommendedActions: [
-        {
-          title: `Address ${challenge.name}`,
-          desc: `Implement targeted improvements for ${challenge.name}`,
-          cost: 'Variable',
-          effort: 'Medium',
-          roi: '2-3x'
-        }
-      ]
+// Transform database format to component format
+export const transformScreeningQuestions = async (): Promise<Challenge[]> => {
+  // Return cached data if already loaded
+  if (cachedQuestions) return cachedQuestions;
+
+  try {
+    // Fetch the database from public folder
+    const response = await fetch('/screening-questions-database.json');
+    if (!response.ok) {
+      throw new Error(`Failed to load screening questions: ${response.status}`);
     }
-  }));
+    const data = await response.json();
+
+    const categoriesMap: Record<string, string> = {
+      'Growth & Enrollment': 'growth',
+      'People & Staffing': 'people',
+      'Academic & Wellbeing': 'academic',
+      'Reputation & Competition': 'reputation',
+      'Operations & Finance': 'operations'
+    };
+
+    cachedQuestions = data.challenges.map((challenge: any) => ({
+      id: challenge.challengeId.toLowerCase().replace(/\s+/g, '_'),
+      category: categoriesMap[challenge.domain] || 'growth',
+      label: challenge.name,
+      description: challenge.description,
+      probes: challenge.domain,
+      dataRequired: challenge.metrics.join(', '),
+      questions: data.questions
+        .filter((q: any) => q.challengeId === challenge.challengeId)
+        .map((q: any) => ({
+          id: q.questionId.toLowerCase().replace(/\./g, '_'),
+          label: q.question,
+          type: 'select' as const,
+          options: q.options.map((opt: any) => ({
+            label: opt.text,
+            value: opt.optionId,
+            weight: opt.weight
+          }))
+        })),
+      baselineAnalysis: {
+        gapTitle: `${challenge.name} Assessment`,
+        mismatchTitle: `${challenge.name} Gap Analysis`,
+        diagnosisText: `Assessment for ${challenge.name} across ${challenge.domain} domain`,
+        mismatchText: `Detailed analysis and findings for ${challenge.name}`,
+        recommendedActions: [
+          {
+            title: `Address ${challenge.name}`,
+            desc: `Implement targeted improvements for ${challenge.name}`,
+            cost: 'Variable',
+            effort: 'Medium',
+            roi: '2-3x'
+          }
+        ]
+      }
+    }));
+
+    return cachedQuestions;
+  } catch (error) {
+    console.error('Error loading screening questions:', error);
+    return [];
+  }
 };
 
-// Load screening questions
-export const SCREENING_CHALLENGES = transformScreeningQuestions();
+// Initialize screening questions (will load asynchronously)
+export const SCREENING_CHALLENGES: Promise<Challenge[]> = transformScreeningQuestions();
 
 export default SCREENING_CHALLENGES;

@@ -90,8 +90,7 @@ const CATEGORIES = [
   { id: 'operations', label: 'Operations & Finance', color: 'text-amber-600 bg-amber-50 border-amber-100', icon: Settings }
 ];
 
-// Load complete screening questions with all response options from database
-const CHALLENGES: ChallengeItem[] = SCREENING_CHALLENGES;
+// Loading will be done in component state
 
 interface OutcomeFactor {
   stakeholder: string;
@@ -407,6 +406,20 @@ export const Checkup = () => {
     }
   }, [activeSchool]);
 
+  // Load screening challenges from database
+  const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
+  const [loadingChallenges, setLoadingChallenges] = useState(true);
+
+  useEffect(() => {
+    SCREENING_CHALLENGES.then(data => {
+      setChallenges(data);
+      setLoadingChallenges(false);
+    }).catch(error => {
+      console.error('Failed to load screening questions:', error);
+      setLoadingChallenges(false);
+    });
+  }, []);
+
   // Initial defaults
   useEffect(() => {
     // Start with clean state so selected challenges and answers dynamically drive scores
@@ -593,7 +606,7 @@ HOW TO USE IN DISHA:
   const getRequiredQuestions = () => {
     const req: { id: string; label: string; challengeTitle: string }[] = [];
     selectedChallenges.forEach(cid => {
-      const cObj = CHALLENGES.find(c => c.id === cid);
+      const cObj = challenges.find(c => c.id === cid);
       if (cObj) {
         cObj.questions.forEach(q => {
           req.push({
@@ -894,7 +907,7 @@ HOW TO USE IN DISHA:
   // We compare the primary user worry selection vs actual lowest score
   const getPerceptionMismatchInfo = () => {
     const primaryWorryId = selectedChallenges[0];
-    const topWorryObj = CHALLENGES.find(c => c.id === primaryWorryId);
+    const topWorryObj = challenges.find(c => c.id === primaryWorryId);
     
     // Map worry to lens
     const worryToLensMap: Record<string, string> = {
@@ -1181,7 +1194,7 @@ HOW TO USE IN DISHA:
               <div className="space-y-6 pt-4">
                 {CATEGORIES.map(cat => {
                   const CategoryIcon = cat.icon;
-                  const catChallenges = CHALLENGES.filter(c => c.category === cat.id);
+                  const catChallenges = challenges.filter(c => c.category === cat.id);
                   return (
                     <div key={cat.id} className="space-y-3">
                       <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
@@ -1294,7 +1307,7 @@ HOW TO USE IN DISHA:
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <div className="flex flex-wrap gap-1.5">
                     {selectedChallenges.map(cid => {
-                      const c = CHALLENGES.find(item => item.id === cid);
+                      const c = challenges.find(item => item.id === cid);
                       return (
                         <span key={cid} className="bg-blue-50 text-blue-700 text-[10px] px-2.5 py-1 rounded-md font-bold border border-blue-100">
                           Symptom: {c?.label.split('/')[0]}
@@ -1402,7 +1415,7 @@ HOW TO USE IN DISHA:
               {/* Dynamic screening questions based on selected challenges */}
               <div className="space-y-5">
                 {selectedChallenges.map(cid => {
-                  const challengeObj = CHALLENGES.find(c => c.id === cid);
+                  const challengeObj = challenges.find(c => c.id === cid);
                   if (!challengeObj) return null;
                   return (
                     <div key={cid} className="p-4 rounded-xl border border-gray-100 bg-white shadow-xs space-y-4">
