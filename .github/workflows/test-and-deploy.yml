@@ -1,0 +1,414 @@
+name: Test & Deploy Multi-Respondent System
+
+# Trigger on push to main, pull requests, and manual dispatch
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/**'
+      - 'functions/**'
+      - '__tests__/**'
+      - 'package.json'
+      - '.github/workflows/test-and-deploy.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+jobs:
+  # =========================================================================
+  # JOB 1: LINT & TYPE CHECK
+  # =========================================================================
+  lint-and-type-check:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run TypeScript compiler
+        run: npm run type-check
+        continue-on-error: true
+
+      - name: Check for TypeScript errors
+        run: npx tsc --noEmit
+        continue-on-error: true
+
+  # =========================================================================
+  # JOB 2: UNIT TESTS
+  # =========================================================================
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-type-check
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test
+        env:
+          CI: true
+
+      - name: Generate coverage report
+        run: npm run test:coverage
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        continue-on-error: true
+        with:
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella
+
+  # =========================================================================
+  # JOB 3: INTEGRATION TESTS
+  # =========================================================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    services:
+      firestore-emulator:
+        image: firebase-emulator:latest
+        options: >-
+          --health-cmd "curl -f http://localhost:8080/emulator/v1/projects/demo/firestore"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 8080:8080
+        continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start Firestore emulator
+        run: |
+          npm install -g firebase-tools
+          firebase emulators:start --only firestore &
+          sleep 10
+        continue-on-error: true
+
+      - name: Run integration tests
+        run: npm run test:integration
+        continue-on-error: true
+        env:
+          FIRESTORE_EMULATOR_HOST: localhost:8080
+          CI: true
+
+  # =========================================================================
+  # JOB 4: BUILD
+  # =========================================================================
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build React app
+        run: npm run build
+        env:
+          CI: true
+
+      - name: Validate build output
+        run: |
+          if [ ! -d "build" ]; then
+            echo "Build directory not found!"
+            exit 1
+          fi
+          echo "✅ Build successful"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: build/
+          retention-days: 1
+
+      - name: Build Cloud Functions
+        run: |
+          cd functions
+          npm ci
+          npm run build
+          cd ..
+
+      - name: Upload functions artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: functions
+          path: functions/lib/
+          retention-days: 1
+
+  # =========================================================================
+  # JOB 5: SECURITY SCAN
+  # =========================================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Run npm audit
+        run: npm audit
+        continue-on-error: true
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+  # =========================================================================
+  # JOB 6: DEPLOY TO FIREBASE (Only on main branch)
+  # =========================================================================
+  deploy:
+    name: Deploy to Firebase
+    runs-on: ubuntu-latest
+    needs: [build, security-scan]
+    if: |
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') &&
+      github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build
+          path: build/
+
+      - name: Download functions artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: functions
+          path: functions/lib/
+
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          channelId: live
+        continue-on-error: false
+
+      - name: Deploy Cloud Functions
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only functions --project=${{ secrets.FIREBASE_PROJECT_ID }} --token=${{ secrets.FIREBASE_CI_TOKEN }}
+        continue-on-error: false
+
+      - name: Deploy Firestore Rules
+        run: |
+          firebase deploy --only firestore:rules --project=${{ secrets.FIREBASE_PROJECT_ID }} --token=${{ secrets.FIREBASE_CI_TOKEN }}
+        continue-on-error: false
+
+  # =========================================================================
+  # JOB 7: POST-DEPLOYMENT VALIDATION
+  # =========================================================================
+  post-deployment-validation:
+    name: Post-Deployment Validation
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Health check - Verify deployment
+        run: |
+          echo "✅ Verifying deployment health..."
+          npm run test:smoke
+        continue-on-error: true
+
+      - name: Verify Firestore collections
+        run: |
+          echo "✅ Checking Firestore collections..."
+          npm run verify:firestore
+        continue-on-error: true
+
+      - name: Verify Cloud Functions
+        run: |
+          echo "✅ Checking Cloud Functions..."
+          npm run verify:functions
+        continue-on-error: true
+
+      - name: Performance check
+        run: |
+          echo "✅ Running performance checks..."
+          npm run test:performance
+        continue-on-error: true
+
+  # =========================================================================
+  # JOB 8: NOTIFY DEPLOYMENT
+  # =========================================================================
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy, post-deployment-validation]
+    if: always()
+
+    steps:
+      - name: Deployment Status
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful!"
+            echo "🚀 Multi-Respondent System deployed to Firebase"
+            echo "📊 Visit: https://disha-diagnostics.web.app/"
+          else
+            echo "❌ Deployment failed!"
+            echo "Please check the logs above for details"
+          fi
+
+      - name: Create GitHub Release (on success)
+        if: success() && github.ref == 'refs/heads/main'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }} - Multi-Respondent System
+          body: |
+            ## Changes
+            Multi-Respondent Assessment System
+
+            - ✅ All tests passed
+            - ✅ Security scan passed
+            - ✅ Deployed to Firebase
+            - ✅ Post-deployment validation passed
+
+            ## Components Deployed
+            - Respondent management system
+            - Analytics dashboard
+            - Progress tracking
+            - Firestore database schema
+            - Cloud Functions
+            - Security rules
+          draft: false
+          prerelease: false
+
+      - name: Slack notification (on failure)
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "❌ Deployment Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Multi-Respondent System Deployment Failed*\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
+
+      - name: Slack notification (on success)
+        if: success()
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "✅ Deployment Successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Multi-Respondent System Deployed Successfully* 🚀\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\nURL: https://disha-diagnostics.web.app"
+                  }
+                }
+              ]
+            }

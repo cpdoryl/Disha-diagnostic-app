@@ -1,0 +1,1103 @@
+/**
+ * DISHA EWISR Assessment Styles
+ * Comprehensive styling for all assessment components
+ */
+
+/* ============================================================================
+   COLORS & VARIABLES
+   ============================================================================ */
+
+:root {
+  /* Primary colors */
+  --color-elite: #2f9e44;
+  --color-strong: #51cf66;
+  --color-healthy: #74c0fc;
+  --color-average: #ffa94d;
+  --color-poor: #ff8787;
+  --color-critical: #d0374d;
+
+  /* Background colors */
+  --bg-elite: #d3f9d8;
+  --bg-strong: #c3fac3;
+  --bg-healthy: #bac2f0;
+  --bg-average: #ffe066;
+  --bg-poor: #ffa8a8;
+  --bg-critical: #ffe0e0;
+
+  /* Neutral colors */
+  --text-primary: #212529;
+  --text-secondary: #666666;
+  --border-color: #dee2e6;
+  --bg-light: #f8f9fa;
+  --bg-white: #ffffff;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================================
+   ASSESSMENT FORM
+   ============================================================================ */
+
+.ewisr-assessment-form {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.assessment-header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: var(--spacing-xl);
+}
+
+.assessment-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.assessment-header .subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.assessment-header .school-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #0066cc;
+  margin: 0;
+}
+
+/* ============================================================================
+   PROGRESS BAR
+   ============================================================================ */
+
+.progress-bar-container {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--bg-light);
+  border-radius: var(--radius-lg);
+  border-left: 4px solid var(--color-healthy);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.progress-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.progress-percentage {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-healthy);
+}
+
+.progress-bar-wrapper {
+  margin-bottom: var(--spacing-md);
+}
+
+.progress-bar-bg {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--color-healthy);
+  border-radius: var(--radius-lg);
+  transition: width 0.3s ease;
+}
+
+.progress-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.status-text {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.status-detail {
+  color: var(--text-secondary);
+}
+
+/* ============================================================================
+   DIMENSIONS CONTAINER
+   ============================================================================ */
+
+.dimensions-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-2xl);
+}
+
+/* ============================================================================
+   DIMENSION SECTION
+   ============================================================================ */
+
+.dimension-section {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-white);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.dimension-section:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.dimension-section.tier-1\:\ critical {
+  border-left: 4px solid var(--color-critical);
+}
+
+.dimension-section.tier-2\:\ major\ drivers {
+  border-left: 4px solid var(--color-average);
+}
+
+.dimension-section.tier-3\:\ supporting {
+  border-left: 4px solid var(--color-healthy);
+}
+
+.dimension-section.tier-4\:\ specialization {
+  border-left: 4px solid var(--color-strong);
+}
+
+.dimension-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.dimension-header:hover {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+.dimension-title {
+  flex: 1;
+}
+
+.dimension-label {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dimension-tier {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.dimension-weight {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-healthy);
+}
+
+.dimension-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin: 0 var(--spacing-lg);
+}
+
+.progress-bar {
+  width: 120px;
+  height: 6px;
+  background: #e9ecef;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--color-healthy);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  min-width: 40px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.expand-toggle {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expand-toggle[aria-expanded='true'] {
+  transform: rotate(180deg);
+}
+
+.dimension-content {
+  padding: var(--spacing-lg);
+}
+
+.dimension-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.info-section h3 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.info-section p,
+.info-section ul {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.info-section ul {
+  padding-left: var(--spacing-lg);
+}
+
+.info-section li {
+  margin-bottom: var(--spacing-sm);
+}
+
+/* ============================================================================
+   QUESTIONS CONTAINER
+   ============================================================================ */
+
+.questions-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+  padding-top: var(--spacing-lg);
+}
+
+.question-block {
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.question-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-healthy);
+  min-width: 40px;
+}
+
+.question-content {
+  flex: 1;
+}
+
+.question-label {
+  display: block;
+  margin-bottom: var(--spacing-md);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.options-grid {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.option-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.option-input {
+  margin-top: 4px;
+  cursor: pointer;
+  accent-color: var(--color-healthy);
+}
+
+.option-label {
+  flex: 1;
+  cursor: pointer;
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.option-label:hover {
+  background: var(--bg-light);
+  border-color: var(--color-healthy);
+}
+
+.option-input:checked + .option-label {
+  background: var(--bg-healthy);
+  border-color: var(--color-healthy);
+  font-weight: 600;
+}
+
+.option-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.option-description {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.option-weight {
+  font-size: 0.8rem;
+  color: var(--color-healthy);
+  font-weight: 600;
+}
+
+.option-selected {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-strong);
+  color: var(--color-elite);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ============================================================================
+   ASSESSMENT ACTIONS
+   ============================================================================ */
+
+.assessment-actions {
+  display: flex;
+  gap: var(--spacing-lg);
+  justify-content: center;
+  margin-top: var(--spacing-2xl);
+  padding-top: var(--spacing-xl);
+  border-top: 2px solid var(--border-color);
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 150px;
+}
+
+.btn-primary {
+  background: var(--color-healthy);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #5ab5e8;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-healthy);
+  border: 2px solid var(--color-healthy);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-healthy);
+}
+
+/* ============================================================================
+   ASSESSMENT RESULTS
+   ============================================================================ */
+
+.ewisr-assessment-results {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+  background: var(--bg-white);
+}
+
+.results-header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-xl);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.results-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.results-header .school-name,
+.results-header .assessment-date {
+  margin: var(--spacing-sm) 0;
+  color: var(--text-secondary);
+}
+
+/* ============================================================================
+   OVERALL HEALTH SECTION
+   ============================================================================ */
+
+.overall-health-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
+}
+
+@media (max-width: 768px) {
+  .overall-health-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+.health-card {
+  padding: var(--spacing-xl);
+  background: var(--bg-light);
+  border-radius: var(--radius-lg);
+  border-left: 4px solid var(--color-healthy);
+}
+
+.health-card h2 {
+  margin: 0 0 var(--spacing-lg) 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.health-score-display {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.score-number {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--color-healthy);
+}
+
+.score-scale {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+}
+
+.health-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--bg-healthy);
+  border: 2px solid var(--color-healthy);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-lg);
+  font-weight: 600;
+  color: var(--color-healthy);
+}
+
+.status-icon {
+  font-size: 1.5rem;
+}
+
+.recommendation {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* ============================================================================
+   DIMENSION SCORES
+   ============================================================================ */
+
+.dimensions-section {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.tier-section {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.tier-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.tier-description {
+  margin: 0 0 var(--spacing-lg) 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.dimensions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.dimension-score-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-white);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.dimension-score-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-header {
+  padding: var(--spacing-lg);
+  background: var(--bg-light);
+}
+
+.dimension-id {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-healthy);
+}
+
+.dimension-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.card-content {
+  padding: var(--spacing-lg);
+}
+
+.score-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto var(--spacing-lg);
+  border-radius: 50%;
+  background: var(--bg-healthy);
+}
+
+.score-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--color-healthy);
+}
+
+.score-max {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.score-bar {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--spacing-md);
+}
+
+.score-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.classification-badge {
+  display: inline-block;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-healthy);
+  color: white;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-md);
+}
+
+.benchmarks {
+  display: grid;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  font-size: 0.85rem;
+}
+
+.benchmark-item {
+  display: flex;
+  justify-content: space-between;
+}
+
+.benchmark-label {
+  color: var(--text-secondary);
+}
+
+.benchmark-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dimension-info {
+  border-top: 1px solid var(--border-color);
+  padding-top: var(--spacing-md);
+  font-size: 0.85rem;
+}
+
+.weight-info,
+.tier-info {
+  margin: var(--spacing-sm) 0;
+  color: var(--text-secondary);
+}
+
+/* ============================================================================
+   ACTION PLAN SECTION
+   ============================================================================ */
+
+.action-plan-section {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.section-description {
+  margin: var(--spacing-sm) 0 var(--spacing-lg) 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.action-plan-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.action-plan-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-white);
+  box-shadow: var(--shadow-sm);
+}
+
+.action-plan-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  background: var(--bg-light);
+  cursor: pointer;
+  user-select: none;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  flex: 1;
+}
+
+.priority-badge {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dimension-info {
+  flex: 1;
+}
+
+.dimension-label {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gap-info {
+  margin: var(--spacing-xs) 0 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.expand-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.expand-btn[aria-expanded='true'] {
+  transform: rotate(180deg);
+}
+
+.card-content {
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.progress-section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.progress-bar {
+  height: 12px;
+  background: #e9ecef;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--spacing-md);
+  display: flex;
+}
+
+.current-progress {
+  background: var(--color-healthy);
+}
+
+.target-progress {
+  background: var(--color-strong);
+}
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.timeline-section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.timeline {
+  margin: var(--spacing-sm) 0 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.recommendations-section h4 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.recommendations-list {
+  margin: 0;
+  padding-left: var(--spacing-lg);
+  list-style: none;
+}
+
+.recommendation-item {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-light);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.check-mark {
+  color: var(--color-elite);
+  font-weight: 700;
+  min-width: 20px;
+}
+
+.urgent-flag {
+  font-size: 1.2rem;
+  min-width: 20px;
+}
+
+/* ============================================================================
+   EXPORT SECTION
+   ============================================================================ */
+
+.export-section {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--bg-light);
+  border-radius: var(--radius-lg);
+}
+
+.export-section h3 {
+  margin: 0 0 var(--spacing-lg) 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.export-buttons {
+  display: flex;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.btn-export {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-healthy);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-export:hover {
+  background: #5ab5e8;
+  box-shadow: var(--shadow-md);
+}
+
+/* ============================================================================
+   RESULTS ACTIONS
+   ============================================================================ */
+
+.results-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-2xl);
+  padding-top: var(--spacing-xl);
+  border-top: 2px solid var(--border-color);
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .ewisr-assessment-form,
+  .ewisr-assessment-results {
+    padding: var(--spacing-lg);
+  }
+
+  .assessment-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .question-block {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .dimension-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+
+  .dimension-progress {
+    width: 100%;
+    margin: 0;
+  }
+
+  .progress-bar {
+    flex: 1;
+  }
+
+  .overall-health-section {
+    grid-template-columns: 1fr;
+  }
+
+  .dimensions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .health-score-display {
+    gap: var(--spacing-sm);
+  }
+
+  .score-number {
+    font-size: 2rem;
+  }
+
+  .export-buttons {
+    flex-direction: column;
+  }
+
+  .btn-export,
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .assessment-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .progress-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dimension-section {
+    border-radius: var(--radius-md);
+  }
+
+  .assessment-actions {
+    flex-direction: column;
+  }
+}
+
+/* ============================================================================
+   TIER BREAKDOWN
+   ============================================================================ */
+
+.health-breakdown {
+  padding: var(--spacing-xl);
+  background: var(--bg-light);
+  border-radius: var(--radius-lg);
+}
+
+.health-breakdown h3 {
+  margin: 0 0 var(--spacing-lg) 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tier-scores {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+}
+
+@media (max-width: 768px) {
+  .tier-scores {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tier-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.tier-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tier-score {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-healthy);
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+
+@media print {
+  .btn-primary,
+  .btn-secondary,
+  .btn-export,
+  .expand-toggle,
+  .expand-btn,
+  .assessment-actions,
+  .results-actions,
+  .export-section {
+    display: none;
+  }
+
+  .ewisr-assessment-form,
+  .ewisr-assessment-results {
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .dimension-section {
+    page-break-inside: avoid;
+  }
+
+  .action-plan-card {
+    page-break-inside: avoid;
+  }
+}
