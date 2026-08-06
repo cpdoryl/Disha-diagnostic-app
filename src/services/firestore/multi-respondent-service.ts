@@ -61,9 +61,17 @@ export class MultiRespondentService {
           operational_metrics: 0,
           total: 0
         },
+        completedCounts: {
+          management: 0,
+          teachers: 0,
+          parents_students: 0,
+          operational_metrics: 0,
+          total: 0
+        },
 
         respondentIds: [],
-        completionPercentage: 0
+        completionPercentage: 0,
+        lockStatus: 'ACTIVE'
       };
 
       await setDoc(doc(db, 'assessments', assessmentId), {
@@ -442,6 +450,46 @@ export class MultiRespondentService {
       });
     } catch (error) {
       console.error('Error archiving assessment:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lock assessment - finalizes respondent counts and allows analytics generation
+   * Uses actual respondent counts instead of targets
+   */
+  static async lockAssessment(
+    assessmentId: string,
+    statusGroups: Array<{
+      stakeholder: StakeholderGroup;
+      completedCount: number;
+    }>
+  ): Promise<void> {
+    try {
+      const completedCounts: Record<StakeholderGroup, number> = {
+        management: 0,
+        teachers: 0,
+        parents_students: 0,
+        operational_metrics: 0
+      };
+
+      let totalCompleted = 0;
+      statusGroups.forEach(group => {
+        completedCounts[group.stakeholder] = group.completedCount;
+        totalCompleted += group.completedCount;
+      });
+
+      await updateDoc(doc(db, 'assessments', assessmentId), {
+        lockStatus: 'LOCKED',
+        completedCounts: {
+          ...completedCounts,
+          total: totalCompleted
+        },
+        lockedAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+    } catch (error) {
+      console.error('Error locking assessment:', error);
       throw error;
     }
   }

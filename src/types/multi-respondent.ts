@@ -19,7 +19,7 @@ export interface Assessment {
   assessmentType: 'SINGLE_RESPONDENT' | 'MULTI_RESPONDENT';
   assessmentStatus: 'IN_PROGRESS' | 'COMPLETE' | 'ARCHIVED';
 
-  // Target respondent counts
+  // Target respondent counts (user-defined)
   targetCounts: {
     management: number;
     teachers: number;
@@ -27,8 +27,17 @@ export interface Assessment {
     operational_metrics: number;
   };
 
-  // Actual respondent counts
+  // Actual respondent counts (who was invited)
   respondentCounts: {
+    management: number;
+    teachers: number;
+    parents_students: number;
+    operational_metrics: number;
+    total: number;
+  };
+
+  // Completed respondent counts (who actually finished)
+  completedCounts: {
     management: number;
     teachers: number;
     parents_students: number;
@@ -39,6 +48,11 @@ export interface Assessment {
   // Respondent tracking
   respondentIds: string[];
   completionPercentage: number;  // 0-100%
+
+  // Lock status for finalization
+  lockStatus: 'ACTIVE' | 'LOCKED';
+  lockedAt?: Date;
+  lockedBy?: string;
 
   // Aggregated results
   aggregatedData?: AggregatedDimensionData;

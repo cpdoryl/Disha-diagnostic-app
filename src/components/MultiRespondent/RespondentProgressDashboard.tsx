@@ -1,6 +1,6 @@
 /**
  * Respondent Progress Dashboard
- * Displays completion status and progress for all respondents in an assessment
+ * Displays completion status with target vs actual respondent counts and lock functionality
  */
 
 import React, { useEffect, useState } from 'react';
@@ -18,8 +18,10 @@ interface RespondentStatusGroup {
   displayName: string;
   respondents: Respondent[];
   targetCount: number;
+  actualCount: number;
   completedCount: number;
   completionPercentage: number;
+  discrepancy: number;
 }
 
 export const RespondentProgressDashboard: React.FC<Props> = ({ assessmentId, assessment }) => {
@@ -27,10 +29,12 @@ export const RespondentProgressDashboard: React.FC<Props> = ({ assessmentId, ass
   const [statusGroups, setStatusGroups] = useState<RespondentStatusGroup[]>([]);
   const [overallProgress, setOverallProgress] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [locking, setLocking] = useState(false);
+  const [isLocked, setIsLocked] = useState(assessment?.lockStatus === 'LOCKED');
 
   useEffect(() => {
     loadRespondents();
-    const interval = setInterval(loadRespondents, 10000); // Refresh every 10 seconds
+    const interval = setInterval(loadRespondents, 10000);
     return () => clearInterval(interval);
   }, [assessmentId]);
 
@@ -39,7 +43,6 @@ export const RespondentProgressDashboard: React.FC<Props> = ({ assessmentId, ass
       const respondentsData = await MultiRespondentService.getAssessmentRespondents(assessmentId);
       setRespondents(respondentsData);
 
-      // Group by stakeholder
       const groups: Record<StakeholderGroup, Respondent[]> = {
         management: [],
         teachers: [],
@@ -51,31 +54,32 @@ export const RespondentProgressDashboard: React.FC<Props> = ({ assessmentId, ass
         groups[r.stakeholderGroup].push(r);
       });
 
-      // Create status groups
       const statusGroupsData: RespondentStatusGroup[] = (
         ['management', 'teachers', 'parents_students', 'operational_metrics'] as StakeholderGroup[]
       ).map(stakeholder => {
         const respondentsInGroup = groups[stakeholder];
         const completedCount = respondentsInGroup.filter(r => r.status === 'COMPLETE').length;
-        const targetCount = assessment?.targetCounts[stakeholder] || respondentsInGroup.length;
+        const targetCount = assessment?.targetCounts[stakeholder] || 0;
+        const actualCount = respondentsInGroup.length;
+        const discrepancy = targetCount - actualCount;
 
         return {
           stakeholder,
           displayName: STAKEHOLDER_DISPLAY_NAMES[stakeholder],
           respondents: respondentsInGroup,
           targetCount,
+          actualCount,
           completedCount,
-          completionPercentage:
-            targetCount > 0 ? Math.round((completedCount / targetCount) * 100) : 0
+          completionPercentage: actualCount > 0 ? Math.round((completedCount / actualCount) * 100) : 0,
+          discrepancy
         };
       });
 
       setStatusGroups(statusGroupsData);
 
-      // Calculate overall progress
       const totalCompleted = statusGroupsData.reduce((sum, g) => sum + g.completedCount, 0);
-      const totalTarget = statusGroupsData.reduce((sum, g) => sum + g.targetCount, 0);
-      setOverallProgress(totalTarget > 0 ? Math.round((totalCompleted / totalTarget) * 100) : 0);
+      const totalActual = statusGroupsData.reduce((sum, g) => sum + g.actualCount, 0);
+      setOverallProgress(totalActual > 0 ? Math.round((totalCompleted / totalActual) * 100) : 0);
 
       setLoading(false);
     } catch (error) {
@@ -84,43 +88,85 @@ export const RespondentProgressDashboard: React.FC<Props> = ({ assessmentId, ass
     }
   };
 
+  const handleLockAssessment = async () => {
+    if (!confirm('Lock this assessment? This finalizes the respondent count and you can proceed with analytics.')) {
+      return;
+    }
+
+    setLocking(true);
+    try {
+      await MultiRespondentService.lockAssessment(assessmentId, statusGroups);
+      setIsLocked(true);
+      alert('✓ Assessment locked! You can now generate analytics based on actual respondent counts.');
+    } catch (error) {
+      console.error('Error locking assessment:', error);
+      alert('Error locking assessment');
+    } finally {
+      setLocking(false);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading assessment progress...</div>;
   }
 
+  const totalTarget = statusGroups.reduce((sum, g) => sum + g.targetCount, 0);
+  const totalActual = statusGroups.reduce((sum, g) => sum + g.actualCount, 0);
+  const totalCompleted = statusGroups.reduce((sum, g) => sum + g.completedCount, 0);
+
   return (
     <div className="respondent-progress-dashboard">
-      <h2>Assessment Respondent Progress</h2>
+      <div className="dashboard-header">
+        <div>
+          <h2>Assessment Respondent Progress</h2>
+          <p className="header-subtitle">Track responses and finalize assessment when ready</p>
+        </div>
+        {isLocked && (
+          <div className="lock-badge">
+            <span className="lock-icon">🔒</span>
+            <span className="lock-text">Locked</span>
+          </div>
+        )}
+      </div>
+
+      {/* Target vs Actual Comparison */}
+      <div className="target-vs-actual-section">
+        <h3>Target vs Actual Respondents</h3>
+        <div className="comparison-cards">
+          <div className="comparison-card">
+            <div className="card-label">Target Total</div>
+            <div className="card-value">{totalTarget}</div>
+          </div>
+          <div className="comparison-card">
+            <div className="card-label">Actual Respondents</div>
+            <div className="card-value">{totalActual}</div>
+          </div>
+          <div className="comparison-card">
+            <div className="card-label">Completed</div>
+            <div className="card-value">{totalCompleted}</div>
+          </div>
+          <div className="comparison-card discrepancy">
+            <div className="card-label">Difference</div>
+            <div className="card-value">{totalTarget - totalActual}</div>
+          </div>
+        </div>
+      </div>
 
       {/* Overall Progress */}
       <div className="overall-progress-section">
         <div className="progress-header">
-          <h3>Overall Completion</h3>
+          <h3>Completion Rate (of Actual Respondents)</h3>
           <span className="progress-percentage">{overallProgress}%</span>
         </div>
 
         <div className="progress-bar-container">
           <div className="progress-bar">
-            <div
-              className="progress-fill"
-              style={{ width: `${overallProgress}%` }}
-            ></div>
+            <div className="progress-fill" style={{ width: `${overallProgress}%` }}></div>
           </div>
         </div>
 
-        <div className="progress-stats">
-          <div className="stat">
-            <span className="stat-label">Total Respondents:</span>
-            <span className="stat-value">
-              {respondents.filter(r => r.status === 'COMPLETE').length} / {respondents.length}
-            </span>
-          </div>
-          <div className="stat">
-            <span className="stat-label">Pending:</span>
-            <span className="stat-value">
-              {respondents.filter(r => r.status === 'PENDING' || r.status === 'IN_PROGRESS').length}
-            </span>
-          </div>
+        <div className="progress-note">
+          <strong>{totalCompleted}</strong> of <strong>{totalActual}</strong> actual respondents have completed
         </div>
       </div>
 
@@ -133,10 +179,21 @@ export const RespondentProgressDashboard: React.FC<Props> = ({ assessmentId, ass
             <div key={group.stakeholder} className="stakeholder-progress-card">
               <div className="card-header">
                 <h4>{group.displayName}</h4>
-                <span className="completion-badge">
-                  {group.completedCount}/{group.targetCount}
+                <span className="count-badges">
+                  <span className="badge target" title="Target">T: {group.targetCount}</span>
+                  <span className="badge actual" title="Actual">A: {group.actualCount}</span>
+                  <span className="badge completed" title="Completed">C: {group.completedCount}</span>
                 </span>
               </div>
+
+              {group.discrepancy !== 0 && (
+                <div className={`discrepancy-warning ${group.discrepancy > 0 ? 'shortage' : 'overflow'}`}>
+                  <span className="warning-icon">⚠️</span>
+                  <span className="warning-text">
+                    {group.discrepancy > 0 ? `${group.discrepancy} fewer` : `${Math.abs(group.discrepancy)} more`} than target
+                  </span>
+                </div>
+              )}
 
               <div className="progress-mini">
                 <div className="progress-bar-small">
@@ -147,7 +204,7 @@ export const RespondentProgressDashboard: React.FC<Props> = ({ assessmentId, ass
                 </div>
               </div>
 
-              <div className="percentage">{group.completionPercentage}%</div>
+              <div className="percentage">{group.completionPercentage}% Completed</div>
 
               {/* Individual Respondents in Group */}
               <div className="respondents-list">
@@ -157,7 +214,6 @@ export const RespondentProgressDashboard: React.FC<Props> = ({ assessmentId, ass
                       <span className="name">{respondent.name}</span>
                       <span className="role">{respondent.role}</span>
                     </div>
-
                     <div className="respondent-status">
                       <span className={`status-badge ${respondent.status.toLowerCase()}`}>
                         {respondent.status === 'COMPLETE' ? '✓ Complete' : respondent.completionPercentage > 0 ? `${respondent.completionPercentage}%` : 'Pending'}
@@ -171,20 +227,25 @@ export const RespondentProgressDashboard: React.FC<Props> = ({ assessmentId, ass
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="actions-section">
-        <h3>Quick Actions</h3>
-        <div className="action-buttons">
-          <button className="btn btn-primary" onClick={() => handleSendReminders()}>
-            📧 Send Reminders to Incomplete
-          </button>
-          <button className="btn btn-secondary" onClick={() => handleViewDetails()}>
-            👁️ View Detailed Status
-          </button>
-          <button className="btn btn-success" onClick={() => handleCompleteAssessment()}>
-            ✓ Mark Assessment Complete
-          </button>
+      {/* Lock Assessment Button */}
+      <div className="lock-section">
+        <div className="lock-info">
+          <p>
+            {isLocked
+              ? '✓ This assessment is locked. Analytics are based on the actual respondent counts above.'
+              : 'When ready, lock this assessment to finalize the respondent count and proceed with analytics.'}
+          </p>
+          {totalActual === 0 && <p className="error-message">At least 1 respondent must have provided input before locking.</p>}
         </div>
+        {!isLocked && (
+          <button
+            className="btn btn-lock"
+            onClick={handleLockAssessment}
+            disabled={locking || totalActual === 0}
+          >
+            {locking ? 'Locking...' : '🔒 Lock Assessment with Actual Counts'}
+          </button>
+        )}
       </div>
 
       {/* Status Legend */}
@@ -205,33 +266,10 @@ export const RespondentProgressDashboard: React.FC<Props> = ({ assessmentId, ass
     </div>
   );
 
-  // Helper functions
   function getStatusColor(percentage: number): string {
     if (percentage === 100) return 'complete';
     if (percentage > 50) return 'in-progress';
     return 'pending';
-  }
-
-  function handleSendReminders() {
-    // TODO: Implement reminder sending
-    const pendingRespondents = respondents.filter(r => r.status !== 'COMPLETE');
-    console.log('Sending reminders to:', pendingRespondents.map(r => r.email));
-    alert(`Reminders sent to ${pendingRespondents.length} respondents`);
-  }
-
-  function handleViewDetails() {
-    // TODO: Navigate to detailed view
-    console.log('View detailed status');
-  }
-
-  async function handleCompleteAssessment() {
-    try {
-      await MultiRespondentService.completeAssessment(assessmentId);
-      alert('Assessment marked as complete!');
-    } catch (error) {
-      console.error('Error completing assessment:', error);
-      alert('Error completing assessment');
-    }
   }
 };
 
