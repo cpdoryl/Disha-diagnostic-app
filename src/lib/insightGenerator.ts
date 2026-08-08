@@ -16,6 +16,7 @@ export interface RealInsight {
   finding: string;
   recommendation: string;
   priority: 'high' | 'medium' | 'low';
+  interpretation: 'maintain' | 'improve'; // NEW: How to interpret this score
 }
 
 export interface DataAnalysisResult {
@@ -78,6 +79,38 @@ export function generateRealInsights(parsedData: ParsedData): DataAnalysisResult
     concernAreas,
     dataQuality
   };
+}
+
+/**
+ * Determine interpretation type based on score vs benchmark
+ * NEW: When score > benchmark, recommend maintaining/complementing excellence
+ * When score <= benchmark, recommend improvement
+ */
+export function getScoreInterpretation(score: number, benchmark: number): 'maintain' | 'improve' {
+  return score > benchmark ? 'maintain' : 'improve';
+}
+
+/**
+ * Generate recommendation message based on score vs benchmark
+ * NEW: Different messaging for maintaining vs improving
+ */
+export function getScoreRecommendation(
+  metric: string,
+  score: number,
+  benchmark: number,
+  gap: number,
+  status: 'exceeds' | 'meets' | 'below'
+): string {
+  if (score > benchmark) {
+    // Score exceeds benchmark - recommend maintaining excellence
+    return `${metric} is performing above national standards (+${gap} points). Focus on maintaining these excellent practices and documenting them as case studies for your institution.`;
+  } else if (score === benchmark) {
+    // Score meets benchmark - recommend monitoring
+    return `${metric} meets national standards. Monitor consistently to ensure these standards are sustained across all areas.`;
+  } else {
+    // Score below benchmark - recommend improvement
+    return `${metric} is ${Math.abs(gap)} points below national benchmark. Consider targeted interventions to improve performance in this area.`;
+  }
 }
 
 /**
@@ -266,6 +299,7 @@ function analyzeExtractedMetrics(metrics: Record<string, number | string>) {
       }
 
       const interpretation = benchmarkInfo.interpretation(numValue, benchmark);
+      const scoreInterpretation = getScoreInterpretation(numValue, benchmark);
 
       insights.push({
         metric: benchmarkInfo.name,
@@ -274,8 +308,9 @@ function analyzeExtractedMetrics(metrics: Record<string, number | string>) {
         status,
         gap: Math.abs(gap),
         finding: interpretation,
-        recommendation: generateRecommendation(key, numValue, benchmark),
-        priority: determinePriority(status)
+        recommendation: getScoreRecommendation(benchmarkInfo.name, numValue, benchmark, gap, status),
+        priority: determinePriority(status),
+        interpretation: scoreInterpretation
       });
 
       // Add to findings

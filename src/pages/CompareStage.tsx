@@ -18,7 +18,7 @@ export const CompareStage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-gray-900">Stage 2: Compare (Diagnose & Benchmark)</h2>
-          <p className="text-gray-500 mt-1">Benchmarking against national standards, board standards ({activeSchool?.board || 'CBSE'}), and peer school clusters.</p>
+          <p className="text-gray-500 mt-1">Benchmarking against national standards for Indian schools. Tier 1 benchmarks represent best practices across academic excellence, student welfare, individual attention, and social responsibility.</p>
         </div>
         {activeSchool && (
           <div className="bg-blue-50 border border-blue-200 px-4 py-2 rounded-xl text-xs text-blue-900 flex items-center gap-2 shrink-0">

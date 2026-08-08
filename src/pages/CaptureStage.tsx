@@ -524,14 +524,31 @@ export const CaptureStage = () => {
             </button>
           </div>
 
-          <div className="bg-slate-900 p-6 rounded-2xl text-white shadow-sm border border-slate-800 space-y-4">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl text-white shadow-sm border border-slate-700 space-y-4">
             <div className="flex items-center gap-3">
-              <LineChart className="w-5 h-5 text-blue-400" />
-              <h3 className="text-lg font-bold">Ready to Diagnose?</h3>
+              <div className="bg-blue-600/30 p-2 rounded-lg">
+                <LineChart className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Assessment Data Collection Status</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Multi-stakeholder feedback validation</p>
+              </div>
             </div>
-            <p className="text-slate-400 text-sm leading-relaxed">System has captured sufficient baseline data across the 14 EWISR diagnostic dimensions to generate an initial gap analysis.</p>
+            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-2">
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Your school has collected feedback across the 14 EWISR diagnostic dimensions from multiple stakeholder groups (teachers, parents, students, admin, other).
+              </p>
+              <p className="text-xs text-slate-400">
+                <strong>Status Check:</strong> When you have captured responses from all stakeholder groups you wish to assess, you can proceed to generate a comprehensive gap analysis report comparing stakeholder perceptions against national benchmarks.
+              </p>
+            </div>
+            <div className="bg-blue-600/10 border border-blue-500/30 rounded-lg p-3">
+              <p className="text-xs text-blue-300 font-medium">
+                💡 Tip: Ensure responses have been collected from at least your primary stakeholder groups (teachers & admin) before generating the diagnostic report.
+              </p>
+            </div>
             <button className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-colors text-sm shadow-[0_0_15px_rgba(37,99,235,0.3)] cursor-pointer">
-              Generate Baseline Report
+              Proceed to Diagnostic Analysis
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

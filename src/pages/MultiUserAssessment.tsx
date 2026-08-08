@@ -199,43 +199,69 @@ export function MultiUserAssessmentPage() {
           <div className="bg-white rounded-lg border border-gray-200 p-8">
             <div className="text-center">
               <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Ready for Analysis</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Assessment Complete & Ready for Analysis</h2>
               <p className="text-gray-600 mb-6">
-                Assessment locked with {progress.totalActual} respondents. Proceeding to diagnostic report generation.
+                Multi-stakeholder assessment locked with {progress.totalActual} respondents. Ready to generate comprehensive diagnostic report.
               </p>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-left">
-                <h3 className="font-semibold text-blue-900 mb-3">Assessment Summary</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 text-left">
+                <h3 className="font-semibold text-blue-900 mb-4">Assessment Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                   <div>
-                    <p className="text-blue-700">Teachers</p>
+                    <p className="text-blue-700 text-xs font-bold">Teachers</p>
                     <p className="text-2xl font-bold text-blue-600">{progress.actualRespondents.teacher}</p>
+                    <p className="text-xs text-blue-600">of {config.expectedRespondents.teacher}</p>
                   </div>
                   <div>
-                    <p className="text-blue-700">Parents</p>
+                    <p className="text-blue-700 text-xs font-bold">Parents</p>
                     <p className="text-2xl font-bold text-blue-600">{progress.actualRespondents.parent}</p>
+                    <p className="text-xs text-blue-600">of {config.expectedRespondents.parent}</p>
                   </div>
                   <div>
-                    <p className="text-blue-700">Students</p>
+                    <p className="text-blue-700 text-xs font-bold">Students</p>
                     <p className="text-2xl font-bold text-blue-600">{progress.actualRespondents.student}</p>
+                    <p className="text-xs text-blue-600">of {config.expectedRespondents.student}</p>
                   </div>
                   <div>
-                    <p className="text-blue-700">Admin</p>
+                    <p className="text-blue-700 text-xs font-bold">Admin</p>
                     <p className="text-2xl font-bold text-blue-600">{progress.actualRespondents.admin}</p>
+                    <p className="text-xs text-blue-600">of {config.expectedRespondents.admin}</p>
+                  </div>
+                  <div>
+                    <p className="text-green-700 text-xs font-bold">Overall</p>
+                    <p className="text-2xl font-bold text-green-600">{progress.totalActual}</p>
+                    <p className="text-xs text-green-600">Total Responses</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-3 justify-center">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">
+                <p className="text-sm text-green-800">
+                  ✓ Assessment data validated and locked. All {progress.totalActual} responses ready for analysis across 14 diagnostic dimensions.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={handleRestart}
-                  className="px-6 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition"
+                  className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition order-2 sm:order-1"
                 >
                   Edit Configuration
                 </button>
                 <button
+                  onClick={() => {
+                    // Navigate to Synthesize stage with assessment data
+                    // This would be integrated with the main app router
+                    alert('Proceeding to Diagnostic Report Generation...\n\nIntegration with SynthesizeStage pending router configuration.');
+                  }}
+                  className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition flex items-center justify-center gap-2 order-1 sm:order-2"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                  Generate Diagnostic Report
+                </button>
+                <button
                   onClick={handleNewAssessment}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+                  className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition order-3"
                 >
                   Start New Assessment
                 </button>
