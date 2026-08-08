@@ -427,6 +427,8 @@ export const Checkup = () => {
 
   // Transform hardcoded screening questions data to component format
   const transformChallenges = (): ChallengeItem[] => {
+    console.log('🔄 transformChallenges: Processing', COMPLETE_SCREENING_QUESTIONS.length, 'challenges');
+
     return COMPLETE_SCREENING_QUESTIONS.map(challenge => ({
       id: challenge.id,
       category: challenge.category,
@@ -441,6 +443,12 @@ export const Checkup = () => {
           value: opt.value,
           weight: opt.weight || 5 // Fallback to 5 if not defined
         })) || [];
+
+        if (optionsWithWeights.length > 0) {
+          console.log(`  Question ${q.id}: ${optionsWithWeights.length} options with weights`,
+            optionsWithWeights.map(o => `${o.value}=${o.weight}`).join(', '));
+        }
+
         return {
           id: q.id,
           label: q.label,
@@ -658,7 +666,7 @@ HOW TO USE IN DISHA:
   };
 
   const getRequiredQuestions = () => {
-    const req: { id: string; label: string; challengeTitle: string }[] = [];
+    const req: any[] = [];
     selectedChallenges.forEach(cid => {
       const cObj = challenges.find(c => c.id === cid);
       if (cObj) {
@@ -666,11 +674,14 @@ HOW TO USE IN DISHA:
           req.push({
             id: q.id,
             label: q.label,
+            type: q.type,
+            options: q.options, // Include options with weights!
             challengeTitle: cObj.label
           });
         });
       }
     });
+    console.log('getRequiredQuestions returning:', req.length, 'questions with options');
     return req;
   };
 
@@ -769,11 +780,16 @@ HOW TO USE IN DISHA:
     setIsProcessing(true);
 
     // Calculate DISHA scores - extract weights from selected options
+    console.log('=== DISHA CALCULATION START ===');
+    console.log('Required questions:', required.length);
+    console.log('User answers:', answers);
+    console.log('Current operationalMetrics:', operationalMetrics);
+
     const answersArray = required.map(q => {
       const selectedOptionValue = answers[q.id];
       if (!selectedOptionValue) {
-        console.warn(`Question ${q.id} has no answer, using default weight 5`);
-        return { questionId: q.id, weight: 5 }; // default middle weight
+        console.warn(`❌ Question ${q.id} has no answer, using default weight 5`);
+        return { questionId: q.id, weight: 5 };
       }
 
       // Find the selected option and extract its weight
@@ -781,18 +797,31 @@ HOW TO USE IN DISHA:
       const weight = selectedOption?.weight;
 
       if (!weight) {
-        console.warn(`Question ${q.id}: Could not find weight for value "${selectedOptionValue}". Options:`, q.options);
+        console.warn(`❌ Question ${q.id}: Could not find weight for value "${selectedOptionValue}"`);
+        console.warn(`   Available options:`, q.options?.map(o => ({ value: o.value, weight: o.weight })));
+      } else {
+        console.log(`✅ Question ${q.id}: Found weight ${weight} for answer "${selectedOptionValue}"`);
       }
 
       return { questionId: q.id, weight: weight || 5 };
     });
 
+    console.log('Weights array:', answersArray);
     const maxPossible = required.length * 10;
+    console.log('Max possible score:', maxPossible);
+
+    const totalWeight = answersArray.reduce((sum, a) => sum + a.weight, 0);
+    console.log('Total weight sum:', totalWeight);
+    console.log('Percentage:', (totalWeight / maxPossible) * 100);
+
     const score = DISHAScoreCalculator.calculateCompleteScore(
       answersArray,
       maxPossible,
       operationalMetrics
     );
+    console.log('Calculated score:', score);
+    console.log('=== DISHA CALCULATION END ===');
+
     setDISHAScore(score);
 
     // Generate diagnosis using extracted metrics if available
