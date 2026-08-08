@@ -139,7 +139,7 @@ export const SynthesizeStage = () => {
                         className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs"
                       >
                         <div className="flex justify-between items-center">
-                          <span className="font-semibold text-emerald-900">{dim.title}</span>
+                          <span className="font-semibold text-emerald-900">{dim.name}</span>
                           <span className="font-bold text-emerald-700">{dim.score}</span>
                         </div>
                       </li>
@@ -163,7 +163,7 @@ export const SynthesizeStage = () => {
                         className="p-2 bg-red-50 border border-red-200 rounded-lg text-xs"
                       >
                         <div className="flex justify-between items-center">
-                          <span className="font-semibold text-red-900">{dim.title}</span>
+                          <span className="font-semibold text-red-900">{dim.name}</span>
                           <span className="font-bold text-red-700">{dim.score}</span>
                         </div>
                       </li>
@@ -316,7 +316,7 @@ export const SynthesizeStage = () => {
                             isCritical && 'text-red-900'
                           )}
                         >
-                          {dim.title}
+                          {dim.name}
                         </p>
                       </div>
 

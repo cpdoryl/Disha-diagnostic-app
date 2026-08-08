@@ -123,10 +123,10 @@ export const SubjectiveVsObjectiveView: React.FC<SubjectiveVsObjectiveViewProps>
                   borderRadius: '8px',
                   color: '#fff'
                 }}
-                formatter={(value) => `${value.toFixed(1)}`}
+                formatter={(value: any) => `${typeof value === 'number' ? value.toFixed(1) : value}`}
               />
               <Bar dataKey="score" isAnimationActive={true}>
-                {chartData.map((entry, idx) => (
+                {chartData.map((entry: any, idx: number) => (
                   <Cell key={`cell-${idx}`} fill={entry.fill} />
                 ))}
               </Bar>
