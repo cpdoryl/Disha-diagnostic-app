@@ -755,13 +755,21 @@ HOW TO USE IN DISHA:
       console.log('✅ File validation passed:', validation.foundMetrics);
 
       // Map extracted metrics to DISHA operational metrics
+      console.log('📊 RAW EXTRACTED METRICS:', metrics.metricsFound);
+
       const updatedOperationalMetrics: OperationalMetrics = {
         studentTeacherRatio: metrics.metricsFound['students_per_classroom'] as number || 28,
         parentResponseSLA: metrics.metricsFound['parent_query_response_sla_hours'] as number || 24,
         annualTrainingHours: metrics.metricsFound['annual_training_hours'] as number || 20,
         weeklyPlanningHours: metrics.metricsFound['weekly_planning_hours'] as number || 4
       };
+
+      console.log('📋 UPDATED OPERATIONAL METRICS:', updatedOperationalMetrics);
+      console.log('  Before setOperationalMetrics - current state:', operationalMetrics);
+
       setOperationalMetrics(updatedOperationalMetrics);
+
+      console.log('  After setOperationalMetrics - queued for update');
 
       // Generate REAL insights from extracted metrics
       const insights = generateRealInsights(metrics);
@@ -840,7 +848,11 @@ HOW TO USE IN DISHA:
     console.log('=== DISHA CALCULATION START ===');
     console.log('Required questions:', required.length);
     console.log('User answers:', answers);
-    console.log('Current operationalMetrics:', operationalMetrics);
+    console.log('⚠️ CRITICAL: Current operationalMetrics at calculation time:', operationalMetrics);
+    console.log('  ├─ studentTeacherRatio:', operationalMetrics.studentTeacherRatio, '(should be from file)');
+    console.log('  ├─ parentResponseSLA:', operationalMetrics.parentResponseSLA, '(should be from file)');
+    console.log('  ├─ annualTrainingHours:', operationalMetrics.annualTrainingHours, '(should be from file)');
+    console.log('  └─ weeklyPlanningHours:', operationalMetrics.weeklyPlanningHours, '(should be from file)');
 
     const answersArray = required.map(q => {
       const selectedOptionValue = answers[q.id];
@@ -876,7 +888,17 @@ HOW TO USE IN DISHA:
       maxPossible,
       operationalMetrics
     );
-    console.log('Calculated score:', score);
+
+    console.log('📊 CALCULATED SCORE:', score);
+    console.log('  ├─ Layer 1 (S_sub):', score.s_sub, '← Leadership Perception');
+    console.log('  ├─ Layer 2 (M_obj):', score.m_obj, '← Operational Reality');
+    console.log('  │  ├─ m_str:', score.m_str);
+    console.log('  │  ├─ m_sla:', score.m_sla);
+    console.log('  │  ├─ m_train:', score.m_train);
+    console.log('  │  └─ m_plan:', score.m_plan);
+    console.log('  └─ Layer 3 (Health Index):', score.healthIndex, '← Final Score');
+    console.log('🚨 If Layer 2 is 0.71x: Your file metrics were NOT used!');
+    console.log('   Expected if data uploaded: Layer 2 should change from 0.711');
     console.log('=== DISHA CALCULATION END ===');
 
     setDISHAScore(score);
