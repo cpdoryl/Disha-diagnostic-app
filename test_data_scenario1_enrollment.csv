@@ -1,0 +1,12 @@
+MetricName,Value,Unit,Benchmark,Status
+Total_Students,850,count,1200,Declining
+New_Enrollment_Rate,-12,percentage,8,Critical
+Student_Retention_Rate,76,percentage,85,Below_Target
+students_per_classroom,24,students,28,Good
+parent_query_response_sla_hours,36,hours,24,Slow
+annual_training_hours,15,hours_per_teacher_year,25,Below_Target
+weekly_planning_hours,3,hours_per_week,5,Low
+board_exam_pass_rate,78,percentage,85,Acceptable
+fee_collection_rate_pct,82,percentage,90,Low
+teacher_turnover_rate_pct,22,percentage,12,High
+school_reputation_score,6.2,score_out_of_10,7.5,Fair

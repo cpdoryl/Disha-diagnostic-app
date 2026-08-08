@@ -1,0 +1,12 @@
+MetricName,Value,Unit,Benchmark,Status
+students_per_classroom,22,students,28,Excellent
+parent_query_response_sla_hours,12,hours,24,Excellent
+annual_training_hours,32,hours_per_teacher_year,25,Excellent
+weekly_planning_hours,6,hours_per_week,5,Excellent
+board_exam_pass_rate,92,percentage,85,Excellent
+fee_collection_rate_pct,95,percentage,90,Excellent
+student_attendance_rate_pct,96,percentage,95,Excellent
+teacher_turnover_rate_pct,8,percentage,12,Good
+certified_teachers_pct,94,percentage,85,Excellent
+job_satisfaction_score,8.4,score_1to10,7,Excellent
+school_reputation_score,8.7,score_out_of_10,7.5,Excellent

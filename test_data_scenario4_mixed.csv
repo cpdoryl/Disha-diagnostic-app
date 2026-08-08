@@ -1,0 +1,12 @@
+MetricName,Value,Unit,Benchmark,Status
+students_per_classroom,28,students,28,Standard
+parent_query_response_sla_hours,48,hours,24,Slow
+annual_training_hours,18,hours_per_teacher_year,25,Below_Target
+weekly_planning_hours,4,hours_per_week,5,Below_Target
+board_exam_pass_rate,85,percentage,85,Meets_Target
+fee_collection_rate_pct,78,percentage,90,Below_Target
+student_attendance_rate_pct,88,percentage,95,Below_Target
+teacher_turnover_rate_pct,15,percentage,12,Slightly_High
+certified_teachers_pct,80,percentage,85,Below_Target
+parent_satisfaction_nps,32,score,-100to100,Below_Target
+digital_infrastructure_status,45,score_0to100,60,Below_Target

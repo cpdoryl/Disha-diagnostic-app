@@ -1,0 +1,12 @@
+MetricName,Value,Unit,Benchmark,Status
+students_per_classroom,32,students,28,High
+parent_query_response_sla_hours,20,hours,24,Good
+annual_training_hours,12,hours_per_teacher_year,25,Low
+weekly_planning_hours,2,hours_per_week,5,Very_Low
+teacher_turnover_rate_pct,28,percentage,12,Critical
+average_teacher_tenure_yrs,4.2,years,7,Low
+teacher_burnout_score,75,score_0to100,50,High
+certified_teachers_pct,72,percentage,85,Below_Target
+job_satisfaction_score,5.1,score_1to10,7,Poor
+salary_competitiveness_percentile,35,percentile,50,Low
+school_reputation_score,5.8,score_out_of_10,7.5,Poor
