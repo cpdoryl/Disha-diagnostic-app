@@ -9,7 +9,6 @@ import {
 import { useAppStore } from '../store';
 import { db } from '../lib/firebase';
 import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { SchoolDataHub } from './SchoolDataHub';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import {
   createAssessmentVersion,
@@ -3043,9 +3042,6 @@ export const DeepDiveAssessment = ({
                 );
               })()}
             </div>
-
-            {/* SCHOOL DATA HUB & SUB-COMPONENT DATABASE EXPLORER */}
-            <SchoolDataHub activeSchool={activeSchool} />
 
             {/* Digital Data Online Collection */}
             <div className="bg-white p-6 rounded-2xl border border-gray-150 shadow-xs space-y-4">
