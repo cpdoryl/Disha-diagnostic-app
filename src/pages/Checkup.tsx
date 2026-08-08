@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 import { useAppStore } from '../store';
 import { DeepDiveAssessment } from '../components/DeepDiveAssessment';
+import FileAnalyzer, { ExtractedMetrics } from '../lib/fileAnalyzer';
+import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGenerator';
 import {
   HeartPulse,
   HelpCircle,
@@ -377,10 +379,13 @@ export const Checkup = () => {
   // Upload State
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  
+  const [extractedMetrics, setExtractedMetrics] = useState<ExtractedMetrics | null>(null);
+  const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
+
   // UI Loading/Transition states
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isDeepScanning, setIsDeepScanning] = useState<boolean>(false);
+  const [isAnalyzingFile, setIsAnalyzingFile] = useState<boolean>(false);
 
   // Active Root Cause node
   const [activeRootNode, setActiveRootNode] = useState<string>('workload');
@@ -665,6 +670,7 @@ HOW TO USE IN DISHA:
       const file = e.target.files[0];
       setUploadedFile(file);
       setUploadedFileName(file.name);
+      analyzeUploadedFile(file);
     }
   };
 
@@ -674,6 +680,31 @@ HOW TO USE IN DISHA:
       const file = e.dataTransfer.files[0];
       setUploadedFile(file);
       setUploadedFileName(file.name);
+      analyzeUploadedFile(file);
+    }
+  };
+
+  const analyzeUploadedFile = async (file: File) => {
+    setIsAnalyzingFile(true);
+    try {
+      const metrics = await FileAnalyzer.analyzeFile(file);
+      setExtractedMetrics(metrics);
+
+      // Generate dynamic diagnosis if we have both metrics and answers
+      const required = getRequiredQuestions();
+      const allAnswered = required.every(q => answers[q.id]?.trim());
+      if (allAnswered) {
+        const diagnosis = DiagnosisGenerator.generateDiagnosis(
+          metrics,
+          selectedChallenges[0],
+          answers
+        );
+        setDiagnosisResult(diagnosis);
+      }
+    } catch (error) {
+      console.error('Error analyzing file:', error);
+    } finally {
+      setIsAnalyzingFile(false);
     }
   };
 
@@ -702,6 +733,15 @@ HOW TO USE IN DISHA:
 
     setValidationError(null);
     setIsProcessing(true);
+
+    // Generate diagnosis using extracted metrics if available
+    const diagnosis = DiagnosisGenerator.generateDiagnosis(
+      extractedMetrics,
+      selectedChallenges[0],
+      answers
+    );
+    setDiagnosisResult(diagnosis);
+
     setTimeout(() => {
       setIsProcessing(false);
       setStep(2);
@@ -1534,10 +1574,22 @@ HOW TO USE IN DISHA:
                     {uploadedFileName ? (
                       <div className="space-y-2">
                         <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                          <CheckCircle2 className="w-6 h-6 animate-bounce" />
+                          {isAnalyzingFile ? (
+                            <RefreshCw className="w-6 h-6 animate-spin" />
+                          ) : extractedMetrics ? (
+                            <CheckCircle2 className="w-6 h-6 animate-bounce" />
+                          ) : (
+                            <CheckCircle2 className="w-6 h-6" />
+                          )}
                         </div>
                         <p className="text-sm font-bold text-gray-900">{uploadedFileName}</p>
-                        <p className="text-xs text-emerald-600 font-bold">Successfully attached. Document will scan as Tier-A hard-record confidence!</p>
+                        {isAnalyzingFile ? (
+                          <p className="text-xs text-blue-600 font-bold">🔍 Analyzing data metrics...</p>
+                        ) : extractedMetrics ? (
+                          <p className="text-xs text-emerald-600 font-bold">✓ Data analyzed! {extractedMetrics.insights.length} insights extracted.</p>
+                        ) : (
+                          <p className="text-xs text-emerald-600 font-bold">Successfully attached. Document will scan as Tier-A hard-record confidence!</p>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-1">
@@ -1664,10 +1716,10 @@ HOW TO USE IN DISHA:
 
               <div className="md:col-span-3 space-y-2.5">
                 <h4 className="font-bold text-lg text-gray-900">
-                  Primary Deficit Domain: <span className="text-rose-600 font-black">{topGaps[0].subject}</span>
+                  Primary Deficit Domain: <span className="text-rose-600 font-black">{diagnosisResult?.affectedDomains[0] || topGaps[0].subject}</span>
                 </h4>
                 <p className="text-xs text-gray-600 leading-relaxed font-medium">
-                  {getDynamicDiagnosisNarrative(topGaps[0].subject)}
+                  {diagnosisResult?.narrative || getDynamicDiagnosisNarrative(topGaps[0].subject)}
                 </p>
               </div>
             </div>
@@ -1692,12 +1744,81 @@ HOW TO USE IN DISHA:
                   {mismatchInfo.desc}
                 </p>
                 <div className="p-3.5 bg-white/5 rounded-xl text-xs font-medium border border-white/5 text-slate-300 leading-relaxed">
-                  {getDynamicDoctorMetaphor(topGaps[0].subject)}
+                  {diagnosisResult?.doctorMetaphor || getDynamicDoctorMetaphor(topGaps[0].subject)}
                 </div>
               </div>
             </div>
 
           </div>
+
+          {/* EXTRACTED METRICS & RECOMMENDATIONS */}
+          {extractedMetrics && (
+            <div className="space-y-6 bg-gradient-to-br from-blue-50 to-cyan-50 p-8 rounded-3xl border border-blue-100">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">📊</span>
+                  Data-Driven Insights from {extractedMetrics.fileType}
+                </h3>
+              </div>
+
+              {/* Extracted Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(extractedMetrics.metricsFound).map(([key, value]) => {
+                  if (key === 'fileType') return null;
+                  return (
+                    <div key={key} className="bg-white p-4 rounded-lg border border-blue-100">
+                      <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {typeof value === 'number' && (key.includes('Rate') || key.includes('rate') || key.includes('Percentage')) ? `${value}%` : value}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Key Findings */}
+              {extractedMetrics.insights.length > 0 && (
+                <div className="bg-white p-6 rounded-lg border border-blue-200">
+                  <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="text-lg">🔍</span> Key Findings
+                  </h4>
+                  <ul className="space-y-2">
+                    {extractedMetrics.insights.map((insight, idx) => (
+                      <li key={idx} className="text-sm text-gray-700 flex gap-2">
+                        <span className="text-blue-600 font-bold">•</span>
+                        <span>{insight}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Recommended Actions */}
+              {diagnosisResult?.recommendedActions && diagnosisResult.recommendedActions.length > 0 && (
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-lg border border-indigo-200">
+                  <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="text-lg">💡</span> Prioritized Recommended Actions
+                  </h4>
+                  <ol className="space-y-3">
+                    {diagnosisResult.recommendedActions.map((action, idx) => (
+                      <li key={idx} className="text-sm text-gray-700 flex gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">{idx + 1}</span>
+                        <span>{action}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg flex gap-3">
+                <span className="text-2xl">✓</span>
+                <div>
+                  <p className="font-bold text-emerald-900 text-sm">Data Analysis Complete</p>
+                  <p className="text-xs text-emerald-800 mt-1">Your uploaded data has been analyzed and integrated into the diagnostic. Insights above are derived from your real school metrics, not generic templates.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* PHASE 2 & 3 DISHA COMPLETE SCAN PROPOSAL */}
           <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-8 rounded-3xl border border-slate-800 space-y-6 relative overflow-hidden shadow-md">
