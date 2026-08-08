@@ -274,5 +274,5 @@ function only(keys) {
 }
 
 function hasKeys(data, keys) {
-  return keys.all(key => key in data);
+  return (keys.size() == 0) || (data.keys().hasAll(keys));
 }
