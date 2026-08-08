@@ -2516,6 +2516,18 @@ export const DeepDiveAssessment = ({
           <div className="lg:col-span-8 space-y-6">
 
             {isStep3Wizard && (
+              <>
+              {/* Fresh Assessment Notice */}
+              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-start gap-3">
+                <div className="flex-shrink-0 pt-0.5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-emerald-900 mb-1">Fresh Assessment Started</p>
+                  <p className="text-xs text-emerald-700">Each deployment creates a new assessment version. View past assessments and trends in <strong>Monitoring &gt; Assessment Trends &amp; History</strong> with date filtering.</p>
+                </div>
+              </div>
+
               <div className="bg-gradient-to-r from-blue-950 to-indigo-950 text-white p-5 rounded-2xl border border-indigo-800 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-blue-500/20 rounded-lg text-blue-300">
@@ -2593,8 +2605,9 @@ export const DeepDiveAssessment = ({
                   </div>
                 </div>
               </div>
+              </>
             )}
-            
+
             {/* Stakeholder Centralized Dispatch Link Box */}
             <div className="bg-white p-6 rounded-2xl border border-gray-150 shadow-xs space-y-5">
               <div className="flex justify-between items-center border-b border-gray-100 pb-3">
