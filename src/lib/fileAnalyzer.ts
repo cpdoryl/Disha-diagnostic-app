@@ -3,6 +3,8 @@
  * Generates real data-driven insights for First Opinion diagnosis
  */
 
+import { validateDataForChallenges } from './challengeDataRequirements';
+
 export interface ExtractedMetrics {
   fileType: string;
   metricsFound: Record<string, number | string>;
@@ -615,6 +617,17 @@ export interface ValidationResult {
   }>;
 }
 
+export interface ChallengeValidationResult {
+  isValid: boolean;
+  completeness: number;
+  missingMetrics: string[];
+  foundMetrics: string[];
+  recommendations: string[];
+  errorMessage: string;
+  challengesCovered: string[];
+  challengesUncovered: string[];
+}
+
 /**
  * Validate if uploaded file contains required DISHA metrics
  */
@@ -675,6 +688,59 @@ export function validateFileMetrics(extractedMetrics: ExtractedMetrics): Validat
     foundMetrics: foundMetricsNames,
     errorMessage,
     requiredMetrics
+  };
+}
+
+/**
+ * Validate uploaded data against selected challenges
+ * Ensures all required metrics for chosen challenges are present
+ */
+export function validateFileForChallenges(
+  extractedMetrics: ExtractedMetrics,
+  selectedChallengeIds: string[]
+): ChallengeValidationResult {
+  // If no challenges selected, accept all data
+  if (!selectedChallengeIds || selectedChallengeIds.length === 0) {
+    return {
+      isValid: true,
+      completeness: 100,
+      missingMetrics: [],
+      foundMetrics: Object.keys(extractedMetrics.metricsFound).map(k => `✅ ${k}`),
+      recommendations: [],
+      errorMessage: '',
+      challengesCovered: [],
+      challengesUncovered: []
+    };
+  }
+
+  // Use challenge data requirements to validate
+  const validation = validateDataForChallenges(
+    extractedMetrics.metricsFound,
+    selectedChallengeIds
+  );
+
+  // Determine which challenges can be analyzed
+  const challengesCovered = selectedChallengeIds;
+  const challengesUncovered: string[] = [];
+
+  if (validation.missingMetrics.length > 0) {
+    challengesUncovered.push(...selectedChallengeIds);
+  }
+
+  return {
+    isValid: validation.isValid,
+    completeness: validation.completeness,
+    missingMetrics: validation.missingMetrics,
+    foundMetrics: validation.foundMetrics,
+    recommendations: validation.recommendations,
+    errorMessage: validation.isValid
+      ? ''
+      : `❌ Data INCOMPLETE for selected challenges!\n\n${validation.missingMetrics.join('\n')}\n\n` +
+        `Your file covers ${validation.completeness}% of required data.\n\n` +
+        `To analyze ALL selected challenges, your file must include:\n\n` +
+        `${validation.recommendations.join('\n')}`,
+    challengesCovered: validation.isValid ? challengesCovered : [],
+    challengesUncovered: validation.isValid ? [] : selectedChallengeIds
   };
 }
 

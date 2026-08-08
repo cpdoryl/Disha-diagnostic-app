@@ -3,7 +3,13 @@ import JSZip from 'jszip';
 import { useAppStore } from '../store';
 import { DeepDiveAssessment } from '../components/DeepDiveAssessment';
 import { DISHAScoreDashboard } from '../components/DISHAScoreDashboard';
-import FileAnalyzer, { ExtractedMetrics, validateFileMetrics, ValidationResult } from '../lib/fileAnalyzer';
+import FileAnalyzer, {
+  ExtractedMetrics,
+  validateFileMetrics,
+  validateFileForChallenges,
+  ValidationResult,
+  ChallengeValidationResult
+} from '../lib/fileAnalyzer';
 import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGenerator';
 import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
 import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
@@ -725,8 +731,19 @@ HOW TO USE IN DISHA:
       const metrics = await FileAnalyzer.analyzeFile(file);
       setExtractedMetrics(metrics);
 
-      // VALIDATE file contains required metrics
-      const validation = validateFileMetrics(metrics);
+      // VALIDATE file contains required metrics for SELECTED CHALLENGES
+      let validation: ValidationResult | ChallengeValidationResult;
+
+      if (selectedChallenges.length > 0) {
+        // Validate against selected challenges
+        validation = validateFileForChallenges(metrics, selectedChallenges);
+        console.log('📋 Validating against challenges:', selectedChallenges, validation);
+      } else {
+        // Fall back to basic validation if no challenges selected
+        validation = validateFileMetrics(metrics);
+        console.log('📋 Basic validation (no challenges selected):', validation);
+      }
+
       setFileValidation(validation);
 
       if (!validation.isValid) {
