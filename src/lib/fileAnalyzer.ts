@@ -472,7 +472,7 @@ export class FileAnalyzer {
 
   /**
    * Generic analysis for unknown file types
-   * Enhanced to extract DISHA-required metrics
+   * Enhanced to extract DISHA-required metrics from any format
    */
   private static genericAnalysis(content: string, fileName: string): ExtractedMetrics {
     const rows = this.parseCSV(content);
@@ -480,20 +480,62 @@ export class FileAnalyzer {
       fileType: 'Operational Data'
     };
 
-    // Enhanced: Try to extract metrics from column headers
-    if (rows.length > 0) {
-      const headers = rows[0].map(h => h.toLowerCase().trim());
-      const dataRow = rows[1] || []; // Get first data row
+    if (rows.length === 0) {
+      return {
+        fileType: 'Operational Data',
+        metricsFound: metrics,
+        insights: ['No data found in file'],
+        affectedDomains: [],
+        confidence: 'LOW'
+      };
+    }
+
+    const headers = rows[0].map(h => h.toLowerCase().trim());
+
+    // Check if this is a "MetricName/Value" format table
+    const metricNameIndex = headers.findIndex(h => h.includes('metric'));
+    const valueIndex = headers.findIndex(h => h === 'value');
+
+    if (metricNameIndex >= 0 && valueIndex >= 0) {
+      // This is a MetricName/Value table format
+      console.log('🔍 Detected MetricName/Value table format');
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row[metricNameIndex] && row[valueIndex]) {
+          const metricName = row[metricNameIndex].toLowerCase().trim();
+          const value = parseFloat(row[valueIndex]);
+
+          if (!isNaN(value)) {
+            // Map common metric name variations to standard field names
+            if (metricName.includes('students') && metricName.includes('classroom')) {
+              metrics['students_per_classroom'] = value;
+            } else if (metricName.includes('parent') && (metricName.includes('sla') || metricName.includes('response'))) {
+              metrics['parent_query_response_sla_hours'] = value;
+            } else if (metricName.includes('training') || metricName.includes('annual')) {
+              metrics['annual_training_hours'] = value;
+            } else if (metricName.includes('planning') || metricName.includes('weekly')) {
+              metrics['weekly_planning_hours'] = value;
+            } else {
+              // Store any other numeric metrics
+              metrics[metricName.replace(/\s+/g, '_')] = value;
+            }
+          }
+        }
+      }
+    } else {
+      // Try to extract metrics from column headers
+      const dataRow = rows[1] || [];
 
       // Map of possible column header variations for DISHA metrics
       const metricMappings: Record<string, string[]> = {
-        'students_per_classroom': ['students_per_classroom', 'student teacher ratio', 'str', 'students per classroom'],
-        'parent_query_response_sla_hours': ['parent_query_response_sla_hours', 'parent response sla', 'parent sla', 'response hours', 'sla hours'],
-        'annual_training_hours': ['annual_training_hours', 'training hours', 'cpd hours', 'annual training', 'hours per year'],
-        'weekly_planning_hours': ['weekly_planning_hours', 'planning hours', 'weekly planning', 'lesson planning hours']
+        'students_per_classroom': ['students_per_classroom', 'student teacher ratio', 'str', 'students per classroom', 'class size'],
+        'parent_query_response_sla_hours': ['parent_query_response_sla_hours', 'parent response sla', 'parent sla', 'response hours', 'sla hours', 'parent response'],
+        'annual_training_hours': ['annual_training_hours', 'training hours', 'cpd hours', 'annual training', 'hours per year', 'training'],
+        'weekly_planning_hours': ['weekly_planning_hours', 'planning hours', 'weekly planning', 'lesson planning hours', 'planning']
       };
 
-      // Try to extract each metric
+      // Try to extract each metric from column headers
       Object.entries(metricMappings).forEach(([metricKey, variations]) => {
         const headerIndex = headers.findIndex(h =>
           variations.some(variation => h.includes(variation))
@@ -506,19 +548,21 @@ export class FileAnalyzer {
           }
         }
       });
-
-      // Add other useful metrics
-      metrics['rowCount'] = rows.length - 1;
-      metrics['columnCount'] = rows[0]?.length || 0;
     }
+
+    // Add other useful metrics
+    metrics['rowCount'] = rows.length - 1;
+    metrics['columnCount'] = rows[0]?.length || 0;
 
     // Determine confidence based on metrics found
     const metricsCount = Object.keys(metrics).filter(k =>
-      k.includes('students_per_classroom') ||
-      k.includes('parent_query_response') ||
-      k.includes('annual_training') ||
-      k.includes('weekly_planning')
+      k === 'students_per_classroom' ||
+      k === 'parent_query_response_sla_hours' ||
+      k === 'annual_training_hours' ||
+      k === 'weekly_planning_hours'
     ).length;
+
+    console.log(`📊 Generic analysis found ${metricsCount} DISHA metrics:`, metrics);
 
     let confidence: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
     if (metricsCount >= 4) confidence = 'HIGH';
@@ -529,7 +573,7 @@ export class FileAnalyzer {
       metricsFound: metrics,
       insights: [
         metricsCount > 0 ? `✅ Extracted ${metricsCount} DISHA metrics from uploaded file` : 'Uploaded data file detected',
-        metricsCount < 4 ? `Note: Some expected metrics may not be in standard format` : 'All DISHA metrics found!'
+        metricsCount === 4 ? '✨ All required metrics found!' : metricsCount > 0 ? `Note: ${4 - metricsCount} metrics still needed` : 'Scanning for metrics...'
       ],
       affectedDomains: metricsCount > 0 ? ['Operations', 'Staff', 'Infrastructure'] : [],
       confidence
