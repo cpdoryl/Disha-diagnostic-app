@@ -745,11 +745,20 @@ HOW TO USE IN DISHA:
     setValidationError(null);
     setIsProcessing(true);
 
-    // Calculate DISHA scores
-    const answersArray = required.map(q => ({
-      questionId: q.id,
-      weight: parseInt(answers[q.id] || '5', 10)
-    }));
+    // Calculate DISHA scores - extract weights from selected options
+    const answersArray = required.map(q => {
+      const selectedOptionValue = answers[q.id];
+      if (!selectedOptionValue) {
+        return { questionId: q.id, weight: 5 }; // default middle weight
+      }
+
+      // Find the selected option and extract its weight
+      const selectedOption = q.options?.find(opt => opt.value === selectedOptionValue);
+      const weight = selectedOption?.weight || 5;
+
+      return { questionId: q.id, weight };
+    });
+
     const maxPossible = required.length * 10;
     const score = DISHAScoreCalculator.calculateCompleteScore(
       answersArray,

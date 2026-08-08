@@ -196,40 +196,43 @@ export class DISHAScoreCalculator {
   }
 
   /**
-   * Get interpretation of S_sub
+   * Get interpretation of S_sub with strategic language
    */
   static getSubjectiveInterpretation(s_sub: number): string {
-    if (s_sub >= 80) return 'Leadership perceives excellent health';
-    if (s_sub >= 60) return 'Leadership perceives good health with minor concerns';
-    if (s_sub >= 40) return 'Leadership acknowledges moderate concerns';
-    if (s_sub >= 20) return 'Leadership recognizes significant challenges';
-    return 'Leadership acknowledges critical problems';
+    if (isNaN(s_sub)) return 'Assessment pending';
+    if (s_sub >= 80) return 'Leadership perceives strong institutional health (minor concerns only)';
+    if (s_sub >= 60) return 'Leadership perceives good health with acknowledgment of some operational gaps';
+    if (s_sub >= 40) return 'Leadership recognizes moderate challenges across multiple areas';
+    if (s_sub >= 20) return 'Leadership acknowledges significant challenges requiring attention';
+    return 'Leadership acknowledges critical systemic problems demanding urgent action';
   }
 
   /**
-   * Get interpretation of M_obj
+   * Get interpretation of M_obj with strategic language
    */
   static getObjectiveInterpretation(m_obj: number): string {
+    if (isNaN(m_obj)) return 'Metrics assessment pending';
     if (m_obj >= 1.0)
-      return 'Operations exceed standards across all metrics';
+      return 'Excellent: School exceeds standards in all operational metrics';
     if (m_obj >= 0.8)
-      return 'Operations meet most standards with minor gaps';
+      return 'Good: School meets most industry standards with minor gaps';
     if (m_obj >= 0.6)
-      return 'Operations have moderate gaps in key areas';
+      return 'Fair: School has moderate gaps in 1-2 operational areas';
     if (m_obj >= 0.4)
-      return 'Operations have significant issues in multiple areas';
-    return 'Operations are critically below standards';
+      return 'Concerning: School has significant issues in multiple operational areas';
+    return 'Critical: School operations are severely below industry standards across multiple areas';
   }
 
   /**
-   * Get interpretation of Health Index
+   * Get interpretation of Health Index with strategic recommendations
    */
   static getHealthIndexInterpretation(h: number): string {
-    if (h >= 70) return 'Excellent institutional health - sustainable excellence';
+    if (isNaN(h)) return 'Health assessment pending';
+    if (h >= 70) return '✓ EXCELLENT: Sustainable institutional excellence - focus on innovation & differentiation';
     if (h >= 50)
-      return 'Fair health - some concerns but manageable with targeted action';
-    if (h >= 30) return 'Poor health - requires significant intervention';
-    return 'Critical health - emergency response needed';
+      return '⚠ FAIR: Manageable with targeted action - prioritize operational metric improvements';
+    if (h >= 30) return '⚠ POOR: Requires significant intervention - address top 3 operational gaps immediately';
+    return '❌ CRITICAL: Emergency response required - stabilize operations before growth initiatives';
   }
 
   /**

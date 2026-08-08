@@ -75,29 +75,29 @@ export const DISHAScoreDashboard: React.FC<DISHAScoreDashboardProps> = ({ score 
         {/* Layer 1: S_sub */}
         <div className="bg-white/10 border border-white/20 rounded-xl p-5 backdrop-blur">
           <div className="text-xs font-bold text-blue-300 uppercase tracking-wider mb-2">Layer 1: Leadership Perception</div>
-          <div className="text-4xl font-black text-white mb-2">{score.s_sub}</div>
-          <div className="text-xs text-slate-200 mb-3">{score.s_sub_interpretation}</div>
+          <div className="text-4xl font-black text-white mb-2">{isNaN(score.s_sub) ? '--' : score.s_sub.toFixed(1)}</div>
+          <div className="text-xs text-slate-200 mb-3 font-semibold">{score.s_sub_interpretation}</div>
           <div className="text-xs text-slate-400 leading-relaxed">
-            Measures what your leadership team perceives about institutional health based on screening question responses
+            What your leadership team perceives about institutional health (scale: 0-100)
           </div>
         </div>
 
         {/* Layer 2: M_obj */}
         <div className="bg-white/10 border border-white/20 rounded-xl p-5 backdrop-blur">
           <div className="text-xs font-bold text-purple-300 uppercase tracking-wider mb-2">Layer 2: Operational Reality</div>
-          <div className="text-4xl font-black text-white mb-2">{score.m_obj}</div>
-          <div className="text-xs text-slate-200 mb-3">{score.m_obj_interpretation}</div>
+          <div className="text-4xl font-black text-white mb-2">{isNaN(score.m_obj) ? '--' : score.m_obj.toFixed(2)}</div>
+          <div className="text-xs text-slate-200 mb-3 font-semibold">{score.m_obj_interpretation}</div>
           <div className="text-xs text-slate-400 leading-relaxed">
-            Measures what actual metrics show about how well your school is operating
+            What actual metrics show about operations (scale: 0.2-1.05)
           </div>
         </div>
 
         {/* Layer 3: Health Index */}
         <div className="bg-white/10 border border-white/20 rounded-xl p-5 backdrop-blur">
           <div className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-2">Layer 3: Health Index</div>
-          <div className="text-4xl font-black text-white mb-2">{score.healthIndex}</div>
-          <div className="text-xs text-slate-200 mb-3">Reality-Adjusted Score</div>
-          <div className="text-xs text-slate-400 leading-relaxed">
+          <div className="text-4xl font-black text-white mb-2">{isNaN(score.healthIndex) ? '--' : score.healthIndex.toFixed(1)}</div>
+          <div className="text-xs text-slate-200 mb-3 font-semibold">Reality-Adjusted Score</div>
+          <div className="text-xs text-slate-300 leading-relaxed">
             {score.healthIndex_interpretation}
           </div>
         </div>
@@ -115,60 +115,68 @@ export const DISHAScoreDashboard: React.FC<DISHAScoreDashboardProps> = ({ score 
           <div className="bg-white/5 p-4 rounded-lg">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-semibold text-slate-300">Student-Teacher Ratio</span>
-              <span className="text-2xl font-bold text-white">{score.m_str.toFixed(2)}x</span>
+              <span className="text-2xl font-bold text-white">{isNaN(score.m_str) ? '--' : score.m_str.toFixed(2)}x</span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-full transition-all ${score.m_str > 1.0 ? 'bg-emerald-400' : score.m_str >= 0.88 ? 'bg-amber-400' : 'bg-red-400'}`}
-                style={{ width: `${Math.min((score.m_str / 1.05) * 100, 100)}%` }}
-              />
+              {!isNaN(score.m_str) && (
+                <div
+                  className={`h-full transition-all ${score.m_str > 1.0 ? 'bg-emerald-400' : score.m_str >= 0.88 ? 'bg-amber-400' : 'bg-red-400'}`}
+                  style={{ width: `${Math.min((score.m_str / 1.05) * 100, 100)}%` }}
+                />
+              )}
             </div>
-            <p className="text-xs text-slate-400 mt-2">Impacts teaching effectiveness and student attention</p>
+            <p className="text-xs text-slate-400 mt-2">Ideal: ≤20 students/teacher | Good: 21-28 | Fair: 29-35 | Poor: >35</p>
           </div>
 
           {/* SLA */}
           <div className="bg-white/5 p-4 rounded-lg">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-semibold text-slate-300">Parent Response SLA</span>
-              <span className="text-2xl font-bold text-white">{score.m_sla.toFixed(2)}x</span>
+              <span className="text-2xl font-bold text-white">{isNaN(score.m_sla) ? '--' : score.m_sla.toFixed(2)}x</span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-full transition-all ${score.m_sla >= 0.95 ? 'bg-emerald-400' : score.m_sla >= 0.7 ? 'bg-amber-400' : 'bg-red-400'}`}
-                style={{ width: `${Math.min(score.m_sla * 100, 100)}%` }}
-              />
+              {!isNaN(score.m_sla) && (
+                <div
+                  className={`h-full transition-all ${score.m_sla >= 0.95 ? 'bg-emerald-400' : score.m_sla >= 0.7 ? 'bg-amber-400' : 'bg-red-400'}`}
+                  style={{ width: `${Math.min(score.m_sla * 100, 100)}%` }}
+                />
+              )}
             </div>
-            <p className="text-xs text-slate-400 mt-2">Affects parent satisfaction and trust</p>
+            <p className="text-xs text-slate-400 mt-2">Ideal: ≤12h (same day) | Good: 13-24h (next day) | Fair: 25-48h | Poor: >48h</p>
           </div>
 
           {/* Training */}
           <div className="bg-white/5 p-4 rounded-lg">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-semibold text-slate-300">Annual Teacher Training</span>
-              <span className="text-2xl font-bold text-white">{score.m_train.toFixed(2)}x</span>
+              <span className="text-2xl font-bold text-white">{isNaN(score.m_train) ? '--' : score.m_train.toFixed(2)}x</span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-full transition-all ${score.m_train >= 0.85 ? 'bg-emerald-400' : score.m_train >= 0.6 ? 'bg-amber-400' : 'bg-red-400'}`}
-                style={{ width: `${Math.min((score.m_train / 1.0) * 100, 100)}%` }}
-              />
+              {!isNaN(score.m_train) && (
+                <div
+                  className={`h-full transition-all ${score.m_train >= 0.85 ? 'bg-emerald-400' : score.m_train >= 0.6 ? 'bg-amber-400' : 'bg-red-400'}`}
+                  style={{ width: `${Math.min((score.m_train / 1.0) * 100, 100)}%` }}
+                />
+              )}
             </div>
-            <p className="text-xs text-slate-400 mt-2">Drives teacher capability and classroom quality</p>
+            <p className="text-xs text-slate-400 mt-2">Ideal: ≥25 hours/year | Acceptable: 15-24h/year | Poor: &lt;15h/year</p>
           </div>
 
           {/* Planning */}
           <div className="bg-white/5 p-4 rounded-lg">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-semibold text-slate-300">Weekly Planning Time</span>
-              <span className="text-2xl font-bold text-white">{score.m_plan.toFixed(2)}x</span>
+              <span className="text-2xl font-bold text-white">{isNaN(score.m_plan) ? '--' : score.m_plan.toFixed(2)}x</span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-full transition-all ${score.m_plan >= 0.88 ? 'bg-emerald-400' : score.m_plan >= 0.75 ? 'bg-amber-400' : 'bg-red-400'}`}
-                style={{ width: `${Math.min((score.m_plan / 1.0) * 100, 100)}%` }}
-              />
+              {!isNaN(score.m_plan) && (
+                <div
+                  className={`h-full transition-all ${score.m_plan >= 0.88 ? 'bg-emerald-400' : score.m_plan >= 0.75 ? 'bg-amber-400' : 'bg-red-400'}`}
+                  style={{ width: `${Math.min((score.m_plan / 1.0) * 100, 100)}%` }}
+                />
+              )}
             </div>
-            <p className="text-xs text-slate-400 mt-2">Enables proper lesson preparation and quality</p>
+            <p className="text-xs text-slate-400 mt-2">Ideal: ≥5 hours/week | Acceptable: 3-5h/week | Poor: &lt;3h/week</p>
           </div>
         </div>
       </div>
