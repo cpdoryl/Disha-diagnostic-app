@@ -499,27 +499,49 @@ export class FileAnalyzer {
     if (metricNameIndex >= 0 && valueIndex >= 0) {
       // This is a MetricName/Value table format
       console.log('🔍 Detected MetricName/Value table format');
+      console.log('Headers:', headers);
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         if (row[metricNameIndex] && row[valueIndex]) {
           const metricName = row[metricNameIndex].toLowerCase().trim();
-          const value = parseFloat(row[valueIndex]);
+          const valueStr = row[valueIndex].trim();
+          const value = parseFloat(valueStr);
+
+          console.log(`  Row ${i}: "${metricName}" = ${valueStr} (parsed: ${value})`);
 
           if (!isNaN(value)) {
-            // Map common metric name variations to standard field names
-            if (metricName.includes('students') && metricName.includes('classroom')) {
+            // Direct field name match (highest priority)
+            if (metricName === 'students_per_classroom') {
               metrics['students_per_classroom'] = value;
-            } else if (metricName.includes('parent') && (metricName.includes('sla') || metricName.includes('response'))) {
+              console.log('    ✅ Matched: students_per_classroom');
+            } else if (metricName === 'parent_query_response_sla_hours') {
               metrics['parent_query_response_sla_hours'] = value;
-            } else if (metricName.includes('training') || metricName.includes('annual')) {
+              console.log('    ✅ Matched: parent_query_response_sla_hours');
+            } else if (metricName === 'annual_training_hours') {
               metrics['annual_training_hours'] = value;
+              console.log('    ✅ Matched: annual_training_hours');
+            } else if (metricName === 'weekly_planning_hours') {
+              metrics['weekly_planning_hours'] = value;
+              console.log('    ✅ Matched: weekly_planning_hours');
+            } else if (metricName.includes('students') && metricName.includes('classroom')) {
+              metrics['students_per_classroom'] = value;
+              console.log('    ✅ Pattern Matched: students_per_classroom');
+            } else if (metricName.includes('parent') && (metricName.includes('sla') || metricName.includes('response') || metricName.includes('query'))) {
+              metrics['parent_query_response_sla_hours'] = value;
+              console.log('    ✅ Pattern Matched: parent_query_response_sla_hours');
+            } else if (metricName.includes('training') || metricName.includes('cpd') || metricName.includes('annual')) {
+              metrics['annual_training_hours'] = value;
+              console.log('    ✅ Pattern Matched: annual_training_hours');
             } else if (metricName.includes('planning') || metricName.includes('weekly')) {
               metrics['weekly_planning_hours'] = value;
+              console.log('    ✅ Pattern Matched: weekly_planning_hours');
             } else {
               // Store any other numeric metrics
               metrics[metricName.replace(/\s+/g, '_')] = value;
             }
+          } else {
+            console.log(`    ❌ Could not parse value: ${valueStr}`);
           }
         }
       }

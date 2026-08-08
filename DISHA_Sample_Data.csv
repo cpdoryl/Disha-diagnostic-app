@@ -1,0 +1,9 @@
+Metric,Value,Unit,Benchmark,Status
+students_per_classroom,28,students per classroom,25,Fair
+parent_query_response_sla_hours,24,hours,12,Good
+annual_training_hours,20,hours per teacher per year,25,Acceptable
+weekly_planning_hours,4,hours per week,5,Acceptable
+attendance_rate_pct,91,percentage,95,Good
+fee_collection_rate_pct,88,percentage,90,Good
+board_exam_pass_rate,82,percentage,80,Good
+certified_teachers_pct,85,percentage,85,Excellent
