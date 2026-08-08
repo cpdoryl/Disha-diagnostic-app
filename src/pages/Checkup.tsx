@@ -703,6 +703,15 @@ HOW TO USE IN DISHA:
       const metrics = await FileAnalyzer.analyzeFile(file);
       setExtractedMetrics(metrics);
 
+      // Map extracted metrics to DISHA operational metrics
+      const updatedOperationalMetrics: OperationalMetrics = {
+        studentTeacherRatio: metrics.metricsFound['students_per_classroom'] as number || 28,
+        parentResponseSLA: metrics.metricsFound['parent_query_response_sla_hours'] as number || 24,
+        annualTrainingHours: metrics.metricsFound['annual_training_hours'] as number || 20,
+        weeklyPlanningHours: metrics.metricsFound['weekly_planning_hours'] as number || 4
+      };
+      setOperationalMetrics(updatedOperationalMetrics);
+
       // Generate REAL insights from extracted metrics
       const insights = generateRealInsights(metrics);
       setRealInsights(insights);
