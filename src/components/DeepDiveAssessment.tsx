@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Building, Users, Shield, GraduationCap, Trophy, Globe, HeartPulse, Sliders, 
-  Upload, Search, FileText, CheckCircle2, AlertTriangle, RefreshCw, Star, 
+import {
+  Building, Users, Shield, GraduationCap, Trophy, Globe, HeartPulse, Sliders,
+  Upload, Search, FileText, CheckCircle2, AlertTriangle, RefreshCw, Star,
   Check, ArrowRight, Activity, Cpu, Sparkles, BookOpen, Compass, ChevronRight, Play, Info,
   Download, Send, Lock, Scale, FileSpreadsheet, Eye, HelpCircle, Mail, MessageCircle, Link2, Volume2, Languages, Zap, AlertCircle,
   User, Phone, Building2, MapPin, Award, Layers
@@ -11,6 +11,12 @@ import { db } from '../lib/firebase';
 import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { SchoolDataHub } from './SchoolDataHub';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import {
+  createAssessmentVersion,
+  addSurveyResponse,
+  completeAssessment,
+  AssessmentVersion
+} from '../lib/assessmentVersioning';
 
 // 14 dimensions details
 export interface EWISRDimension {
@@ -1488,25 +1494,10 @@ export const DeepDiveAssessment = ({
   const [inputPlanningHours, setInputPlanningHours] = useState<number>(4);
   const [inputProjectUnits, setInputProjectUnits] = useState<number>(1);
 
-  // Questionnaire responses state
-  const [answers, setAnswers] = useState<Record<string, number>>(initialAnswers || {
-    'ew_1_leader': 3, 'ew_1_teacher': 3, 'ew_1_parent': 3, 'ew_1_student': 3,
-    'ew_2_leader': 4, 'ew_2_teacher': 4, 'ew_2_parent': 3, 'ew_2_student': 4,
-    'ew_3_leader': 3, 'ew_3_teacher': 3, 'ew_3_parent': 2, 'ew_3_student': 3,
-    'ew_4_leader': 3, 'ew_4_teacher': 3, 'ew_4_parent': 3, 'ew_4_student': 3,
-    'ew_5_leader': 2, 'ew_5_teacher': 2, 'ew_5_parent': 3, 'ew_5_student': 3,
-    'ew_6_leader': 4, 'ew_6_teacher': 4, 'ew_6_parent': 4, 'ew_6_student': 4,
-    'ew_7_leader': 4, 'ew_7_teacher': 4, 'ew_7_parent': 4, 'ew_7_student': 5,
-    'ew_8_leader': 3, 'ew_8_teacher': 3, 'ew_8_parent': 3, 'ew_8_student': 3,
-    'ew_9_leader': 4, 'ew_9_teacher': 4, 'ew_9_parent': 3, 'ew_9_student': 4,
-    'ew_10_leader': 3, 'ew_10_teacher': 3, 'ew_10_parent': 3, 'ew_10_student': 3,
-    'ew_11_leader': 3, 'ew_11_teacher': 3, 'ew_11_parent': 3, 'ew_11_student': 3,
-    'ew_12_leader': 2, 'ew_12_teacher': 2, 'ew_12_parent': 2, 'ew_12_student': 3,
-    'ew_13_leader': 4, 'ew_13_teacher': 4, 'ew_13_parent': 4, 'ew_13_student': 4,
-    'ew_14_leader': 3, 'ew_14_teacher': 3, 'ew_14_parent': 3, 'ew_14_student': 4,
-  });
+  // Questionnaire responses state - start EMPTY for fresh surveys, use initialAnswers only for demo/compare mode
+  const [answers, setAnswers] = useState<Record<string, number>>(initialAnswers || {});
 
-  // Track simulated stakeholders
+  // Track simulated stakeholders - start fresh (all false for new surveys)
   const [answeredStakeholders, setAnsweredStakeholders] = useState<{
     leader: boolean;
     teacher: boolean;
@@ -1515,12 +1506,12 @@ export const DeepDiveAssessment = ({
     admin: boolean;
     other: boolean;
   }>({
-    leader: !!initialAnswers,
-    teacher: !!initialAnswers,
-    parent: !!initialAnswers,
-    student: !!initialAnswers,
-    admin: !!initialAnswers,
-    other: !!initialAnswers,
+    leader: false,
+    teacher: false,
+    parent: false,
+    student: false,
+    admin: false,
+    other: false,
   });
 
   const markStakeholderAnswered = (st: 'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other') => {
@@ -1563,17 +1554,36 @@ export const DeepDiveAssessment = ({
   });
   const [manualDpdpConsent, setManualDpdpConsent] = useState<boolean>(true);
 
+  // Assessment versioning for fresh surveys
+  const [currentAssessmentVersion, setCurrentAssessmentVersion] = useState<AssessmentVersion | null>(null);
+  const [versionNumber, setVersionNumber] = useState<number>(1);
+
   const areAllStakeholdersAnswered = answeredStakeholders.leader && answeredStakeholders.teacher && answeredStakeholders.parent && answeredStakeholders.student && answeredStakeholders.admin && answeredStakeholders.other;
   const areCheckpointsVerified = confirmedCheckpoints.boardAffiliation && confirmedCheckpoints.teacherAttendance && confirmedCheckpoints.academicResults && confirmedCheckpoints.infrastructureSafety;
 
+  // Create new assessment version on component mount
   useEffect(() => {
     if (!activeSchool?.id) return;
-    const unsub = onSnapshot(collection(db, `surveys_${activeSchool.id}`), (snap) => {
-      snap.docChanges().forEach(change => {
-        if (change.type === 'added' || change.type === 'modified') {
-           const st = change.doc.id as 'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other';
-           const data = change.doc.data();
-           if (data.answers) {
+
+    // Create fresh assessment version
+    const newVersion = createAssessmentVersion(
+      activeSchool.id,
+      activeSchool.name || 'Unknown School',
+      versionNumber,
+      '14d-multilateral'
+    );
+    setCurrentAssessmentVersion(newVersion);
+
+    // Load responses ONLY for current version from database
+    // (In future, this will be filtered by versionId from Firestore)
+    const unsub = onSnapshot(
+      collection(db, `surveys_${activeSchool.id}_v${newVersion.id}`),
+      (snap) => {
+        snap.docChanges().forEach(change => {
+          if (change.type === 'added' || change.type === 'modified') {
+            const st = change.doc.id as 'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other';
+            const data = change.doc.data();
+            if (data.answers) {
               setAnswers(prev => {
                 const newAns = { ...prev };
                 Object.keys(data.answers).forEach(k => {
@@ -1582,10 +1592,12 @@ export const DeepDiveAssessment = ({
                 return newAns;
               });
               setAnsweredStakeholders(prev => ({ ...prev, [st]: true }));
-           }
-        }
-      });
-    });
+            }
+          }
+        });
+      }
+    );
+
     return () => unsub();
   }, [activeSchool?.id]);
 
@@ -2553,7 +2565,14 @@ export const DeepDiveAssessment = ({
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <button
                         disabled={!(areAllStakeholdersAnswered && areCheckpointsVerified)}
-                        onClick={() => onCompleteStep3?.(dimensions, answers)}
+                        onClick={() => {
+                          // Mark current assessment version as complete
+                          if (currentAssessmentVersion) {
+                            const completedVersion = completeAssessment(currentAssessmentVersion);
+                            setCurrentAssessmentVersion(completedVersion);
+                          }
+                          onCompleteStep3?.(dimensions, answers);
+                        }}
                         className={`w-full sm:w-auto text-xs font-black px-6 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                           (areAllStakeholdersAnswered && areCheckpointsVerified)
                             ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md cursor-pointer animate-pulse"
@@ -2626,6 +2645,14 @@ export const DeepDiveAssessment = ({
                               setActiveSurveyStakeholder(p.id as any);
                               // Clear previously submitted state to re-answer
                               setAnsweredStakeholders(prev => ({ ...prev, [p.id]: false }));
+                              // Also clear answers for this stakeholder so form shows fresh
+                              const stakeholderQuestions = SURVEY_QUESTIONS[p.id as any]?.questions || [];
+                              const answerKeysToDelete = stakeholderQuestions.map((q: any) => `${q.id}_${p.id}`);
+                              setAnswers(prev => {
+                                const newAnswers = { ...prev };
+                                answerKeysToDelete.forEach(key => delete newAnswers[key]);
+                                return newAnswers;
+                              });
                             }}
                             className="w-full bg-white hover:bg-slate-50 border border-gray-200 text-gray-700 py-1 rounded font-bold text-[10px] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                           >
