@@ -760,12 +760,24 @@ HOW TO USE IN DISHA:
 
   // DIAGNOSTIC ENGING CALCULATION
   const runFirstOpinionDiagnostic = () => {
+    // Check if file has been uploaded
+    if (!uploadedFile) {
+      setValidationError(
+        '⚠️ REQUIRED: Upload supporting data document first. Upload operational data (attendance, fee collection, staff records, etc.) to enable data-driven First Opinion analysis. Without actual metrics, scoring cannot reflect operational reality.'
+      );
+      const elem = document.getElementById('file-upload-container');
+      if (elem) {
+        elem.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
+
     const required = getRequiredQuestions();
     const missing = required.filter(q => !answers[q.id] || answers[q.id].trim() === '');
 
     if (missing.length > 0) {
       setValidationError(
-        `Action Required: You must answer all ${missing.length} remaining compulsory screening question${missing.length > 1 ? 's' : ''} before generating your First Opinion. Uploading data documents alone is not sufficient.`
+        `Action Required: You must answer all ${missing.length} remaining compulsory screening question${missing.length > 1 ? 's' : ''} before generating your First Opinion.`
       );
       const elem = document.getElementById('screening-questions-container');
       if (elem) {
@@ -1633,14 +1645,22 @@ HOW TO USE IN DISHA:
               </div>
 
               {/* Supporting Document Upload */}
-              <div className="pt-4 border-t border-gray-100 space-y-4">
+              <div id="file-upload-container" className={`pt-4 border-t-2 space-y-4 ${!uploadedFile ? 'border-rose-300 bg-rose-50/30 p-4 rounded-lg' : 'border-gray-100'}`}>
                 <div>
                   <h4 className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
-                    <Upload className="w-4 h-4 text-indigo-500" />
-                    Share Supporting Information (Optional Data Document)
+                    <Upload className={`w-4 h-4 ${!uploadedFile ? 'text-rose-600 animate-pulse' : 'text-indigo-500'}`} />
+                    {!uploadedFile ? (
+                      <span>📊 REQUIRED: Upload Operational Data Document</span>
+                    ) : (
+                      <span>Share Supporting Information (Data Document)</span>
+                    )}
                   </h4>
-                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                    Drop a spreadsheet or register file (e.g. fee payment logs, faculty rosters, report card exports). <strong className="text-slate-800">Note:</strong> Uploading data documents boosts diagnostic confidence but does not replace answering the compulsory screening questions above.
+                  <p className={`text-xs mt-1 leading-relaxed ${!uploadedFile ? 'text-rose-700 font-semibold' : 'text-gray-500'}`}>
+                    {!uploadedFile ? (
+                      <>Upload operational data (attendance, fee collection, staff records, academic results, etc.) to enable data-driven First Opinion analysis. Without actual metrics, the system cannot compare subjective assessment against operational reality.</>
+                    ) : (
+                      <>Data file uploaded successfully. Ready to analyze and generate First Opinion.</>
+                    )}
                   </p>
                 </div>
 
@@ -1729,13 +1749,22 @@ HOW TO USE IN DISHA:
 
               <button
                 onClick={runFirstOpinionDiagnostic}
-                disabled={isProcessing}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 shadow-[0_4px_14px_rgba(37,99,235,0.25)] text-sm"
+                disabled={isProcessing || !uploadedFile}
+                className={`font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm ${
+                  !uploadedFile
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed opacity-60'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]'
+                }`}
+                title={!uploadedFile ? '⚠️ Please upload a data file first' : ''}
               >
                 {isProcessing ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Running Intake Scan...
+                  </>
+                ) : !uploadedFile ? (
+                  <>
+                    📁 Upload Data File First
                   </>
                 ) : (
                   <>
