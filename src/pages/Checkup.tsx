@@ -6,6 +6,7 @@ import { DISHAScoreDashboard } from '../components/DISHAScoreDashboard';
 import FileAnalyzer, { ExtractedMetrics } from '../lib/fileAnalyzer';
 import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGenerator';
 import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
+import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
 import {
   HeartPulse,
   HelpCircle,
@@ -383,6 +384,7 @@ export const Checkup = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [extractedMetrics, setExtractedMetrics] = useState<ExtractedMetrics | null>(null);
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
+  const [realInsights, setRealInsights] = useState<DataAnalysisResult | null>(null);
 
   // DISHA Score State
   const [dishaScore, setDISHAScore] = useState<DISHAScore | null>(null);
@@ -700,6 +702,10 @@ HOW TO USE IN DISHA:
     try {
       const metrics = await FileAnalyzer.analyzeFile(file);
       setExtractedMetrics(metrics);
+
+      // Generate REAL insights from extracted metrics
+      const insights = generateRealInsights(metrics);
+      setRealInsights(insights);
 
       // Generate dynamic diagnosis if we have both metrics and answers
       const required = getRequiredQuestions();
@@ -1751,31 +1757,41 @@ HOW TO USE IN DISHA:
                 })}
               </div>
 
-              {/* Key Findings */}
-              {extractedMetrics.insights.length > 0 && (
+              {/* Overall Assessment */}
+              {realInsights && (
+                <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 rounded-lg">
+                  <p className="text-sm font-bold text-gray-900 flex items-start gap-2">
+                    <span className="text-lg">📌</span>
+                    <span>{realInsights.overallAssessment}</span>
+                  </p>
+                </div>
+              )}
+
+              {/* Real Key Findings */}
+              {realInsights && realInsights.keyFindings.length > 0 && (
                 <div className="bg-white p-6 rounded-lg border border-blue-200">
                   <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <span className="text-lg">🔍</span> Key Findings
+                    <span className="text-lg">🔍</span> Key Findings from Your Data
                   </h4>
-                  <ul className="space-y-2">
-                    {extractedMetrics.insights.map((insight, idx) => (
-                      <li key={idx} className="text-sm text-gray-700 flex gap-2">
-                        <span className="text-blue-600 font-bold">•</span>
-                        <span>{insight}</span>
+                  <ul className="space-y-3">
+                    {realInsights.keyFindings.map((finding, idx) => (
+                      <li key={idx} className="text-sm text-gray-700 flex gap-2 p-2 bg-blue-50 rounded border-l-4 border-blue-500">
+                        <span className="text-blue-600 font-bold">→</span>
+                        <span>{finding}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Recommended Actions */}
-              {diagnosisResult?.recommendedActions && diagnosisResult.recommendedActions.length > 0 && (
+              {/* Real Recommended Actions */}
+              {realInsights && realInsights.recommendations.length > 0 && (
                 <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-lg border border-indigo-200">
                   <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <span className="text-lg">💡</span> Prioritized Recommended Actions
                   </h4>
                   <ol className="space-y-3">
-                    {diagnosisResult.recommendedActions.map((action, idx) => (
+                    {realInsights.recommendations.map((action, idx) => (
                       <li key={idx} className="text-sm text-gray-700 flex gap-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">{idx + 1}</span>
                         <span>{action}</span>
@@ -1785,11 +1801,39 @@ HOW TO USE IN DISHA:
                 </div>
               )}
 
+              {/* Data Quality Metrics */}
+              {realInsights && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
+                    <p className="text-xs font-bold text-gray-600 uppercase">Metrics Extracted</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{realInsights.dataQuality.metricsFound}</p>
+                    <p className="text-xs text-gray-500 mt-1">of {realInsights.dataQuality.metricsExpected} expected</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
+                    <p className="text-xs font-bold text-gray-600 uppercase">Data Completeness</p>
+                    <p className="text-2xl font-bold text-blue-600 mt-1">{realInsights.dataQuality.completeness}%</p>
+                    <p className="text-xs text-gray-500 mt-1">coverage of expected fields</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
+                    <p className="text-xs font-bold text-gray-600 uppercase">Data Reliability</p>
+                    <p className={cn(
+                      "text-lg font-bold mt-1 uppercase",
+                      realInsights.dataQuality.reliability === 'high' ? 'text-emerald-600' :
+                      realInsights.dataQuality.reliability === 'medium' ? 'text-amber-600' :
+                      'text-red-600'
+                    )}>
+                      {realInsights.dataQuality.reliability}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">based on data quality</p>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg flex gap-3">
                 <span className="text-2xl">✓</span>
                 <div>
                   <p className="font-bold text-emerald-900 text-sm">Data Analysis Complete</p>
-                  <p className="text-xs text-emerald-800 mt-1">Your uploaded data has been analyzed and integrated into the diagnostic. Insights above are derived from your real school metrics, not generic templates.</p>
+                  <p className="text-xs text-emerald-800 mt-1">Your uploaded data has been analyzed and integrated into the diagnostic. All insights above are derived from your real school metrics, with specific metrics and gaps identified.</p>
                 </div>
               </div>
             </div>
