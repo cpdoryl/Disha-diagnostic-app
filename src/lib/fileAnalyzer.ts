@@ -491,4 +491,79 @@ export class FileAnalyzer {
   }
 }
 
+export interface ValidationResult {
+  isValid: boolean;
+  missingMetrics: string[];
+  foundMetrics: string[];
+  errorMessage: string;
+  requiredMetrics: Array<{
+    fieldName: string;
+    description: string;
+    example: string;
+  }>;
+}
+
+/**
+ * Validate if uploaded file contains required DISHA metrics
+ */
+export function validateFileMetrics(extractedMetrics: ExtractedMetrics): ValidationResult {
+  const requiredMetrics = [
+    {
+      fieldName: 'students_per_classroom',
+      description: 'Student-Teacher Ratio',
+      example: '28 (students per classroom)'
+    },
+    {
+      fieldName: 'parent_query_response_sla_hours',
+      description: 'Parent Response SLA',
+      example: '24 (hours to respond to parent queries)'
+    },
+    {
+      fieldName: 'annual_training_hours',
+      description: 'Annual Teacher Training Hours',
+      example: '20 (hours per teacher per year)'
+    },
+    {
+      fieldName: 'weekly_planning_hours',
+      description: 'Weekly Planning Time',
+      example: '4 (hours per week for lesson planning)'
+    }
+  ];
+
+  const metricsFound = extractedMetrics.metricsFound;
+  const missingMetrics: string[] = [];
+  const foundMetricsNames: string[] = [];
+
+  // Check for each required metric
+  requiredMetrics.forEach(required => {
+    if (metricsFound[required.fieldName] !== undefined && metricsFound[required.fieldName] !== null) {
+      foundMetricsNames.push(`✅ ${required.description}: ${metricsFound[required.fieldName]}`);
+    } else {
+      missingMetrics.push(required.fieldName);
+    }
+  });
+
+  const isValid = missingMetrics.length === 0;
+
+  let errorMessage = '';
+  if (!isValid) {
+    errorMessage = `❌ Missing ${missingMetrics.length} required data field(s). Your file must include:\n\n`;
+    missingMetrics.forEach(metric => {
+      const required = requiredMetrics.find(r => r.fieldName === metric);
+      if (required) {
+        errorMessage += `• ${required.description} - ${required.example}\n`;
+      }
+    });
+    errorMessage += `\nPlease upload a file containing these operational metrics.`;
+  }
+
+  return {
+    isValid,
+    missingMetrics,
+    foundMetrics: foundMetricsNames,
+    errorMessage,
+    requiredMetrics
+  };
+}
+
 export default FileAnalyzer;

@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { useAppStore } from '../store';
 import { DeepDiveAssessment } from '../components/DeepDiveAssessment';
 import { DISHAScoreDashboard } from '../components/DISHAScoreDashboard';
-import FileAnalyzer, { ExtractedMetrics } from '../lib/fileAnalyzer';
+import FileAnalyzer, { ExtractedMetrics, validateFileMetrics, ValidationResult } from '../lib/fileAnalyzer';
 import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGenerator';
 import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
 import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
@@ -395,6 +395,9 @@ export const Checkup = () => {
     weeklyPlanningHours: 4
   });
 
+  // File validation state
+  const [fileValidation, setFileValidation] = useState<ValidationResult | null>(null);
+
   // UI Loading/Transition states
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isDeepScanning, setIsDeepScanning] = useState<boolean>(false);
@@ -722,6 +725,18 @@ HOW TO USE IN DISHA:
       const metrics = await FileAnalyzer.analyzeFile(file);
       setExtractedMetrics(metrics);
 
+      // VALIDATE file contains required metrics
+      const validation = validateFileMetrics(metrics);
+      setFileValidation(validation);
+
+      if (!validation.isValid) {
+        console.warn('❌ File validation failed:', validation.errorMessage);
+        setValidationError(validation.errorMessage);
+        return;
+      }
+
+      console.log('✅ File validation passed:', validation.foundMetrics);
+
       // Map extracted metrics to DISHA operational metrics
       const updatedOperationalMetrics: OperationalMetrics = {
         studentTeacherRatio: metrics.metricsFound['students_per_classroom'] as number || 28,
@@ -748,6 +763,7 @@ HOW TO USE IN DISHA:
       }
     } catch (error) {
       console.error('Error analyzing file:', error);
+      setValidationError('Error analyzing file. Please check the file format and try again.');
     } finally {
       setIsAnalyzingFile(false);
     }
@@ -764,6 +780,18 @@ HOW TO USE IN DISHA:
     if (!uploadedFile) {
       setValidationError(
         '⚠️ REQUIRED: Upload supporting data document first. Upload operational data (attendance, fee collection, staff records, etc.) to enable data-driven First Opinion analysis. Without actual metrics, scoring cannot reflect operational reality.'
+      );
+      const elem = document.getElementById('file-upload-container');
+      if (elem) {
+        elem.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
+
+    // Check if file validation passed
+    if (fileValidation && !fileValidation.isValid) {
+      setValidationError(
+        `❌ DATA VALIDATION FAILED:\n${fileValidation.errorMessage}\n\nRequired Data Fields for DISHA First Opinion:\n${fileValidation.requiredMetrics.map(m => `• ${m.description} (${m.fieldName}): ${m.example}`).join('\n')}`
       );
       const elem = document.getElementById('file-upload-container');
       if (elem) {
@@ -1695,6 +1723,42 @@ HOW TO USE IN DISHA:
                         <p className="text-sm font-bold text-gray-900">{uploadedFileName}</p>
                         {isAnalyzingFile ? (
                           <p className="text-xs text-blue-600 font-bold">🔍 Analyzing data metrics...</p>
+                        ) : fileValidation ? (
+                          <>
+                            {fileValidation.isValid ? (
+                              <>
+                                <p className="text-xs text-emerald-600 font-bold">✅ Data VALID! All required metrics found.</p>
+                                <div className="mt-2 space-y-1">
+                                  {fileValidation.foundMetrics.map((metric, idx) => (
+                                    <p key={idx} className="text-xs text-emerald-700 font-medium">{metric}</p>
+                                  ))}
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-xs text-rose-600 font-bold">❌ Data INCOMPLETE! Missing required fields.</p>
+                                <div className="mt-2 space-y-1 bg-rose-50 p-2 rounded border border-rose-200">
+                                  {fileValidation.foundMetrics.length > 0 && (
+                                    <>
+                                      <p className="text-xs font-semibold text-rose-900">Found:</p>
+                                      {fileValidation.foundMetrics.map((metric, idx) => (
+                                        <p key={idx} className="text-xs text-emerald-700 ml-2">{metric}</p>
+                                      ))}
+                                    </>
+                                  )}
+                                  <p className="text-xs font-semibold text-rose-900 mt-2">Missing:</p>
+                                  {fileValidation.requiredMetrics
+                                    .filter(r => fileValidation.missingMetrics.includes(r.fieldName))
+                                    .map((missing, idx) => (
+                                      <p key={idx} className="text-xs text-rose-700 ml-2">
+                                        • {missing.description}<br/>
+                                        <span className="text-gray-600 italic">{missing.example}</span>
+                                      </p>
+                                    ))}
+                                </div>
+                              </>
+                            )}
+                          </>
                         ) : extractedMetrics ? (
                           <p className="text-xs text-emerald-600 font-bold">✓ Data analyzed! {extractedMetrics.insights.length} insights extracted.</p>
                         ) : (
