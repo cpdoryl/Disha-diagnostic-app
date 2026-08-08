@@ -465,19 +465,96 @@ export class DiagnosisGenerator {
   }
 
   /**
-   * Fallback: Generate diagnosis from Q&A only
+   * Fallback: Generate diagnosis from Q&A only (screening answers)
    */
   private static generateQABasedDiagnosis(
     domain: string,
     answers: Record<string, string>
   ): DiagnosisResult {
-    // Use existing logic from Checkup.tsx
+    // Generate personalized diagnosis based on domain and specific answers
+    let narrative = '';
+    let doctorMetaphor = '';
+    const keyFindings: string[] = [];
+    const actions: string[] = [];
+
+    // Analyze specific domain
+    if (domain === 'Admissions & Enrollment') {
+      if (answers['conv_rate'] === 'critical') {
+        narrative = `Your intake responses indicate critical admissions friction. Parent inquiry conversion rates are severely impacted, with less than 12% converting to actual admissions. This suggests significant process bottlenecks in the follow-up workflow, fee discussion clarity, or payment friction.`;
+        keyFindings.push('Critical conversion rate (<12%)');
+        keyFindings.push('Process breakdown between inquiry and enrollment');
+        actions.push('Audit inquiry-to-admission workflow for bottlenecks');
+        actions.push('Implement automated follow-up systems');
+        actions.push('Review fee transparency in inquiry stage');
+      } else if (answers['marketing_spend'] === 'none') {
+        narrative = `Your school relies 100% on word-of-mouth with zero structured digital presence. This limits inquiry volume to organic referrals only, capping enrollment growth and making you vulnerable to competitor marketing efforts.`;
+        keyFindings.push('Zero digital marketing presence');
+        keyFindings.push('Word-of-mouth only inquiry source');
+        actions.push('Develop basic digital presence strategy');
+        actions.push('Implement Google My Business optimization');
+      } else {
+        narrative = `Admissions & Enrollment shows moderate friction. Your screening responses suggest operational challenges in conversion processes compared to benchmark schools in your tier.`;
+        keyFindings.push('Admissions conversion below benchmarks');
+        actions.push('Analyze inquiry funnel at each stage');
+      }
+      doctorMetaphor = `💡 Just like a clinic checkup, you might report low patient volume (symptom) but find broken appointment scheduling (root cause). Fix the funnel process before blaming lack of inquiries.`;
+    } else if (domain === 'Staff & HR' || domain === 'Teacher Effectiveness') {
+      if (answers['teacher_turnover'] === 'severe') {
+        narrative = `Teacher turnover exceeding 20% annually indicates severe workforce instability. Your responses suggest this stems from heavy teaching loads, administrative burden, and burnout rather than salary gaps. This directly destabilizes classroom performance.`;
+        keyFindings.push('High annual teacher turnover (>20%)');
+        keyFindings.push('Burnout-driven exits');
+        actions.push('Conduct exit interviews to understand root causes');
+        actions.push('Review teacher workload distribution');
+        actions.push('Implement administrative burden reduction');
+      } else {
+        narrative = `Staff & HR shows operational challenges in retention and effectiveness. Your responses indicate moderate concerns about teacher capability, training, and workload management.`;
+        keyFindings.push('Staff retention and development gaps');
+        actions.push('Strengthen professional development programs');
+      }
+      doctorMetaphor = `💡 Just like a clinic needs well-trained, rested physicians, schools need stable, supported teachers with reasonable loads. Burnout causes both to leave their posts.`;
+    } else if (domain === 'Academic Excellence') {
+      if (answers['pass_trend'] === 'slipping') {
+        narrative = `Academic performance is slipping across core subjects. Your responses indicate absent diagnostic tracking systems, which allows learning gaps to compound before exams. This is a clear early-warning signal of enrollment risk.`;
+        keyFindings.push('Declining academic pass rates');
+        keyFindings.push('No diagnostic assessment framework');
+        actions.push('Implement weekly diagnostic assessments');
+        actions.push('Launch structured remedial support');
+        actions.push('Create early-warning intervention system');
+      } else {
+        narrative = `Academic performance shows room for improvement. Your responses suggest inconsistent instructional delivery or uneven learning support across student groups.`;
+        keyFindings.push('Academic performance below district benchmarks');
+        actions.push('Strengthen formative assessment practices');
+      }
+      doctorMetaphor = `💡 Academic outcomes are like vital signs. Just as a doctor monitors blood pressure continuously, not just at year-end checkups, you must track learning diagnostically every 2 weeks.`;
+    } else if (domain === 'Finance & Fees') {
+      if (answers['default_rate'] === 'critical') {
+        narrative = `Fee collection defaults exceeding 15% create severe cash flow stress. Your responses indicate reliance on manual collection processes without flexible payment options, leaving families unable to pay and eroding institutional liquidity.`;
+        keyFindings.push('Critical fee default rate (>15%)');
+        keyFindings.push('Cash flow strain');
+        actions.push('Implement automated payment gateway');
+        actions.push('Create flexible payment plans');
+        actions.push('Proactive family engagement on payment');
+      } else {
+        narrative = `Finance shows moderate collection friction. Your responses suggest process inefficiencies in fee management and family communication during payment discussions.`;
+        keyFindings.push('Fee collection below healthy levels');
+        actions.push('Automate payment reminders');
+        actions.push('Clarify fee structure in admissions stage');
+      }
+      doctorMetaphor = `💡 Fee collection is like clinic billing. Friction in the payment process directly funds quality programs. Fix the process before cutting costs.`;
+    } else {
+      narrative = `Your intake responses indicate challenges in ${domain}. The screening data reveals gaps compared to benchmark institutions in your tier.`;
+      keyFindings.push(`Primary concern: ${domain}`);
+      actions.push('Upload supporting data documents for deeper analysis');
+      actions.push('Identify specific metrics for this domain');
+      doctorMetaphor = `💡 Questionnaires capture perception; data documents reveal reality. Upload supporting evidence for more precise insights.`;
+    }
+
     return {
-      narrative: 'Intake data received. Upload supporting data documents for deeper evidence-based analysis.',
-      doctorMetaphor: '💡 Questionnaires capture perception; data documents reveal reality. Upload attendance registers, fee ledgers, or exam results for actionable insights.',
+      narrative,
+      doctorMetaphor,
       affectedDomains: [domain],
-      keyFindings: ['Primary concern area identified'],
-      recommendedActions: ['Upload supporting documents for personalized diagnostic']
+      keyFindings: keyFindings.length > 0 ? keyFindings : ['Primary concern area identified'],
+      recommendedActions: actions.length > 0 ? actions : ['Upload data documents for personalized diagnostic']
     };
   }
 }
