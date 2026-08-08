@@ -1721,10 +1721,14 @@ HOW TO USE IN DISHA:
       {/* STEP 2: FIRST OPINION DIAGNOSIS (THE DOCTOR FIRST VISIT) */}
       {step === 2 && (
         <div className="space-y-6">
-          {/* DISHA Score Dashboard */}
-          {dishaScore && <DISHAScoreDashboard score={dishaScore} />}
+          {/* DISHA Score Dashboard - Primary Display */}
+          {dishaScore && (
+            <>
+              <DISHAScoreDashboard score={dishaScore} />
 
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+              {/* Continue with diagnosis recommendations if we have extracted metrics */}
+              {extractedMetrics && (
+                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
             
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-gray-100 pb-5">
               <div>
@@ -1785,10 +1789,11 @@ HOW TO USE IN DISHA:
               </div>
             </div>
 
-          </div>
+                </div>
+              )}
 
-          {/* EXTRACTED METRICS & RECOMMENDATIONS */}
-          {extractedMetrics && (
+              {/* EXTRACTED METRICS & RECOMMENDATIONS */}
+              {extractedMetrics && (
             <div className="space-y-6 bg-gradient-to-br from-blue-50 to-cyan-50 p-8 rounded-3xl border border-blue-100">
               <div>
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -1851,6 +1856,63 @@ HOW TO USE IN DISHA:
                 <div>
                   <p className="font-bold text-emerald-900 text-sm">Data Analysis Complete</p>
                   <p className="text-xs text-emerald-800 mt-1">Your uploaded data has been analyzed and integrated into the diagnostic. Insights above are derived from your real school metrics, not generic templates.</p>
+                </div>
+              </div>
+            </div>
+          )}
+            </>
+          )}
+
+          {/* Fallback: Old diagnosis display if no DISHA score */}
+          {!dishaScore && (
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-gray-100 pb-5">
+                <div>
+                  <span className="bg-emerald-50 text-emerald-700 text-[10px] px-2.5 py-1 rounded-full font-bold border border-emerald-100 uppercase tracking-wider">
+                    Diagnostic Intake Ready
+                  </span>
+                  <h3 className="text-2xl font-bold text-gray-900 mt-2">Disha's First Opinion Diagnosis</h3>
+                  <p className="text-xs text-gray-500 font-medium">Derived in real-time by aligning your intake replies with sector baselines.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+                <div className="bg-rose-50 border border-rose-100 p-6 rounded-xl text-center md:col-span-1">
+                  <p className="text-[10px] font-bold text-rose-700 uppercase tracking-widest mb-1">Estimated Gap</p>
+                  <p className="text-4xl font-black text-rose-600">
+                    -{Math.max(10, Math.min(75, Math.round(((85 - (topGaps[0]?.score || 55)) / 85) * 100)))}%
+                  </p>
+                  <p className="text-[10px] text-rose-500 mt-2 font-bold uppercase">Below District Benchmark</p>
+                </div>
+
+                <div className="md:col-span-3 space-y-2.5">
+                  <h4 className="font-bold text-lg text-gray-900">
+                    Primary Deficit Domain: <span className="text-rose-600 font-black">{diagnosisResult?.affectedDomains[0] || topGaps[0].subject}</span>
+                  </h4>
+                  <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                    {diagnosisResult?.narrative || getDynamicDiagnosisNarrative(topGaps[0].subject)}
+                  </p>
+                </div>
+              </div>
+
+              <div className={cn(
+                "p-6 rounded-2xl relative overflow-hidden shadow-xs border",
+                mismatchInfo.aligned
+                  ? "bg-slate-900 text-white border-slate-800"
+                  : "bg-indigo-950 text-white border-indigo-900"
+              )}>
+                <div className="relative z-10 space-y-3">
+                  <div className="flex items-center gap-2 text-indigo-300 font-bold text-xs uppercase tracking-widest">
+                    <ShieldAlert className="w-4 h-4 text-indigo-400" />
+                    <span>{mismatchInfo.title}</span>
+                  </div>
+                  <h4 className="text-lg font-bold">{mismatchInfo.aligned ? "Stated Worry Validated" : "Differential Diagnostic Uncovered"}</h4>
+                  <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                    {mismatchInfo.desc}
+                  </p>
+                  <div className="p-3.5 bg-white/5 rounded-xl text-xs font-medium border border-white/5 text-slate-300 leading-relaxed">
+                    {diagnosisResult?.doctorMetaphor || getDynamicDoctorMetaphor(topGaps[0].subject)}
+                  </div>
                 </div>
               </div>
             </div>
