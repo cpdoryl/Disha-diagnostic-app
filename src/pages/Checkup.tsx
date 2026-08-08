@@ -434,12 +434,20 @@ export const Checkup = () => {
       description: challenge.label,
       probes: challenge.domain,
       dataRequired: challenge.metrics.join(', '),
-      questions: challenge.questions.map(q => ({
-        id: q.id,
-        label: q.label,
-        type: 'select' as const,
-        options: q.options
-      })),
+      questions: challenge.questions.map(q => {
+        // Ensure options have weight properties
+        const optionsWithWeights = q.options?.map(opt => ({
+          label: opt.label,
+          value: opt.value,
+          weight: opt.weight || 5 // Fallback to 5 if not defined
+        })) || [];
+        return {
+          id: q.id,
+          label: q.label,
+          type: 'select' as const,
+          options: optionsWithWeights
+        };
+      }),
       baselineAnalysis: {
         gapTitle: `${challenge.label} Assessment`,
         mismatchTitle: `${challenge.label} Gap Analysis`,
@@ -764,14 +772,19 @@ HOW TO USE IN DISHA:
     const answersArray = required.map(q => {
       const selectedOptionValue = answers[q.id];
       if (!selectedOptionValue) {
+        console.warn(`Question ${q.id} has no answer, using default weight 5`);
         return { questionId: q.id, weight: 5 }; // default middle weight
       }
 
       // Find the selected option and extract its weight
       const selectedOption = q.options?.find(opt => opt.value === selectedOptionValue);
-      const weight = selectedOption?.weight || 5;
+      const weight = selectedOption?.weight;
 
-      return { questionId: q.id, weight };
+      if (!weight) {
+        console.warn(`Question ${q.id}: Could not find weight for value "${selectedOptionValue}". Options:`, q.options);
+      }
+
+      return { questionId: q.id, weight: weight || 5 };
     });
 
     const maxPossible = required.length * 10;
