@@ -125,7 +125,7 @@ export const DISHAScoreDashboard: React.FC<DISHAScoreDashboardProps> = ({ score 
                 />
               )}
             </div>
-            <p className="text-xs text-slate-400 mt-2">Ideal: ≤20 students/teacher | Good: 21-28 | Fair: 29-35 | Poor: >35</p>
+            <p className="text-xs text-slate-400 mt-2">Ideal: ≤20 students/teacher | Good: 21-28 | Fair: 29-35 | Poor: &gt;35</p>
           </div>
 
           {/* SLA */}
@@ -142,7 +142,7 @@ export const DISHAScoreDashboard: React.FC<DISHAScoreDashboardProps> = ({ score 
                 />
               )}
             </div>
-            <p className="text-xs text-slate-400 mt-2">Ideal: ≤12h (same day) | Good: 13-24h (next day) | Fair: 25-48h | Poor: >48h</p>
+            <p className="text-xs text-slate-400 mt-2">Ideal: ≤12h (same day) | Good: 13-24h (next day) | Fair: 25-48h | Poor: &gt;48h</p>
           </div>
 
           {/* Training */}
