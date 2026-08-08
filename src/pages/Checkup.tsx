@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 import { useAppStore } from '../store';
 import { DeepDiveAssessment } from '../components/DeepDiveAssessment';
+import { DISHAScoreDashboard } from '../components/DISHAScoreDashboard';
 import FileAnalyzer, { ExtractedMetrics } from '../lib/fileAnalyzer';
 import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGenerator';
+import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
 import {
   HeartPulse,
   HelpCircle,
@@ -382,6 +384,15 @@ export const Checkup = () => {
   const [extractedMetrics, setExtractedMetrics] = useState<ExtractedMetrics | null>(null);
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
 
+  // DISHA Score State
+  const [dishaScore, setDISHAScore] = useState<DISHAScore | null>(null);
+  const [operationalMetrics, setOperationalMetrics] = useState<OperationalMetrics>({
+    studentTeacherRatio: 28,
+    parentResponseSLA: 24,
+    annualTrainingHours: 20,
+    weeklyPlanningHours: 4
+  });
+
   // UI Loading/Transition states
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isDeepScanning, setIsDeepScanning] = useState<boolean>(false);
@@ -733,6 +744,19 @@ HOW TO USE IN DISHA:
 
     setValidationError(null);
     setIsProcessing(true);
+
+    // Calculate DISHA scores
+    const answersArray = required.map(q => ({
+      questionId: q.id,
+      weight: parseInt(answers[q.id] || '5', 10)
+    }));
+    const maxPossible = required.length * 10;
+    const score = DISHAScoreCalculator.calculateCompleteScore(
+      answersArray,
+      maxPossible,
+      operationalMetrics
+    );
+    setDISHAScore(score);
 
     // Generate diagnosis using extracted metrics if available
     const diagnosis = DiagnosisGenerator.generateDiagnosis(
@@ -1688,6 +1712,9 @@ HOW TO USE IN DISHA:
       {/* STEP 2: FIRST OPINION DIAGNOSIS (THE DOCTOR FIRST VISIT) */}
       {step === 2 && (
         <div className="space-y-6">
+          {/* DISHA Score Dashboard */}
+          {dishaScore && <DISHAScoreDashboard score={dishaScore} />}
+
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
             
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-gray-100 pb-5">
