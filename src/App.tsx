@@ -5,6 +5,7 @@ import { useAppStore } from './store';
 import { CaptureStage } from './pages/CaptureStage';
 import { CompareStage } from './pages/CompareStage';
 import { SimulateStage } from './pages/SimulateStage';
+import { SynthesizeStage } from './pages/SynthesizeStage';
 import { Monitoring } from './pages/Monitoring';
 import { Communications } from './pages/Communications';
 import { Login } from './pages/Login';
@@ -108,6 +109,8 @@ export default function App() {
         return <CompareStage />;
       case 'SIMULATE':
         return <SimulateStage />;
+      case 'SYNTHESIZE':
+        return <SynthesizeStage />;
       case 'MONITORING':
         return <Monitoring />;
       case 'COMMUNICATIONS':

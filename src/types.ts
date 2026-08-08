@@ -1,4 +1,4 @@
-export type ViewState = 'DASHBOARD' | 'CHECKUP' | 'CAPTURE' | 'COMPARE' | 'SIMULATE' | 'MONITORING' | 'STUDENTS' | 'STAFF' | 'ATTENDANCE' | 'COMMUNICATIONS' | 'ADMIN';
+export type ViewState = 'DASHBOARD' | 'CHECKUP' | 'CAPTURE' | 'COMPARE' | 'SIMULATE' | 'SYNTHESIZE' | 'MONITORING' | 'STUDENTS' | 'STAFF' | 'ATTENDANCE' | 'COMMUNICATIONS' | 'ADMIN';
 
 export interface Student {
   id: string;
