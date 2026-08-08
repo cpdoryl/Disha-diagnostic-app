@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppStore } from '../store';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Bell, Calendar, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { format, subDays } from 'date-fns';
+import { AssessmentTrendViewer } from '../components/AssessmentTrendViewer';
+import { AssessmentHistory, getAssessmentHistorySummary } from '../lib/assessmentVersioning';
 
 const generateMockTrend = (base: number, volatility: number) => {
   return Array.from({ length: 30 }).map((_, i) => ({
@@ -13,6 +15,24 @@ const generateMockTrend = (base: number, volatility: number) => {
 
 export const Monitoring = () => {
   const { domains, activeSchool } = useAppStore();
+  const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
+
+  // Mock assessment history for demo
+  const mockAssessmentHistory: AssessmentHistory = {
+    schoolId: activeSchool?.id || 'demo-school',
+    schoolName: activeSchool?.name || 'Demo School',
+    totalAssessments: 3,
+    versions: [],
+    trends: [],
+    overallProgress: {
+      startDate: '2026-06-08',
+      endDate: '2026-08-08',
+      averageScoreImprovement: 8.5,
+      dimensionsImproving: 10,
+      dimensionsDeclining: 2,
+      dimensionsStable: 2
+    }
+  };
 
   const getTrendIcon = (trend: string) => {
     switch(trend) {
@@ -46,6 +66,34 @@ export const Monitoring = () => {
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200">
+        <div className="flex gap-8">
+          <button
+            onClick={() => setActiveTab('live')}
+            className={`px-4 py-3 font-bold text-sm border-b-2 transition-colors ${
+              activeTab === 'live'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            📊 Live Monitoring
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`px-4 py-3 font-bold text-sm border-b-2 transition-colors ${
+              activeTab === 'history'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            📈 Assessment Trends & History
+          </button>
+        </div>
+      </div>
+
+      {/* Live Monitoring Tab */}
+      {activeTab === 'live' && (
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
@@ -144,6 +192,26 @@ export const Monitoring = () => {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Assessment History Tab */}
+      {activeTab === 'history' && (
+        <AssessmentTrendViewer
+          history={mockAssessmentHistory}
+          onSelectVersion={(version) => {
+            console.log('Selected version:', version);
+          }}
+          onExport={(history) => {
+            const json = JSON.stringify(history, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `assessment-history-${activeSchool?.id}-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+          }}
+        />
+      )}
     </div>
   );
 };
