@@ -48,8 +48,94 @@ export function StakeholderSurvey() {
     setCurrentStep('info');
   };
 
+  // Check if personal info is complete based on stakeholder type
+  const isPersonalInfoComplete = (): boolean => {
+    const typeStr = stakeholderType as StakeholderType;
+
+    switch (typeStr) {
+      case 'teacher':
+        // Teachers: name is required
+        return respondentInfo.name.trim().length > 0;
+      case 'parent':
+        // Parents: name is required
+        return respondentInfo.name.trim().length > 0;
+      case 'student':
+        // Students: name and class/section required
+        return (
+          respondentInfo.name.trim().length > 0 &&
+          respondentInfo.department.trim().length > 0
+        );
+      case 'admin':
+        // Admin: any personal info helps (name or department)
+        return respondentInfo.name.trim().length > 0 || respondentInfo.department.trim().length > 0;
+      case 'other':
+        // Other: any personal info helps
+        return respondentInfo.name.trim().length > 0 || respondentInfo.department.trim().length > 0;
+      default:
+        return true;
+    }
+  };
+
+  const getPersonalInfoLabel = (): { name: string; dept: string; namePlaceholder: string; deptPlaceholder: string } => {
+    const typeStr = stakeholderType as StakeholderType;
+
+    switch (typeStr) {
+      case 'teacher':
+        return {
+          name: 'Name (Required)',
+          dept: 'Subject/Department (Optional)',
+          namePlaceholder: 'Your full name',
+          deptPlaceholder: 'E.g., Mathematics, Science'
+        };
+      case 'parent':
+        return {
+          name: 'Name (Required)',
+          dept: 'Child\'s Class/Section (Optional)',
+          namePlaceholder: 'Your full name',
+          deptPlaceholder: 'E.g., Class 10-A'
+        };
+      case 'student':
+        return {
+          name: 'Name (Required)',
+          dept: 'Class/Section (Required)',
+          namePlaceholder: 'Your full name',
+          deptPlaceholder: 'E.g., Class 10-A'
+        };
+      case 'admin':
+        return {
+          name: 'Name (Optional)',
+          dept: 'Position/Role (Optional)',
+          namePlaceholder: 'Your name (optional)',
+          deptPlaceholder: 'E.g., Principal, Coordinator'
+        };
+      case 'other':
+        return {
+          name: 'Name (Optional)',
+          dept: 'Your Role (Optional)',
+          namePlaceholder: 'Your name (optional)',
+          deptPlaceholder: 'E.g., Vendor, Consultant'
+        };
+      default:
+        return {
+          name: 'Name',
+          dept: 'Department',
+          namePlaceholder: 'Your name',
+          deptPlaceholder: 'Your department'
+        };
+    }
+  };
+
   const handleProceedToSurvey = () => {
+    // Validate personal info is complete
+    if (!isPersonalInfoComplete()) {
+      setErrorMessage('Please provide required personal information before proceeding.');
+      setTimeout(() => setErrorMessage(''), 3000);
+      return;
+    }
+
     setCurrentStep('survey');
+    setErrorMessage('');
+
     // Initialize responses structure
     const initialResponses: SurveyResponse = {};
     FOURTEEN_DIMENSIONS.forEach(dim => {
@@ -103,29 +189,70 @@ export function StakeholderSurvey() {
   const handleSubmitSurvey = async () => {
     try {
       setIsSubmitting(true);
+      setErrorMessage('');
+
+      // Validate assessment ID
+      if (!assessmentId || assessmentId.trim() === '') {
+        throw new Error('Assessment ID is missing or invalid');
+      }
+
+      // Validate stakeholder type
+      if (!stakeholderType || !['teacher', 'parent', 'student', 'admin', 'other'].includes(stakeholderType)) {
+        throw new Error('Stakeholder type is invalid');
+      }
 
       // Prepare response data
       const submissionData = {
-        assessmentId,
+        assessmentId: assessmentId.trim(),
         stakeholderType: stakeholderType as StakeholderType,
-        respondentName: respondentInfo.name || 'Anonymous',
-        respondentDepartment: respondentInfo.department || 'Not specified',
+        respondentName: respondentInfo.name.trim() || 'Anonymous',
+        respondentDepartment: respondentInfo.department.trim() || 'Not specified',
         responses,
         submittedAt: serverTimestamp(),
         userAgent: navigator.userAgent,
+        submittedTimestamp: new Date().toISOString(),
       };
+
+      // Validate we have responses
+      if (!responses || Object.keys(responses).length === 0) {
+        throw new Error('No survey responses recorded');
+      }
+
+      // Log submission for debugging
+      console.log('Submitting survey with data:', {
+        assessmentId: submissionData.assessmentId,
+        stakeholderType: submissionData.stakeholderType,
+        respondentName: submissionData.respondentName,
+        responseCount: Object.keys(submissionData.responses).length,
+      });
 
       // Save to Firebase
       const docRef = await addDoc(
-        collection(db, 'assessments', assessmentId as string, 'responses'),
+        collection(db, 'assessments', assessmentId.trim(), 'responses'),
         submissionData
       );
 
+      console.log('Survey submitted successfully with ID:', docRef.id);
       setSubmissionId(docRef.id);
       setCurrentStep('confirmation');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting survey:', error);
-      setErrorMessage('Error submitting survey. Please try again.');
+
+      let userFriendlyMessage = 'Error submitting survey. Please try again.';
+
+      if (error.message?.includes('Assessment ID')) {
+        userFriendlyMessage = 'Invalid assessment link. Please contact the school administrator.';
+      } else if (error.message?.includes('Stakeholder type')) {
+        userFriendlyMessage = 'Invalid stakeholder type. Please access the survey via the correct link.';
+      } else if (error.message?.includes('No survey responses')) {
+        userFriendlyMessage = 'No survey responses were recorded. Please complete the assessment.';
+      } else if (error.code === 'permission-denied') {
+        userFriendlyMessage = 'Access denied. The assessment link may have expired.';
+      } else if (error.code === 'not-found') {
+        userFriendlyMessage = 'Assessment not found. Please check your survey link.';
+      }
+
+      setErrorMessage(userFriendlyMessage);
       setCurrentStep('error');
     } finally {
       setIsSubmitting(false);
@@ -222,42 +349,65 @@ export function StakeholderSurvey() {
 
   // ============ RESPONDENT INFO PAGE ============
   if (currentStep === 'info') {
+    const infoLabels = getPersonalInfoLabel();
+    const isComplete = isPersonalInfoComplete();
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 md:p-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Your Information</h2>
-          <p className="text-gray-600 mb-8">Optional: Help us understand your perspective better</p>
+          <p className="text-gray-600 mb-8">
+            {isComplete
+              ? '✓ Ready to proceed to the assessment'
+              : 'Please provide the following information to continue'}
+          </p>
+
+          {errorMessage && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 text-sm">{errorMessage}</p>
+            </div>
+          )}
 
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Name (Optional)
+                {infoLabels.name}
               </label>
               <input
                 type="text"
                 value={respondentInfo.name}
                 onChange={(e) => setRespondentInfo({ ...respondentInfo, name: e.target.value })}
-                placeholder="Your name"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder={infoLabels.namePlaceholder}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  infoLabels.name.includes('Required') && !respondentInfo.name.trim()
+                    ? 'border-red-300 bg-red-50'
+                    : 'border-gray-300'
+                }`}
               />
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Department/Class (Optional)
+                {infoLabels.dept}
               </label>
               <input
                 type="text"
                 value={respondentInfo.department}
                 onChange={(e) => setRespondentInfo({ ...respondentInfo, department: e.target.value })}
-                placeholder="E.g., English Department, Class 10A"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder={infoLabels.deptPlaceholder}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  infoLabels.dept.includes('Required') && !respondentInfo.department.trim()
+                    ? 'border-red-300 bg-red-50'
+                    : 'border-gray-300'
+                }`}
               />
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-700">
-                ℹ️ This information is optional. Your anonymity is protected if you prefer not to provide it.
+            <div className={`p-4 rounded-lg ${isComplete ? 'bg-green-50 border border-green-200' : 'bg-blue-50'}`}>
+              <p className={`text-sm ${isComplete ? 'text-green-800' : 'text-gray-700'}`}>
+                {isComplete
+                  ? '✓ All required information provided. You can now proceed.'
+                  : 'ℹ️ Marked as "Required" are fields we need to understand your perspective. Other fields are optional.'}
               </p>
             </div>
           </div>
@@ -272,7 +422,12 @@ export function StakeholderSurvey() {
             </button>
             <button
               onClick={handleProceedToSurvey}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+              disabled={!isComplete}
+              className={`flex-1 font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                isComplete
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
               Continue
               <ChevronRight className="w-5 h-5" />
