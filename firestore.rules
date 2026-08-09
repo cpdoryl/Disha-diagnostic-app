@@ -1,10 +1,19 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Global Safety Net
-    match /{document=**} { 
-      allow read, write: if false; 
+
+    // 14D Assessment Responses - Allow stakeholders to submit survey responses
+    match /assessments/{assessmentId} {
+      allow read: if true;
+      match /responses/{responseId} {
+        allow create: if true;
+        allow read: if true;
+      }
+    }
+
+    // Global Safety Net (excludes assessments which are handled above)
+    match /{document=**} {
+      allow read, write: if false;
     }
     
     function isSignedIn() { 
@@ -201,18 +210,6 @@ service cloud.firestore {
 
     match /deep_dive_assessments/{docId} {
       allow read, write: if true;
-    }
-
-    // 14D Assessment Responses - Allow stakeholders to submit survey responses
-    match /assessments/{assessmentId} {
-      // Allow reading assessment metadata
-      allow read: if true;
-
-      // Allow writing to responses subcollection
-      match /responses/{responseId} {
-        allow create: if true;
-        allow read: if true;
-      }
     }
 
     match /{collectionName}/{docId} {
