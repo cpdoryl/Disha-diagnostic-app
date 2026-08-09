@@ -13,6 +13,7 @@ import { LandingPage } from './pages/LandingPage';
 import { Admin } from './pages/Admin';
 import { Checkup } from './pages/Checkup';
 import { MultiUserAssessmentPage } from './pages/MultiUserAssessment';
+import { StakeholderSurvey } from './pages/StakeholderSurvey';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -25,13 +26,20 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [pendingApproval, setPendingApproval] = useState(false);
 
-  // Check for public survey link
+  // Check for public survey link (old format)
   const urlParams = new URLSearchParams(window.location.search);
   const surveyTarget = urlParams.get('survey');
   const aid = urlParams.get('aid');
 
   if (surveyTarget && aid) {
     return <PublicSurvey stakeholder={surveyTarget} aid={aid} />;
+  }
+
+  // Check for 14D stakeholder survey (new format: /survey/:assessmentId/:stakeholderType)
+  const pathname = window.location.pathname;
+  const surveyMatch = pathname.match(/^\/survey\/([^/]+)\/([^/]+)$/);
+  if (surveyMatch) {
+    return <StakeholderSurvey />;
   }
 
   useEffect(() => {
