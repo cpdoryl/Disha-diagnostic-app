@@ -47,6 +47,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { name: 'Dashboard', view: 'DASHBOARD', icon: LayoutDashboard },
     ...(isAdmin ? [{ name: 'Admin', view: 'ADMIN' as ViewState, icon: Users }] : []),
     { name: 'Disha Checkup', view: 'CHECKUP', icon: HeartPulse, stage: 'ANNUAL HEALTH CHECKUP' },
+    { name: '14D Assessment', view: '14D_ASSESSMENT' as ViewState, icon: Target, stage: 'MULTILATERAL DIAGNOSTIC' },
     { name: 'Capture (Assess)', view: 'CAPTURE', icon: Target, stage: 'STAGE 1: DIAGNOSTIC' },
     { name: 'Compare (Diagnose)', view: 'COMPARE', icon: BarChart2, stage: 'STAGE 2: BENCHMARK' },
     { name: 'Simulate (Model)', view: 'SIMULATE', icon: Activity, stage: 'STAGE 3: STRATEGIZE' },

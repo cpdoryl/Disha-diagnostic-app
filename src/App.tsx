@@ -12,6 +12,7 @@ import { Login } from './pages/Login';
 import { LandingPage } from './pages/LandingPage';
 import { Admin } from './pages/Admin';
 import { Checkup } from './pages/Checkup';
+import { MultiUserAssessmentPage } from './pages/MultiUserAssessment';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -117,6 +118,8 @@ export default function App() {
         return <Communications />;
       case 'ADMIN':
         return <Admin />;
+      case '14D_ASSESSMENT':
+        return <MultiUserAssessmentPage />;
       default:
         return <Dashboard />;
     }
