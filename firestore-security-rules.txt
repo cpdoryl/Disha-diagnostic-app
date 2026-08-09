@@ -273,15 +273,14 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
+
+    // ========== HELPER FUNCTIONS ==========
+    function only(keys) {
+      return keys.size() == 0 || request.resource.data.diff(resource.data).keys().hasAll(keys);
+    }
+
+    function hasKeys(data, keys) {
+      return (keys.size() == 0) || (data.keys().hasAll(keys));
+    }
   }
-}
-
-// ========== HELPER FUNCTION TO CHECK IF KEYS EXIST ==========
-// Note: Custom function (add to your rules setup)
-function only(keys) {
-  return keys.size() == 0 || request.resource.data.diff(resource.data).keys().hasAll(keys);
-}
-
-function hasKeys(data, keys) {
-  return (keys.size() == 0) || (data.keys().hasAll(keys));
 }
