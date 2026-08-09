@@ -6,9 +6,9 @@ import {
   AssessmentProgress,
   initializeAssessmentProgress,
 } from '../lib/multiUserAssessment';
-import { ArrowRight, Settings, Activity, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Settings, Activity, CheckCircle2, RotateCw } from 'lucide-react';
 
-type Stage = 'select' | 'configuration' | 'deployment' | 'analysis';
+type Stage = 'select' | 'start-options' | 'configuration' | 'deployment' | 'analysis';
 
 export function MultiUserAssessmentPage() {
   const { activeSchool } = useAppStore();
@@ -54,8 +54,15 @@ export function MultiUserAssessmentPage() {
     localStorage.removeItem(`assessment_progress_${schoolId}`);
   };
 
-  // Load saved data if available
-  useEffect(() => {
+  const handleStartFresh = () => {
+    setStage('configuration');
+    setConfig(null);
+    setProgress(null);
+    localStorage.removeItem(`assessment_config_${schoolId}`);
+    localStorage.removeItem(`assessment_progress_${schoolId}`);
+  };
+
+  const handleContinuePrevious = () => {
     const savedConfig = localStorage.getItem(`assessment_config_${schoolId}`);
     const savedProgress = localStorage.getItem(`assessment_progress_${schoolId}`);
 
@@ -68,7 +75,22 @@ export function MultiUserAssessmentPage() {
         setStage('deployment');
       } catch (error) {
         console.error('Failed to load saved assessment:', error);
+        handleStartFresh();
       }
+    }
+  };
+
+  // Check for saved data on mount
+  const [hasSavedData, setHasSavedData] = useState(false);
+
+  useEffect(() => {
+    const savedConfig = localStorage.getItem(`assessment_config_${schoolId}`);
+    const savedProgress = localStorage.getItem(`assessment_progress_${schoolId}`);
+
+    if (savedConfig && savedProgress) {
+      setHasSavedData(true);
+      // Always start at select stage, don't auto-load
+      setStage('select');
     }
   }, [schoolId]);
 
@@ -123,13 +145,41 @@ export function MultiUserAssessmentPage() {
         {/* Stage 1: Select Assessment Type */}
         {stage === 'select' && (
           <div className="space-y-6">
+            {/* Show saved assessment notice if available */}
+            {hasSavedData && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+                <h3 className="font-semibold text-amber-900 mb-4">You have a previous assessment in progress</h3>
+                <p className="text-sm text-amber-800 mb-4">
+                  You can continue where you left off or start a fresh assessment.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={handleContinuePrevious}
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-6 rounded-lg transition flex items-center justify-center gap-2"
+                  >
+                    Continue Previous Assessment
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleStartFresh}
+                    className="flex-1 border border-amber-300 hover:bg-amber-50 text-amber-900 font-bold py-2.5 px-6 rounded-lg transition flex items-center justify-center gap-2"
+                  >
+                    <RotateCw className="w-4 h-4" />
+                    Start Fresh Assessment
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white rounded-lg border border-gray-200 p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Select Assessment Type</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                {hasSavedData ? 'Or select a new assessment type' : 'Select Assessment Type'}
+              </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Multi-User Assessment Card */}
                 <div
-                  onClick={() => setStage('configuration')}
+                  onClick={() => handleStartFresh()}
                   className="border-2 border-blue-200 rounded-lg p-6 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition group"
                 >
                   <div className="flex items-start gap-4">
