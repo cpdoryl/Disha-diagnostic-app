@@ -203,6 +203,18 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // 14D Assessment Responses - Allow stakeholders to submit survey responses
+    match /assessments/{assessmentId} {
+      // Allow reading assessment metadata
+      allow read: if true;
+
+      // Allow writing to responses subcollection
+      match /responses/{responseId} {
+        allow create: if true;
+        allow read: if true;
+      }
+    }
+
     match /{collectionName}/{docId} {
       allow read, write: if collectionName.matches('^surveys_.*');
     }
