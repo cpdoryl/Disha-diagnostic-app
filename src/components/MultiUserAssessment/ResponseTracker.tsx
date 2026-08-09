@@ -9,6 +9,7 @@ import {
   AssessmentProgress,
   StakeholderType,
 } from '../../lib/multiUserAssessment';
+import { SurveyLinksDisplay } from './SurveyLinksDisplay';
 
 interface ResponseTrackerProps {
   config: AssessmentConfiguration;
@@ -67,6 +68,15 @@ export function ResponseTracker({
             <p className="text-sm text-gray-600">{progress.totalActual} of {config.totalExpected}</p>
           </div>
         </div>
+      </div>
+
+      {/* Survey Links Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
+        <SurveyLinksDisplay
+          assessmentId={config.id}
+          schoolName={config.schoolName}
+          expectedRespondents={config.expectedRespondents}
+        />
       </div>
 
       {/* Overall Progress Bar */}
