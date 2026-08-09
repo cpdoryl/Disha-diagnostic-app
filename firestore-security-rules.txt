@@ -262,18 +262,11 @@ service cloud.firestore {
 
     // ========== 14D ASSESSMENT SURVEYS (Anonymous Stakeholder Responses) ==========
     // Allow unauthenticated stakeholders to submit survey responses via public links
+    // This rule must come BEFORE the global deny-all to take effect
 
-    // Full path match for survey responses subcollection
-    match /assessments/{assessmentId}/responses/{responseId} {
-      // Allow anyone (authenticated or not) to create survey responses
-      allow create: if true;
-      // Allow anyone to read responses
-      allow read: if true;
-    }
-
-    // Allow reading assessment collection data
-    match /assessments/{assessmentId} {
-      allow read: if true;
+    // Allow all operations on assessments collection for anonymous survey responses
+    match /assessments/{document=**} {
+      allow read, write: if true;
     }
 
     // ========== DEFAULT DENY ALL ==========
