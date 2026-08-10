@@ -10,6 +10,18 @@ type StakeholderType = 'teacher' | 'parent' | 'student' | 'admin' | 'other';
 interface RespondentInfo {
   name: string;
   department: string;
+  email?: string;
+  phone?: string;
+  schoolName?: string;
+  // Teacher fields
+  subject?: string;
+  class?: string;
+  teacherId?: string;
+  // Parent fields
+  studentName?: string;
+  section?: string;
+  // Admin fields
+  adminId?: string;
 }
 
 interface SurveyResponse {
@@ -51,23 +63,44 @@ export function StakeholderSurvey() {
   // Check if personal info is complete based on stakeholder type
   const isPersonalInfoComplete = (): boolean => {
     const typeStr = stakeholderType as StakeholderType;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
 
     switch (typeStr) {
       case 'teacher':
-        // Teachers: name is required
-        return respondentInfo.name.trim().length > 0;
+        // Teachers: name, email, phone, subject, class, teacherId are required
+        return (
+          respondentInfo.name.trim().length > 0 &&
+          respondentInfo.email && emailRegex.test(respondentInfo.email) &&
+          respondentInfo.phone && phoneRegex.test(respondentInfo.phone) &&
+          respondentInfo.subject?.trim().length > 0 &&
+          respondentInfo.class?.trim().length > 0 &&
+          respondentInfo.teacherId?.trim().length > 0
+        );
       case 'parent':
-        // Parents: name is required
-        return respondentInfo.name.trim().length > 0;
+        // Parents: name, email, phone, studentName, class, section are required
+        return (
+          respondentInfo.name.trim().length > 0 &&
+          respondentInfo.email && emailRegex.test(respondentInfo.email) &&
+          respondentInfo.phone && phoneRegex.test(respondentInfo.phone) &&
+          respondentInfo.studentName?.trim().length > 0 &&
+          respondentInfo.class?.trim().length > 0 &&
+          respondentInfo.section?.trim().length > 0
+        );
       case 'student':
-        // Students: name and class/section required
+        // Students: name and class/section required (no email/phone)
         return (
           respondentInfo.name.trim().length > 0 &&
           respondentInfo.department.trim().length > 0
         );
       case 'admin':
-        // Admin: any personal info helps (name or department)
-        return respondentInfo.name.trim().length > 0 || respondentInfo.department.trim().length > 0;
+        // Admin: name, email, phone, adminId are required
+        return (
+          respondentInfo.name.trim().length > 0 &&
+          respondentInfo.email && emailRegex.test(respondentInfo.email) &&
+          respondentInfo.phone && phoneRegex.test(respondentInfo.phone) &&
+          respondentInfo.adminId?.trim().length > 0
+        );
       case 'other':
         // Other: any personal info helps
         return respondentInfo.name.trim().length > 0 || respondentInfo.department.trim().length > 0;
@@ -201,8 +234,8 @@ export function StakeholderSurvey() {
         throw new Error('Stakeholder type is invalid');
       }
 
-      // Prepare response data
-      const submissionData = {
+      // Prepare response data - include all respondent identification fields
+      const submissionData: any = {
         assessmentId: assessmentId.trim(),
         stakeholderType: stakeholderType as StakeholderType,
         respondentName: respondentInfo.name.trim() || 'Anonymous',
@@ -212,6 +245,26 @@ export function StakeholderSurvey() {
         userAgent: navigator.userAgent,
         submittedTimestamp: new Date().toISOString(),
       };
+
+      // Add identification fields based on stakeholder type
+      const typeStr = stakeholderType as StakeholderType;
+      if (typeStr === 'teacher') {
+        submissionData.respondentEmail = respondentInfo.email;
+        submissionData.respondentPhone = respondentInfo.phone;
+        submissionData.respondentSubject = respondentInfo.subject;
+        submissionData.respondentClass = respondentInfo.class;
+        submissionData.respondentTeacherId = respondentInfo.teacherId;
+      } else if (typeStr === 'parent') {
+        submissionData.respondentEmail = respondentInfo.email;
+        submissionData.respondentPhone = respondentInfo.phone;
+        submissionData.respondentStudentName = respondentInfo.studentName;
+        submissionData.respondentStudentClass = respondentInfo.class;
+        submissionData.respondentStudentSection = respondentInfo.section;
+      } else if (typeStr === 'admin') {
+        submissionData.respondentEmail = respondentInfo.email;
+        submissionData.respondentPhone = respondentInfo.phone;
+        submissionData.respondentAdminId = respondentInfo.adminId;
+      }
 
       // Validate we have responses
       if (!responses || Object.keys(responses).length === 0) {
@@ -349,8 +402,90 @@ export function StakeholderSurvey() {
 
   // ============ RESPONDENT INFO PAGE ============
   if (currentStep === 'info') {
-    const infoLabels = getPersonalInfoLabel();
     const isComplete = isPersonalInfoComplete();
+    const typeStr = stakeholderType as StakeholderType;
+
+    const renderFormFields = () => {
+      switch (typeStr) {
+        case 'teacher':
+          return (
+            <>
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Full Name (Required)</label>
+              <input type="text" value={respondentInfo.name} onChange={(e) => setRespondentInfo({ ...respondentInfo, name: e.target.value })} placeholder="Your full name" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.name.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Email (Required)</label>
+              <input type="email" value={respondentInfo.email || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, email: e.target.value })} placeholder="your.email@domain.com" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${respondentInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(respondentInfo.email) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number (Required)</label>
+              <input type="tel" value={respondentInfo.phone || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, phone: e.target.value })} placeholder="10-digit phone number" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${respondentInfo.phone && !/^[\d\s\-\+\(\)]{10,}$/.test(respondentInfo.phone) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Subject (Required)</label>
+              <input type="text" value={respondentInfo.subject || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, subject: e.target.value })} placeholder="E.g., Mathematics, Science" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.subject?.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Class (Required)</label>
+              <input type="text" value={respondentInfo.class || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, class: e.target.value })} placeholder="E.g., 10-A, 12-B" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.class?.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Teacher ID (Required)</label>
+              <input type="text" value={respondentInfo.teacherId || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, teacherId: e.target.value })} placeholder="Your employee/teacher ID" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.teacherId?.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+            </>
+          );
+
+        case 'parent':
+          return (
+            <>
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Full Name (Required)</label>
+              <input type="text" value={respondentInfo.name} onChange={(e) => setRespondentInfo({ ...respondentInfo, name: e.target.value })} placeholder="Your full name" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.name.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Email (Required)</label>
+              <input type="email" value={respondentInfo.email || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, email: e.target.value })} placeholder="your.email@domain.com" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${respondentInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(respondentInfo.email) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number (Required)</label>
+              <input type="tel" value={respondentInfo.phone || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, phone: e.target.value })} placeholder="10-digit phone number" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${respondentInfo.phone && !/^[\d\s\-\+\(\)]{10,}$/.test(respondentInfo.phone) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Student Name (Required)</label>
+              <input type="text" value={respondentInfo.studentName || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, studentName: e.target.value })} placeholder="Your child's name" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.studentName?.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Class (Required)</label>
+              <input type="text" value={respondentInfo.class || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, class: e.target.value })} placeholder="E.g., 10-A, 12-B" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.class?.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Section (Required)</label>
+              <input type="text" value={respondentInfo.section || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, section: e.target.value })} placeholder="E.g., A, B, C" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.section?.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+            </>
+          );
+
+        case 'admin':
+          return (
+            <>
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Full Name (Required)</label>
+              <input type="text" value={respondentInfo.name} onChange={(e) => setRespondentInfo({ ...respondentInfo, name: e.target.value })} placeholder="Your full name" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.name.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Email (Required)</label>
+              <input type="email" value={respondentInfo.email || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, email: e.target.value })} placeholder="your.email@domain.com" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${respondentInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(respondentInfo.email) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number (Required)</label>
+              <input type="tel" value={respondentInfo.phone || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, phone: e.target.value })} placeholder="10-digit phone number" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${respondentInfo.phone && !/^[\d\s\-\+\(\)]{10,}$/.test(respondentInfo.phone) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Department/Subject (Required)</label>
+              <input type="text" value={respondentInfo.department} onChange={(e) => setRespondentInfo({ ...respondentInfo, department: e.target.value })} placeholder="E.g., Admin, Operations" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.department.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Admin ID (Required)</label>
+              <input type="text" value={respondentInfo.adminId || ''} onChange={(e) => setRespondentInfo({ ...respondentInfo, adminId: e.target.value })} placeholder="Your admin/employee ID" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.adminId?.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+            </>
+          );
+
+        case 'student':
+        default:
+          return (
+            <>
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Full Name (Required)</label>
+              <input type="text" value={respondentInfo.name} onChange={(e) => setRespondentInfo({ ...respondentInfo, name: e.target.value })} placeholder="Your full name" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.name.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+
+              <div><label className="block text-sm font-semibold text-gray-700 mb-2">Class/Section (Required)</label>
+              <input type="text" value={respondentInfo.department} onChange={(e) => setRespondentInfo({ ...respondentInfo, department: e.target.value })} placeholder="E.g., 10-A, 12-B" className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${!respondentInfo.department.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} /></div>
+            </>
+          );
+      }
+    };
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -359,7 +494,7 @@ export function StakeholderSurvey() {
           <p className="text-gray-600 mb-8">
             {isComplete
               ? '✓ Ready to proceed to the assessment'
-              : 'Please provide the following information to continue'}
+              : 'Please provide the required information to continue'}
           </p>
 
           {errorMessage && (
@@ -368,46 +503,14 @@ export function StakeholderSurvey() {
             </div>
           )}
 
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                {infoLabels.name}
-              </label>
-              <input
-                type="text"
-                value={respondentInfo.name}
-                onChange={(e) => setRespondentInfo({ ...respondentInfo, name: e.target.value })}
-                placeholder={infoLabels.namePlaceholder}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  infoLabels.name.includes('Required') && !respondentInfo.name.trim()
-                    ? 'border-red-300 bg-red-50'
-                    : 'border-gray-300'
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                {infoLabels.dept}
-              </label>
-              <input
-                type="text"
-                value={respondentInfo.department}
-                onChange={(e) => setRespondentInfo({ ...respondentInfo, department: e.target.value })}
-                placeholder={infoLabels.deptPlaceholder}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  infoLabels.dept.includes('Required') && !respondentInfo.department.trim()
-                    ? 'border-red-300 bg-red-50'
-                    : 'border-gray-300'
-                }`}
-              />
-            </div>
+          <div className="space-y-4">
+            {renderFormFields()}
 
             <div className={`p-4 rounded-lg ${isComplete ? 'bg-green-50 border border-green-200' : 'bg-blue-50'}`}>
               <p className={`text-sm ${isComplete ? 'text-green-800' : 'text-gray-700'}`}>
                 {isComplete
                   ? '✓ All required information provided. You can now proceed.'
-                  : 'ℹ️ Marked as "Required" are fields we need to understand your perspective. Other fields are optional.'}
+                  : 'ℹ️ All fields marked as "Required" must be completed to continue.'}
               </p>
             </div>
           </div>
