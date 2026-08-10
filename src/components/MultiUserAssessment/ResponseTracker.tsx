@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, Unlock, AlertCircle, CheckCircle2, Clock, Users } from 'lucide-react';
 import {
   getResponseSummary,
@@ -10,6 +10,8 @@ import {
   StakeholderType,
 } from '../../lib/multiUserAssessment';
 import { SurveyLinksDisplay } from './SurveyLinksDisplay';
+import { db } from '../../lib/firebase';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 
 interface ResponseTrackerProps {
   config: AssessmentConfiguration;
@@ -32,16 +34,65 @@ export function ResponseTracker({
   onLockStatusChange,
   onProceedToAnalysis,
 }: ResponseTrackerProps) {
-  const summary = getResponseSummary(progress, config);
-  const overallProgress = getOverallProgress(progress, config);
+  const [liveProgress, setLiveProgress] = useState<AssessmentProgress>(progress);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Set up real-time listener for responses
+  useEffect(() => {
+    setIsLoading(true);
+    try {
+      const responsesRef = collection(db, 'assessments', config.id, 'responses');
+      const q = query(responsesRef);
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        // Count responses by stakeholder type
+        const responseCounts: Record<StakeholderType, number> = {
+          teacher: 0,
+          parent: 0,
+          student: 0,
+          admin: 0,
+          other: 0,
+        };
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const type = data.stakeholderType as StakeholderType;
+          if (type in responseCounts) {
+            responseCounts[type]++;
+          }
+        });
+
+        // Update progress with actual response counts
+        const updatedProgress: AssessmentProgress = {
+          ...liveProgress,
+          actualRespondents: responseCounts,
+          totalActual: Object.values(responseCounts).reduce((a, b) => a + b, 0),
+        };
+
+        setLiveProgress(updatedProgress);
+        setIsLoading(false);
+        console.log('✅ Real-time responses updated:', responseCounts);
+      });
+
+      return () => unsubscribe();
+    } catch (error) {
+      console.error('⚠️ Error setting up response listener:', error);
+      setIsLoading(false);
+    }
+  }, [config.id]);
+
+  const summary = getResponseSummary(liveProgress, config);
+  const overallProgress = getOverallProgress(liveProgress, config);
 
   const handleToggleLock = () => {
-    if (progress.isLocked) {
-      const updated = unlockAssessment(progress);
+    if (liveProgress.isLocked) {
+      const updated = unlockAssessment(liveProgress);
       onLockStatusChange(updated);
+      setLiveProgress(updated);
     } else {
-      const updated = lockAssessment(progress);
+      const updated = lockAssessment(liveProgress);
       onLockStatusChange(updated);
+      setLiveProgress(updated);
     }
   };
 
