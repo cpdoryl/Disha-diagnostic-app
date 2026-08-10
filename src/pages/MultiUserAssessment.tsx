@@ -8,7 +8,7 @@ import {
 } from '../lib/multiUserAssessment';
 import { ArrowRight, Settings, Activity, CheckCircle2, RotateCw } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, query, where, getDocs } from 'firebase/firestore';
 
 type Stage = 'select' | 'start-options' | 'configuration' | 'deployment' | 'analysis';
 
@@ -102,6 +102,7 @@ export function MultiUserAssessmentPage() {
 
   // Check for saved data on mount
   const [hasSavedData, setHasSavedData] = useState(false);
+  const [isLoadingFromFirestore, setIsLoadingFromFirestore] = useState(true);
 
   useEffect(() => {
     const savedConfig = localStorage.getItem(`assessment_config_${schoolId}`);
@@ -112,6 +113,55 @@ export function MultiUserAssessmentPage() {
       // Always start at select stage, don't auto-load
       setStage('select');
     }
+  }, [schoolId]);
+
+  // Load existing assessment from Firestore for this school
+  useEffect(() => {
+    const loadAssessmentFromFirestore = async () => {
+      if (!schoolId || schoolId === 'unknown') {
+        setIsLoadingFromFirestore(false);
+        return;
+      }
+
+      try {
+        // Query for active assessment for this school
+        const assessmentsRef = collection(db, 'assessments');
+        const q = query(assessmentsRef, where('schoolId', '==', schoolId), where('status', '==', 'Active'));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          // Found an active assessment for this school
+          const assessmentDoc = querySnapshot.docs[0];
+          const firestoreConfig = assessmentDoc.data();
+
+          // Create ConfigType from Firestore data
+          const loadedConfig: ConfigType = {
+            id: firestoreConfig.id,
+            schoolId: firestoreConfig.schoolId,
+            schoolName: firestoreConfig.schoolName,
+            expectedRespondents: firestoreConfig.expectedRespondents,
+            totalExpected: firestoreConfig.totalExpected,
+          };
+
+          // Create initial progress
+          const loadedProgress: AssessmentProgress = initializeAssessmentProgress();
+
+          setConfig(loadedConfig);
+          setProgress(loadedProgress);
+          setStage('deployment');
+
+          console.log('✅ Loaded existing assessment from Firestore:', loadedConfig.id);
+        } else {
+          console.log('ℹ️ No active assessment found for this school');
+        }
+      } catch (error) {
+        console.error('⚠️ Error loading assessment from Firestore:', error);
+      } finally {
+        setIsLoadingFromFirestore(false);
+      }
+    };
+
+    loadAssessmentFromFirestore();
   }, [schoolId]);
 
   return (
