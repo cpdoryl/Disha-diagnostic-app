@@ -129,7 +129,7 @@ export function ResponseTracker({
           <div className="text-right">
             <p className="text-sm text-gray-600 mb-1">Overall Progress</p>
             <p className="text-4xl font-bold text-indigo-600">{overallProgress}%</p>
-            <p className="text-sm text-gray-600">{progress.totalActual} of {config.totalExpected}</p>
+            <p className="text-sm text-gray-600">{liveProgress.totalActual} of {config.totalExpected}</p>
           </div>
         </div>
       </div>
@@ -148,7 +148,7 @@ export function ResponseTracker({
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-gray-800">Overall Progress</h3>
           <span className={`text-sm font-medium ${overallProgress === 100 ? 'text-green-600' : 'text-blue-600'}`}>
-            {progress.totalActual} of {config.totalExpected} responses
+            {liveProgress.totalActual} of {config.totalExpected} responses
           </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-3">
