@@ -41,10 +41,13 @@ export function ResponseTracker({
   useEffect(() => {
     setIsLoading(true);
     try {
+      console.log('📡 Setting up listener for assessment:', config.id);
       const responsesRef = collection(db, 'assessments', config.id, 'responses');
       const q = query(responsesRef);
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
+        console.log('📊 Snapshot received. Document count:', snapshot.size);
+
         // Count responses by stakeholder type
         const responseCounts: Record<StakeholderType, number> = {
           teacher: 0,
@@ -56,11 +59,18 @@ export function ResponseTracker({
 
         snapshot.forEach((doc) => {
           const data = doc.data();
+          console.log('📄 Response data:', { id: doc.id, stakeholderType: data.stakeholderType });
+
           const type = data.stakeholderType as StakeholderType;
           if (type in responseCounts) {
             responseCounts[type]++;
+            console.log('✅ Counted', type, '- Now:', responseCounts[type]);
+          } else {
+            console.warn('⚠️ Unknown stakeholder type:', type);
           }
         });
+
+        console.log('📈 Final counts:', responseCounts);
 
         // Update progress with actual response counts
         const updatedProgress: AssessmentProgress = {
@@ -74,12 +84,15 @@ export function ResponseTracker({
         console.log('✅ Real-time responses updated:', responseCounts);
       });
 
-      return () => unsubscribe();
+      return () => {
+        console.log('🛑 Unsubscribing from listener');
+        unsubscribe();
+      };
     } catch (error) {
       console.error('⚠️ Error setting up response listener:', error);
       setIsLoading(false);
     }
-  }, [config.id]);
+  }, [config.id, liveProgress]);
 
   const summary = getResponseSummary(liveProgress, config);
   const overallProgress = getOverallProgress(liveProgress, config);
