@@ -83,8 +83,8 @@ jobs:
           echo "✅ Build artifacts ready for deployment"
           ls -lh build/
 
-      - name: Deploy to Firebase
-        run: firebase deploy --project=${{ secrets.FIREBASE_PROJECT_ID }} --token=${{ secrets.FIREBASE_CI_TOKEN }}
+      - name: Deploy to Firebase Hosting Only
+        run: firebase deploy --only hosting --project=${{ secrets.FIREBASE_PROJECT_ID }} --token=${{ secrets.FIREBASE_CI_TOKEN }}
         timeout-minutes: 15
 
       - name: Deployment Success
