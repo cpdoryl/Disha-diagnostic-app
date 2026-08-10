@@ -7,6 +7,8 @@ import {
   initializeAssessmentProgress,
 } from '../lib/multiUserAssessment';
 import { ArrowRight, Settings, Activity, CheckCircle2, RotateCw } from 'lucide-react';
+import { db } from '../lib/firebase';
+import { collection, doc, setDoc } from 'firebase/firestore';
 
 type Stage = 'select' | 'start-options' | 'configuration' | 'deployment' | 'analysis';
 
@@ -19,14 +21,32 @@ export function MultiUserAssessmentPage() {
   const schoolId = activeSchool?.id || 'unknown';
   const schoolName = activeSchool?.name || 'Unknown School';
 
-  const handleConfigComplete = (newConfig: ConfigType, newProgress: AssessmentProgress) => {
+  const handleConfigComplete = async (newConfig: ConfigType, newProgress: AssessmentProgress) => {
     setConfig(newConfig);
     setProgress(newProgress);
     setStage('deployment');
 
-    // Save to localStorage for demo
+    // Save to localStorage
     localStorage.setItem(`assessment_config_${schoolId}`, JSON.stringify(newConfig));
     localStorage.setItem(`assessment_progress_${schoolId}`, JSON.stringify(newProgress));
+
+    // CRITICAL: Also save assessment document to Firestore so responses can be written
+    try {
+      const assessmentRef = doc(db, 'assessments', newConfig.id);
+      await setDoc(assessmentRef, {
+        id: newConfig.id,
+        schoolId: schoolId,
+        schoolName: schoolName,
+        expectedRespondents: newConfig.expectedRespondents,
+        totalExpected: newConfig.totalExpected,
+        createdAt: new Date().toISOString(),
+        status: 'Active',
+      });
+      console.log('✅ Assessment saved to Firestore:', newConfig.id);
+    } catch (error) {
+      console.error('⚠️ Warning: Could not save assessment to Firestore:', error);
+      // Don't block the UI - assessment can still work with localStorage
+    }
   };
 
   const handleProgressUpdate = (updatedProgress: AssessmentProgress) => {
