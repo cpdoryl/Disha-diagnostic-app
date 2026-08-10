@@ -92,7 +92,7 @@ export function ResponseTracker({
       console.error('⚠️ Error setting up response listener:', error);
       setIsLoading(false);
     }
-  }, [config.id, liveProgress]);
+  }, [config.id]);
 
   const summary = getResponseSummary(liveProgress, config);
   const overallProgress = getOverallProgress(liveProgress, config);
