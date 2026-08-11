@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '../store';
 import { AssessmentConfiguration, ResponseTracker, DiagnosticReport } from '../components/MultiUserAssessment';
+import { ProfessionalAssessmentEvents } from '../components/AssessmentEvents';
 import { ObjectiveDataCapture } from '../components/CaptureStage/ObjectiveDataCapture';
 import {
   AssessmentConfiguration as ConfigType,
@@ -215,94 +216,36 @@ export function MultiUserAssessmentPage() {
               </div>
             )}
 
-            <div className="bg-white rounded-lg border border-gray-200 p-8">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Assessment Events</h2>
-                  <p className="text-gray-600 mt-1">
-                    Every past and current 14D assessment round for {schoolName}. Cumulative respondent counts are read
-                    directly from the database, so they never disappear on logout or across devices.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setStage('configuration')}
-                  disabled={schoolId === 'unknown'}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition whitespace-nowrap ${
-                    schoolId === 'unknown'
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                >
-                  <PlusCircle className="w-5 h-5" />
-                  New Assessment Event
-                </button>
-              </div>
-
-              {isLoadingEvents && (
-                <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
+            {isLoadingEvents ? (
+              <div className="bg-white rounded-lg border border-gray-200 p-12 flex items-center justify-center">
+                <div className="flex items-center justify-center gap-2 text-gray-500">
                   <RefreshCw className="w-5 h-5 animate-spin" />
                   Loading assessment events...
                 </div>
-              )}
-
-              {!isLoadingEvents && eventsError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">{eventsError}</div>
-              )}
-
-              {!isLoadingEvents && !eventsError && events.length === 0 && schoolId !== 'unknown' && (
-                <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
-                  <p className="text-gray-500">No assessment events yet for this school.</p>
-                  <p className="text-sm text-gray-400 mt-1">Create one to start collecting 14D responses.</p>
-                </div>
-              )}
-
-              {!isLoadingEvents && events.length > 0 && (
-                <div className="space-y-3">
-                  {events.map((event) => {
-                    const badge = STATUS_BADGE[event.status];
-                    return (
-                      <button
-                        key={event.id}
-                        onClick={() => handleOpenEvent(event.id)}
-                        disabled={isOpeningEvent}
-                        className="w-full text-left border border-gray-200 rounded-lg p-5 hover:border-blue-400 hover:bg-blue-50/40 transition flex items-center justify-between gap-4 disabled:opacity-60"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-3">
-                            <h3 className="font-bold text-gray-900 truncate">{event.eventName}</h3>
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.className}`}>
-                              {badge.label}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              {event.createdAt ? event.createdAt.toLocaleDateString() : 'Unknown date'}
-                            </span>
-                            {event.status !== 'active' && (
-                              <span className="flex items-center gap-1">
-                                <Lock className="w-4 h-4" />
-                                Locked{event.lockedAt ? ` ${event.lockedAt.toLocaleDateString()}` : ''}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-6 flex-shrink-0">
-                          <div className="text-right">
-                            <div className="flex items-center gap-1.5 text-2xl font-bold text-blue-600">
-                              <Users className="w-5 h-5" />
-                              {event.totalActual}
-                            </div>
-                            <p className="text-xs text-gray-500">of {event.totalExpected} expected</p>
-                          </div>
-                          <ArrowRight className="w-5 h-5 text-gray-400" />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+              </div>
+            ) : eventsError ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">{eventsError}</div>
+            ) : events.length === 0 && schoolId !== 'unknown' ? (
+              <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+                <p className="text-gray-500">No assessment events yet for this school.</p>
+                <p className="text-sm text-gray-400 mt-1">Create one to start collecting 14D responses.</p>
+              </div>
+            ) : (
+              <ProfessionalAssessmentEvents
+                events={events.map(event => ({
+                  id: event.id,
+                  name: event.eventName,
+                  date: event.createdAt ? event.createdAt.toLocaleDateString() : 'Unknown date',
+                  status: (event.status === 'active' ? 'active' : event.status === 'analyzed' ? 'completed' : 'scheduled') as 'active' | 'completed' | 'scheduled',
+                  respondentsCount: event.totalActual,
+                  expectedCount: event.totalExpected,
+                  school: schoolName,
+                }))}
+                schoolName={schoolName}
+                onCreateNew={() => schoolId !== 'unknown' && setStage('configuration')}
+                onSelectEvent={(event) => handleOpenEvent(event.id)}
+              />
+            )}
           </div>
         )}
 
