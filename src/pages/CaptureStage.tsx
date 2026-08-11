@@ -28,6 +28,8 @@ import { SURVEY_QUESTIONS } from '../components/DeepDiveAssessment';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ObjectiveDataCapture } from '../components/CaptureStage/ObjectiveDataCapture';
+import { DiagnosticReport } from '../components/MultiUserAssessment';
+import { listAssessmentEventsForSchool } from '../lib/assessmentEventService';
 
 interface StakeholderItem {
   roleKey: 'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other';
@@ -42,10 +44,37 @@ interface StakeholderItem {
 
 export const CaptureStage = () => {
   const { dimensions, activeSchool, customDomain } = useAppStore();
-  
+
   // Modals state
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   const [deployTab, setDeployTab] = useState<'links' | 'campaign' | 'qrcode'>('links');
+
+  // Diagnostic Analysis (subjective + objective + gap analysis) modal state
+  const [reportEvent, setReportEvent] = useState<{ id: string; eventName: string } | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [reportLoadError, setReportLoadError] = useState('');
+
+  const handleOpenDiagnosticAnalysis = async () => {
+    if (!activeSchool?.id) {
+      setReportLoadError('Select a school first.');
+      return;
+    }
+    setIsLoadingReport(true);
+    setReportLoadError('');
+    try {
+      const events = await listAssessmentEventsForSchool(activeSchool.id);
+      if (events.length === 0) {
+        setReportLoadError('No 14D assessment event found yet for this school. Create one first.');
+        return;
+      }
+      setReportEvent({ id: events[0].id, eventName: events[0].eventName });
+    } catch (err) {
+      console.error('Failed to load assessment events for diagnostic analysis:', err);
+      setReportLoadError('Could not load assessment data. Please try again.');
+    } finally {
+      setIsLoadingReport(false);
+    }
+  };
   
   // Active Survey Questionnaire Modal state
   const [activeSurveyRole, setActiveSurveyRole] = useState<'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other' | null>(null);
@@ -514,13 +543,38 @@ export const CaptureStage = () => {
                 💡 Tip: Ensure responses have been collected from at least your primary stakeholder groups (teachers & admin) before generating the diagnostic report.
               </p>
             </div>
-            <button className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-colors text-sm shadow-[0_0_15px_rgba(37,99,235,0.3)] cursor-pointer">
-              Proceed to Diagnostic Analysis
-              <ArrowRight className="w-4 h-4" />
+            <button
+              onClick={handleOpenDiagnosticAnalysis}
+              disabled={isLoadingReport}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-colors text-sm shadow-[0_0_15px_rgba(37,99,235,0.3)] cursor-pointer disabled:opacity-60"
+            >
+              {isLoadingReport ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  Proceed to Diagnostic Analysis
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
+            {reportLoadError && <p className="text-xs text-red-400 text-center mt-2">{reportLoadError}</p>}
           </div>
         </div>
       </div>
+
+      {/* DIAGNOSTIC ANALYSIS MODAL (subjective + objective + gap analysis) */}
+      {reportEvent && activeSchool && (
+        <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-gray-50 rounded-2xl shadow-2xl w-full max-w-5xl my-8 p-6">
+            <DiagnosticReport
+              assessmentId={reportEvent.id}
+              eventName={reportEvent.eventName}
+              schoolName={activeSchool.name}
+              onBack={() => setReportEvent(null)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* DEPLOYMENT & SHARE CONSOLE MODAL */}
       {isDeployModalOpen && (
