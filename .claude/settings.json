@@ -10,7 +10,9 @@
       "Bash(python3 firestore-deploy-status.py)",
       "Bash(python3 deploy-firestore-now.py)",
       "Bash(gcloud firestore *)",
-      "Bash(gcloud auth *)"
+      "Bash(gcloud auth *)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)"
     ]
   }
 }
