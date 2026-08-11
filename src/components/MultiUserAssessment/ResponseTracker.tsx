@@ -3,12 +3,11 @@ import { Lock, Unlock, AlertCircle, CheckCircle2, Clock, Users } from 'lucide-re
 import {
   getResponseSummary,
   getOverallProgress,
-  lockAssessment,
-  unlockAssessment,
   AssessmentConfiguration,
   AssessmentProgress,
   StakeholderType,
 } from '../../lib/multiUserAssessment';
+import { lockAssessmentEventDoc, unlockAssessmentEventDoc } from '../../lib/assessmentEventService';
 import { SurveyLinksDisplay } from './SurveyLinksDisplay';
 import { db } from '../../lib/firebase';
 import { collection, query, onSnapshot } from 'firebase/firestore';
@@ -36,6 +35,7 @@ export function ResponseTracker({
 }: ResponseTrackerProps) {
   const [liveProgress, setLiveProgress] = useState<AssessmentProgress>(progress);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTogglingLock, setIsTogglingLock] = useState(false);
 
   // Set up real-time listener for responses
   useEffect(() => {
@@ -72,14 +72,15 @@ export function ResponseTracker({
 
         console.log('📈 Final counts:', responseCounts);
 
-        // Update progress with actual response counts
-        const updatedProgress: AssessmentProgress = {
-          ...liveProgress,
+        // Update progress with actual response counts, based on the latest
+        // state rather than the closure captured when this listener was set
+        // up - otherwise a response arriving after a lock/unlock toggle would
+        // clobber that change back to its value at mount time.
+        setLiveProgress((prev) => ({
+          ...prev,
           actualRespondents: responseCounts,
           totalActual: Object.values(responseCounts).reduce((a, b) => a + b, 0),
-        };
-
-        setLiveProgress(updatedProgress);
+        }));
         setIsLoading(false);
         console.log('✅ Real-time responses updated:', responseCounts);
       });
@@ -97,15 +98,35 @@ export function ResponseTracker({
   const summary = getResponseSummary(liveProgress, config);
   const overallProgress = getOverallProgress(liveProgress, config);
 
-  const handleToggleLock = () => {
-    if (liveProgress.isLocked) {
-      const updated = unlockAssessment(liveProgress);
-      onLockStatusChange(updated);
-      setLiveProgress(updated);
-    } else {
-      const updated = lockAssessment(liveProgress);
-      onLockStatusChange(updated);
-      setLiveProgress(updated);
+  const handleToggleLock = async () => {
+    setIsTogglingLock(true);
+    try {
+      if (liveProgress.isLocked) {
+        await unlockAssessmentEventDoc(config.id);
+        const updated: AssessmentProgress = {
+          ...liveProgress,
+          isLocked: false,
+          lockedAt: undefined,
+          lockedBy: undefined,
+        };
+        setLiveProgress(updated);
+        onLockStatusChange(updated);
+      } else {
+        const lockedAt = await lockAssessmentEventDoc(config.id);
+        const updated: AssessmentProgress = {
+          ...liveProgress,
+          isLocked: true,
+          lockedAt,
+          lockedBy: 'admin',
+        };
+        setLiveProgress(updated);
+        onLockStatusChange(updated);
+      }
+    } catch (error) {
+      console.error('Failed to update lock status:', error);
+      alert('Could not update the lock status. Please check your connection and try again.');
+    } finally {
+      setIsTogglingLock(false);
     }
   };
 
@@ -123,8 +144,8 @@ export function ResponseTracker({
       <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-8 rounded-lg mb-8 border border-indigo-200">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Assessment Deployment</h2>
-            <p className="text-gray-600">Track respondent progress for {config.schoolName}</p>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">{config.eventName}</h2>
+            <p className="text-gray-600">Track cumulative respondent progress for {config.schoolName}</p>
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-600 mb-1">Overall Progress</p>
@@ -136,11 +157,23 @@ export function ResponseTracker({
 
       {/* Survey Links Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-        <SurveyLinksDisplay
-          assessmentId={config.id}
-          schoolName={config.schoolName}
-          expectedRespondents={config.expectedRespondents}
-        />
+        {liveProgress.isLocked ? (
+          <div className="flex items-start gap-3 text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <Lock className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">This assessment event is locked</p>
+              <p className="text-sm mt-1">
+                Survey links no longer accept new responses. Unlock the event below if you need to collect more data.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <SurveyLinksDisplay
+            assessmentId={config.id}
+            schoolName={config.schoolName}
+            expectedRespondents={config.expectedRespondents}
+          />
+        )}
       </div>
 
       {/* Overall Progress Bar */}
@@ -221,63 +254,66 @@ export function ResponseTracker({
       {/* Status Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {/* Lock Status */}
-        <div className={`rounded-lg p-6 border ${progress.isLocked ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
+        <div className={`rounded-lg p-6 border ${liveProgress.isLocked ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className={`font-semibold ${progress.isLocked ? 'text-red-900' : 'text-blue-900'}`}>
-              {progress.isLocked ? 'Assessment Locked' : 'Assessment Open'}
+            <h3 className={`font-semibold ${liveProgress.isLocked ? 'text-red-900' : 'text-blue-900'}`}>
+              {liveProgress.isLocked ? 'Assessment Locked' : 'Assessment Open'}
             </h3>
-            {progress.isLocked ? (
-              <Lock className={`w-5 h-5 ${progress.isLocked ? 'text-red-600' : ''}`} />
+            {liveProgress.isLocked ? (
+              <Lock className="w-5 h-5 text-red-600" />
             ) : (
               <Unlock className="w-5 h-5 text-blue-600" />
             )}
           </div>
 
-          <p className={`text-sm mb-3 ${progress.isLocked ? 'text-red-800' : 'text-blue-800'}`}>
-            {progress.isLocked
-              ? `Assessment locked on ${progress.lockedAt?.toLocaleDateString()}. No new responses can be added.`
+          <p className={`text-sm mb-3 ${liveProgress.isLocked ? 'text-red-800' : 'text-blue-800'}`}>
+            {liveProgress.isLocked
+              ? `Assessment locked on ${liveProgress.lockedAt?.toLocaleDateString()}. No new responses can be added.`
               : 'Assessment is active. New responses can be added.'}
           </p>
 
           <button
             onClick={handleToggleLock}
+            disabled={isTogglingLock}
             className={`w-full px-4 py-2 rounded font-medium transition flex items-center justify-center gap-2 ${
-              progress.isLocked
+              isTogglingLock
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : liveProgress.isLocked
                 ? 'bg-red-600 text-white hover:bg-red-700'
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
           >
-            {progress.isLocked ? (
+            {liveProgress.isLocked ? (
               <>
                 <Unlock className="w-4 h-4" />
-                Unlock Assessment
+                {isTogglingLock ? 'Unlocking...' : 'Unlock Assessment'}
               </>
             ) : (
               <>
                 <Lock className="w-4 h-4" />
-                Lock Assessment
+                {isTogglingLock ? 'Locking...' : 'Lock Assessment'}
               </>
             )}
           </button>
         </div>
 
         {/* Analysis Readiness */}
-        <div className={`rounded-lg p-6 border ${progress.isLocked ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-          <h3 className={`font-semibold mb-3 ${progress.isLocked ? 'text-green-900' : 'text-gray-900'}`}>
+        <div className={`rounded-lg p-6 border ${liveProgress.isLocked ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+          <h3 className={`font-semibold mb-3 ${liveProgress.isLocked ? 'text-green-900' : 'text-gray-900'}`}>
             Ready for Analysis
           </h3>
 
-          <p className={`text-sm mb-3 ${progress.isLocked ? 'text-green-800' : 'text-gray-600'}`}>
-            {progress.isLocked
-              ? `✓ Assessment locked with ${progress.totalActual} responses. Ready to proceed to diagnostic report.`
+          <p className={`text-sm mb-3 ${liveProgress.isLocked ? 'text-green-800' : 'text-gray-600'}`}>
+            {liveProgress.isLocked
+              ? `✓ Assessment locked with ${liveProgress.totalActual} responses. Ready to proceed to diagnostic report.`
               : '⊘ Lock the assessment to proceed with analysis.'}
           </p>
 
           <button
             onClick={onProceedToAnalysis}
-            disabled={!progress.isLocked}
+            disabled={!liveProgress.isLocked}
             className={`w-full px-4 py-2 rounded font-medium transition ${
-              progress.isLocked
+              liveProgress.isLocked
                 ? 'bg-green-600 text-white hover:bg-green-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
@@ -288,7 +324,7 @@ export function ResponseTracker({
       </div>
 
       {/* Summary Stats */}
-      {progress.isLocked && (
+      {liveProgress.isLocked && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-6">
           <h3 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5" />
@@ -298,24 +334,24 @@ export function ResponseTracker({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <p className="text-green-700">Teacher Responses</p>
-              <p className="text-2xl font-bold text-green-600">{progress.actualRespondents.teacher}</p>
+              <p className="text-2xl font-bold text-green-600">{liveProgress.actualRespondents.teacher}</p>
             </div>
             <div>
               <p className="text-green-700">Parent Responses</p>
-              <p className="text-2xl font-bold text-green-600">{progress.actualRespondents.parent}</p>
+              <p className="text-2xl font-bold text-green-600">{liveProgress.actualRespondents.parent}</p>
             </div>
             <div>
               <p className="text-green-700">Student Responses</p>
-              <p className="text-2xl font-bold text-green-600">{progress.actualRespondents.student}</p>
+              <p className="text-2xl font-bold text-green-600">{liveProgress.actualRespondents.student}</p>
             </div>
             <div>
               <p className="text-green-700">Total Responses</p>
-              <p className="text-2xl font-bold text-green-600">{progress.totalActual}</p>
+              <p className="text-2xl font-bold text-green-600">{liveProgress.totalActual}</p>
             </div>
           </div>
 
           <p className="text-xs text-green-700 mt-4 italic">
-            Note: Analysis will be based on these {progress.totalActual} responses.
+            Note: Analysis will be based on these {liveProgress.totalActual} responses.
             Differences from expected count will be noted in the report.
           </p>
         </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FOURTEEN_DIMENSIONS, getDimensionByIndex, getTotalDimensions, getTotalQuestions } from '../data/14DimensionsQuestions';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { isAssessmentEventOpen } from '../lib/assessmentEventService';
 import { ChevronLeft, ChevronRight, Send, Check, AlertCircle } from 'lucide-react';
 
 type SurveyStep = 'welcome' | 'info' | 'survey' | 'summary' | 'confirmation' | 'error';
@@ -45,12 +46,26 @@ export function StakeholderSurvey() {
   const [errorMessage, setErrorMessage] = useState('');
   const [submissionId, setSubmissionId] = useState('');
 
-  // Validate parameters
+  // Validate parameters, then confirm the assessment event is still open
   useEffect(() => {
     if (!assessmentId || !stakeholderType || !['teacher', 'parent', 'student', 'admin', 'other'].includes(stakeholderType)) {
       setCurrentStep('error');
       setErrorMessage('Invalid survey link. Please check the URL and try again.');
+      return;
     }
+
+    isAssessmentEventOpen(assessmentId.trim())
+      .then((isOpen) => {
+        if (!isOpen) {
+          setCurrentStep('error');
+          setErrorMessage('This assessment window has closed and is no longer accepting responses. Please contact the school administrator.');
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to check assessment status:', error);
+        setCurrentStep('error');
+        setErrorMessage('Could not verify this survey link. Please try again later.');
+      });
   }, [assessmentId, stakeholderType]);
 
   const totalDimensions = getTotalDimensions();
@@ -234,6 +249,12 @@ export function StakeholderSurvey() {
         throw new Error('Stakeholder type is invalid');
       }
 
+      // Re-check in case the assessment was locked after this page loaded
+      const isOpen = await isAssessmentEventOpen(assessmentId.trim());
+      if (!isOpen) {
+        throw new Error('This assessment window has closed and is no longer accepting responses.');
+      }
+
       // Prepare response data - include all respondent identification fields
       const submissionData: any = {
         assessmentId: assessmentId.trim(),
@@ -299,6 +320,8 @@ export function StakeholderSurvey() {
         userFriendlyMessage = 'Invalid stakeholder type. Please access the survey via the correct link.';
       } else if (error.message?.includes('No survey responses')) {
         userFriendlyMessage = 'No survey responses were recorded. Please complete the assessment.';
+      } else if (error.message?.includes('window has closed')) {
+        userFriendlyMessage = 'This assessment window has closed and is no longer accepting responses. Please contact the school administrator.';
       } else if (error.code === 'permission-denied') {
         userFriendlyMessage = 'Access denied. The assessment link may have expired.';
       } else if (error.code === 'not-found') {

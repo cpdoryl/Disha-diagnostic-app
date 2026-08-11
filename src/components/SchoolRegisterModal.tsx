@@ -53,7 +53,7 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       setError('Please enter the official school name.');
@@ -80,7 +80,7 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
     if (editSchool) {
       updateActiveSchool(schoolPayload);
     } else {
-      addSchool(schoolPayload);
+      await addSchool(schoolPayload);
     }
 
     onClose();

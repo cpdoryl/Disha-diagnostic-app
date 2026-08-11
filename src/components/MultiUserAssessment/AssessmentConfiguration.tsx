@@ -62,6 +62,7 @@ export function AssessmentConfiguration({
   onConfigComplete,
   onCancel,
 }: AssessmentConfigurationProps) {
+  const [eventName, setEventName] = useState('');
   const [respondentCounts, setRespondentCounts] = useState<Record<StakeholderType, number>>({
     teacher: 15,
     parent: 20,
@@ -92,6 +93,10 @@ export function AssessmentConfiguration({
   const hasRequiredStakeholders = respondentCounts.teacher > 0 || respondentCounts.parent > 0 || respondentCounts.student > 0;
 
   const handleProceed = async () => {
+    if (!eventName.trim()) {
+      alert('Please name this assessment event, e.g. "14D Assessment - Term 1 2026"');
+      return;
+    }
     if (!hasRequiredStakeholders) {
       alert('Please set at least one expected respondent count');
       return;
@@ -100,7 +105,7 @@ export function AssessmentConfiguration({
     setIsSubmitting(true);
     try {
       // Create configuration
-      const config = createAssessmentConfiguration(schoolId, schoolName, respondentCounts);
+      const config = createAssessmentConfiguration(schoolId, schoolName, eventName.trim(), respondentCounts);
 
       // Initialize progress
       const progress = initializeAssessmentProgress(config);
@@ -129,6 +134,23 @@ export function AssessmentConfiguration({
       <div className="bg-white p-6 rounded-lg border border-gray-200 mb-6">
         <h3 className="font-semibold text-gray-800 mb-2">School Information</h3>
         <p className="text-gray-600">{schoolName}</p>
+      </div>
+
+      {/* Event Name */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200 mb-6">
+        <h3 className="font-semibold text-gray-800 mb-2">Assessment Event Name</h3>
+        <p className="text-sm text-gray-600 mb-3">
+          Give this round of the 14D assessment a name so it stays distinct from past and future rounds
+          (e.g. "14D Assessment - Term 1 2026"). All respondents and data will be held under this event
+          until you lock it and proceed to analysis.
+        </p>
+        <input
+          type="text"
+          value={eventName}
+          onChange={(e) => setEventName(e.target.value)}
+          placeholder="e.g. 14D Assessment - Term 1 2026"
+          className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg font-medium focus:border-blue-500 focus:outline-none"
+        />
       </div>
 
       {/* Respondent Configuration */}
@@ -232,9 +254,9 @@ export function AssessmentConfiguration({
 
         <button
           onClick={handleProceed}
-          disabled={!hasRequiredStakeholders || isSubmitting}
+          disabled={!hasRequiredStakeholders || !eventName.trim() || isSubmitting}
           className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition ${
-            hasRequiredStakeholders && !isSubmitting
+            hasRequiredStakeholders && eventName.trim() && !isSubmitting
               ? 'bg-blue-600 text-white hover:bg-blue-700'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}

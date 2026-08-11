@@ -1,201 +1,164 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '../store';
-import { AssessmentConfiguration, ResponseTracker } from '../components/MultiUserAssessment';
+import { AssessmentConfiguration, ResponseTracker, DiagnosticReport } from '../components/MultiUserAssessment';
 import {
   AssessmentConfiguration as ConfigType,
   AssessmentProgress,
-  initializeAssessmentProgress,
+  hydrateAssessmentProgress,
 } from '../lib/multiUserAssessment';
-import { ArrowRight, Settings, Activity, CheckCircle2, RotateCw } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { collection, doc, setDoc, query, where, getDocs } from 'firebase/firestore';
+import {
+  AssessmentEventSummary,
+  createAssessmentEventDoc,
+  getAssessmentEvent,
+  listAssessmentEventsForSchool,
+  markAssessmentEventAnalyzed,
+} from '../lib/assessmentEventService';
+import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle } from 'lucide-react';
 
-type Stage = 'select' | 'start-options' | 'configuration' | 'deployment' | 'analysis';
+type Stage = 'history' | 'configuration' | 'deployment' | 'analysis';
+
+const STAGE_ORDER: Stage[] = ['history', 'configuration', 'deployment', 'analysis'];
+const STAGE_LABELS: Record<Stage, string> = {
+  history: 'Events',
+  configuration: 'Configure',
+  deployment: 'Deploy',
+  analysis: 'Analyze',
+};
+
+const STATUS_BADGE: Record<AssessmentEventSummary['status'], { label: string; className: string }> = {
+  active: { label: 'Active', className: 'bg-blue-100 text-blue-700' },
+  locked: { label: 'Locked', className: 'bg-amber-100 text-amber-700' },
+  analyzed: { label: 'Analyzed', className: 'bg-green-100 text-green-700' },
+};
 
 export function MultiUserAssessmentPage() {
   const { activeSchool } = useAppStore();
-  const [stage, setStage] = useState<Stage>('select');
+  const [stage, setStage] = useState<Stage>('history');
   const [config, setConfig] = useState<ConfigType | null>(null);
   const [progress, setProgress] = useState<AssessmentProgress | null>(null);
 
+  const [events, setEvents] = useState<AssessmentEventSummary[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [eventsError, setEventsError] = useState('');
+  const [isOpeningEvent, setIsOpeningEvent] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+
   const schoolId = activeSchool?.id || 'unknown';
   const schoolName = activeSchool?.name || 'Unknown School';
+
+  const loadEvents = useCallback(async () => {
+    if (!schoolId || schoolId === 'unknown') {
+      setEvents([]);
+      setIsLoadingEvents(false);
+      return;
+    }
+    setIsLoadingEvents(true);
+    setEventsError('');
+    try {
+      const list = await listAssessmentEventsForSchool(schoolId);
+      setEvents(list);
+    } catch (error) {
+      console.error('Failed to load assessment events:', error);
+      setEventsError('Could not load past assessment events. Please refresh and try again.');
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  }, [schoolId]);
+
+  useEffect(() => {
+    setStage('history');
+    setConfig(null);
+    setProgress(null);
+    setShowReport(false);
+    loadEvents();
+  }, [schoolId, loadEvents]);
 
   const handleConfigComplete = async (newConfig: ConfigType, newProgress: AssessmentProgress) => {
     setConfig(newConfig);
     setProgress(newProgress);
     setStage('deployment');
 
-    // Save to localStorage
-    localStorage.setItem(`assessment_config_${schoolId}`, JSON.stringify(newConfig));
-    localStorage.setItem(`assessment_progress_${schoolId}`, JSON.stringify(newProgress));
-
-    // CRITICAL: Also save assessment document to Firestore so responses can be written
     try {
-      const assessmentRef = doc(db, 'assessments', newConfig.id);
-      await setDoc(assessmentRef, {
-        id: newConfig.id,
-        schoolId: schoolId,
-        schoolName: schoolName,
-        expectedRespondents: newConfig.expectedRespondents,
-        totalExpected: newConfig.totalExpected,
-        createdAt: new Date().toISOString(),
-        status: 'Active',
-      });
-      console.log('✅ Assessment saved to Firestore:', newConfig.id);
+      await createAssessmentEventDoc(newConfig);
     } catch (error) {
-      console.error('⚠️ Warning: Could not save assessment to Firestore:', error);
-      // Don't block the UI - assessment can still work with localStorage
+      console.error('Failed to save assessment event to Firestore:', error);
+      alert('Warning: this assessment event could not be saved to the database. Respondent data may not be retained. Please check your connection and try again.');
+    }
+  };
+
+  const handleOpenEvent = async (eventId: string) => {
+    setIsOpeningEvent(true);
+    try {
+      const result = await getAssessmentEvent(eventId);
+      if (!result) {
+        alert('This assessment event could not be found. It may have been deleted.');
+        return;
+      }
+      setConfig(result.config);
+      setProgress(
+        hydrateAssessmentProgress(result.config, {
+          isLocked: result.isLocked,
+          lockedAt: result.lockedAt || undefined,
+          lockedBy: result.lockedBy || undefined,
+        })
+      );
+      setShowReport(false);
+      setStage(result.config.status === 'analyzed' ? 'analysis' : 'deployment');
+    } catch (error) {
+      console.error('Failed to open assessment event:', error);
+      alert('Failed to open this assessment event. Please try again.');
+    } finally {
+      setIsOpeningEvent(false);
     }
   };
 
   const handleProgressUpdate = (updatedProgress: AssessmentProgress) => {
     setProgress(updatedProgress);
-
-    // Save to localStorage for demo
-    localStorage.setItem(`assessment_progress_${schoolId}`, JSON.stringify(updatedProgress));
   };
 
-  const handleProceedToAnalysis = () => {
+  const handleProceedToAnalysis = async () => {
+    if (config) {
+      try {
+        await markAssessmentEventAnalyzed(config.id);
+      } catch (error) {
+        console.error('Failed to mark event as analyzed:', error);
+      }
+    }
     setStage('analysis');
   };
 
-  const handleRestart = () => {
-    setStage('configuration');
+  const handleBackToHistory = () => {
+    setStage('history');
     setConfig(null);
     setProgress(null);
+    setShowReport(false);
+    loadEvents();
   };
-
-  const handleNewAssessment = () => {
-    setStage('select');
-    setConfig(null);
-    setProgress(null);
-    localStorage.removeItem(`assessment_config_${schoolId}`);
-    localStorage.removeItem(`assessment_progress_${schoolId}`);
-  };
-
-  const handleStartFresh = () => {
-    setStage('configuration');
-    setConfig(null);
-    setProgress(null);
-    localStorage.removeItem(`assessment_config_${schoolId}`);
-    localStorage.removeItem(`assessment_progress_${schoolId}`);
-  };
-
-  const handleContinuePrevious = () => {
-    const savedConfig = localStorage.getItem(`assessment_config_${schoolId}`);
-    const savedProgress = localStorage.getItem(`assessment_progress_${schoolId}`);
-
-    if (savedConfig && savedProgress) {
-      try {
-        const parsedConfig = JSON.parse(savedConfig);
-        const parsedProgress = JSON.parse(savedProgress);
-        setConfig(parsedConfig);
-        setProgress(parsedProgress);
-        setStage('deployment');
-      } catch (error) {
-        console.error('Failed to load saved assessment:', error);
-        handleStartFresh();
-      }
-    }
-  };
-
-  // Check for saved data on mount
-  const [hasSavedData, setHasSavedData] = useState(false);
-  const [isLoadingFromFirestore, setIsLoadingFromFirestore] = useState(true);
-
-  useEffect(() => {
-    const savedConfig = localStorage.getItem(`assessment_config_${schoolId}`);
-    const savedProgress = localStorage.getItem(`assessment_progress_${schoolId}`);
-
-    if (savedConfig && savedProgress) {
-      setHasSavedData(true);
-      // Always start at select stage, don't auto-load
-      setStage('select');
-    }
-  }, [schoolId]);
-
-  // Load existing assessment from Firestore for this school
-  useEffect(() => {
-    const loadAssessmentFromFirestore = async () => {
-      if (!schoolId || schoolId === 'unknown') {
-        setIsLoadingFromFirestore(false);
-        return;
-      }
-
-      try {
-        // Query for active assessment for this school
-        const assessmentsRef = collection(db, 'assessments');
-        const q = query(assessmentsRef, where('schoolId', '==', schoolId), where('status', '==', 'Active'));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-          // Found an active assessment for this school
-          const assessmentDoc = querySnapshot.docs[0];
-          const firestoreConfig = assessmentDoc.data();
-
-          // Create ConfigType from Firestore data
-          const loadedConfig: ConfigType = {
-            id: firestoreConfig.id,
-            schoolId: firestoreConfig.schoolId,
-            schoolName: firestoreConfig.schoolName,
-            expectedRespondents: firestoreConfig.expectedRespondents,
-            totalExpected: firestoreConfig.totalExpected,
-          };
-
-          // Create initial progress
-          const loadedProgress: AssessmentProgress = initializeAssessmentProgress();
-
-          setConfig(loadedConfig);
-          setProgress(loadedProgress);
-          setStage('deployment');
-
-          console.log('✅ Loaded existing assessment from Firestore:', loadedConfig.id);
-        } else {
-          console.log('ℹ️ No active assessment found for this school');
-        }
-      } catch (error) {
-        console.error('⚠️ Error loading assessment from Firestore:', error);
-      } finally {
-        setIsLoadingFromFirestore(false);
-      }
-    };
-
-    loadAssessmentFromFirestore();
-  }, [schoolId]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       {/* Page Header */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
         <h1 className="text-3xl font-bold text-gray-900">14-Dimension Multilateral Assessment</h1>
-        <p className="text-gray-600 mt-2">Multi-stakeholder feedback system with response tracking</p>
+        <p className="text-gray-600 mt-2">Multi-stakeholder feedback system with response tracking, for {schoolName}</p>
       </div>
 
       {/* Progress Indicator */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
         <div className="flex items-center justify-between">
-          {['select', 'configuration', 'deployment', 'analysis'].map((s, idx) => (
+          {STAGE_ORDER.map((s, idx) => (
             <React.Fragment key={s}>
               <div
                 className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition ${
-                  ['select', 'configuration', 'deployment', 'analysis'].indexOf(stage) >= idx
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-300 text-gray-600'
+                  STAGE_ORDER.indexOf(stage) >= idx ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
                 }`}
               >
-                {['select', 'configuration', 'deployment', 'analysis'].indexOf(stage) > idx ? (
-                  <CheckCircle2 className="w-6 h-6" />
-                ) : (
-                  idx + 1
-                )}
+                {STAGE_ORDER.indexOf(stage) > idx ? <CheckCircle2 className="w-6 h-6" /> : idx + 1}
               </div>
-              {idx < 3 && (
+              {idx < STAGE_ORDER.length - 1 && (
                 <div
                   className={`flex-1 h-1 mx-2 transition ${
-                    ['select', 'configuration', 'deployment', 'analysis'].indexOf(stage) > idx
-                      ? 'bg-blue-600'
-                      : 'bg-gray-300'
+                    STAGE_ORDER.indexOf(stage) > idx ? 'bg-blue-600' : 'bg-gray-300'
                   }`}
                 />
               )}
@@ -203,93 +166,116 @@ export function MultiUserAssessmentPage() {
           ))}
         </div>
         <div className="flex justify-between text-xs text-gray-600 mt-2">
-          <span>Selection</span>
-          <span>Configure</span>
-          <span>Deploy</span>
-          <span>Analyze</span>
+          {STAGE_ORDER.map((s) => (
+            <span key={s}>{STAGE_LABELS[s]}</span>
+          ))}
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Stage 1: Select Assessment Type */}
-        {stage === 'select' && (
+        {/* Stage 1: Assessment Event History */}
+        {stage === 'history' && (
           <div className="space-y-6">
-            {/* Show saved assessment notice if available */}
-            {hasSavedData && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
-                <h3 className="font-semibold text-amber-900 mb-4">You have a previous assessment in progress</h3>
-                <p className="text-sm text-amber-800 mb-4">
-                  You can continue where you left off or start a fresh assessment.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={handleContinuePrevious}
-                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-6 rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    Continue Previous Assessment
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={handleStartFresh}
-                    className="flex-1 border border-amber-300 hover:bg-amber-50 text-amber-900 font-bold py-2.5 px-6 rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    <RotateCw className="w-4 h-4" />
-                    Start Fresh Assessment
-                  </button>
+            {schoolId === 'unknown' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-amber-900">No school selected</h3>
+                  <p className="text-sm text-amber-800 mt-1">
+                    Register or select a school first. Assessment events and respondent data are saved under a specific school.
+                  </p>
                 </div>
               </div>
             )}
 
             <div className="bg-white rounded-lg border border-gray-200 p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                {hasSavedData ? 'Or select a new assessment type' : 'Select Assessment Type'}
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Multi-User Assessment Card */}
-                <div
-                  onClick={() => handleStartFresh()}
-                  className="border-2 border-blue-200 rounded-lg p-6 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition group"
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Assessment Events</h2>
+                  <p className="text-gray-600 mt-1">
+                    Every past and current 14D assessment round for {schoolName}. Cumulative respondent counts are read
+                    directly from the database, so they never disappear on logout or across devices.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setStage('configuration')}
+                  disabled={schoolId === 'unknown'}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition whitespace-nowrap ${
+                    schoolId === 'unknown'
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-200 transition">
-                      <Activity className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-gray-900">Multi-User 14D Assessment</h3>
-                      <p className="text-sm text-gray-600 mt-2">
-                        Track multiple respondents per stakeholder type with response tracking and locking
-                      </p>
-                      <div className="mt-4 space-y-1 text-xs text-gray-700">
-                        <p>✓ Configure expected respondent counts</p>
-                        <p>✓ Track real-time response progress</p>
-                        <p>✓ Lock assessment when complete</p>
-                        <p>✓ Generate comprehensive reports</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center gap-2 text-blue-600 font-semibold">
-                    Get Started <ArrowRight className="w-4 h-4" />
-                  </div>
-                </div>
-
-                {/* Coming Soon Card */}
-                <div className="border-2 border-gray-200 rounded-lg p-6 opacity-50">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-gray-100 p-3 rounded-lg">
-                      <Settings className="w-6 h-6 text-gray-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-gray-600">Single Assessment</h3>
-                      <p className="text-sm text-gray-500 mt-2">
-                        Traditional single respondent assessment (coming soon)
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-gray-400 text-sm font-semibold">Coming Soon</div>
-                </div>
+                  <PlusCircle className="w-5 h-5" />
+                  New Assessment Event
+                </button>
               </div>
+
+              {isLoadingEvents && (
+                <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  Loading assessment events...
+                </div>
+              )}
+
+              {!isLoadingEvents && eventsError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">{eventsError}</div>
+              )}
+
+              {!isLoadingEvents && !eventsError && events.length === 0 && schoolId !== 'unknown' && (
+                <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
+                  <p className="text-gray-500">No assessment events yet for this school.</p>
+                  <p className="text-sm text-gray-400 mt-1">Create one to start collecting 14D responses.</p>
+                </div>
+              )}
+
+              {!isLoadingEvents && events.length > 0 && (
+                <div className="space-y-3">
+                  {events.map((event) => {
+                    const badge = STATUS_BADGE[event.status];
+                    return (
+                      <button
+                        key={event.id}
+                        onClick={() => handleOpenEvent(event.id)}
+                        disabled={isOpeningEvent}
+                        className="w-full text-left border border-gray-200 rounded-lg p-5 hover:border-blue-400 hover:bg-blue-50/40 transition flex items-center justify-between gap-4 disabled:opacity-60"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-bold text-gray-900 truncate">{event.eventName}</h3>
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.className}`}>
+                              {badge.label}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {event.createdAt ? event.createdAt.toLocaleDateString() : 'Unknown date'}
+                            </span>
+                            {event.status !== 'active' && (
+                              <span className="flex items-center gap-1">
+                                <Lock className="w-4 h-4" />
+                                Locked{event.lockedAt ? ` ${event.lockedAt.toLocaleDateString()}` : ''}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6 flex-shrink-0">
+                          <div className="text-right">
+                            <div className="flex items-center gap-1.5 text-2xl font-bold text-blue-600">
+                              <Users className="w-5 h-5" />
+                              {event.totalActual}
+                            </div>
+                            <p className="text-xs text-gray-500">of {event.totalExpected} expected</p>
+                          </div>
+                          <ArrowRight className="w-5 h-5 text-gray-400" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -300,28 +286,46 @@ export function MultiUserAssessmentPage() {
             schoolId={schoolId}
             schoolName={schoolName}
             onConfigComplete={handleConfigComplete}
-            onCancel={() => setStage('select')}
+            onCancel={() => setStage('history')}
           />
         )}
 
         {/* Stage 3: Deployment & Response Tracking */}
         {stage === 'deployment' && config && progress && (
-          <ResponseTracker
-            config={config}
-            progress={progress}
-            onLockStatusChange={handleProgressUpdate}
-            onProceedToAnalysis={handleProceedToAnalysis}
+          <div>
+            <button
+              onClick={handleBackToHistory}
+              className="mb-4 text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-1"
+            >
+              ← Back to Assessment Events
+            </button>
+            <ResponseTracker
+              key={config.id}
+              config={config}
+              progress={progress}
+              onLockStatusChange={handleProgressUpdate}
+              onProceedToAnalysis={handleProceedToAnalysis}
+            />
+          </div>
+        )}
+
+        {/* Stage 4: Analysis */}
+        {stage === 'analysis' && config && progress && showReport && (
+          <DiagnosticReport
+            assessmentId={config.id}
+            eventName={config.eventName}
+            schoolName={config.schoolName}
+            onBack={() => setShowReport(false)}
           />
         )}
 
-        {/* Stage 4: Analysis (Placeholder) */}
-        {stage === 'analysis' && config && progress && (
+        {stage === 'analysis' && config && progress && !showReport && (
           <div className="bg-white rounded-lg border border-gray-200 p-8">
             <div className="text-center">
               <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Assessment Complete & Ready for Analysis</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">{config.eventName}</h2>
               <p className="text-gray-600 mb-6">
-                Multi-stakeholder assessment locked with {progress.totalActual} respondents. Ready to generate comprehensive diagnostic report.
+                Locked with {progress.totalActual} respondents. Ready to generate the comprehensive diagnostic report.
               </p>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 text-left">
@@ -363,27 +367,23 @@ export function MultiUserAssessmentPage() {
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
-                  onClick={handleRestart}
+                  onClick={() => setStage('deployment')}
                   className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition order-2 sm:order-1"
                 >
-                  Edit Configuration
+                  Back to Dashboard
                 </button>
                 <button
-                  onClick={() => {
-                    // Navigate to Synthesize stage with assessment data
-                    // This would be integrated with the main app router
-                    alert('Proceeding to Diagnostic Report Generation...\n\nIntegration with SynthesizeStage pending router configuration.');
-                  }}
+                  onClick={() => setShowReport(true)}
                   className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition flex items-center justify-center gap-2 order-1 sm:order-2"
                 >
                   <ArrowRight className="w-4 h-4" />
                   Generate Diagnostic Report
                 </button>
                 <button
-                  onClick={handleNewAssessment}
+                  onClick={handleBackToHistory}
                   className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition order-3"
                 >
-                  Start New Assessment
+                  View All Assessment Events
                 </button>
               </div>
             </div>

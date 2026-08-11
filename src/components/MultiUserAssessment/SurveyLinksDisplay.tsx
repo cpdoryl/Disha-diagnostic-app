@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Share2, Download, Mail, MessageCircle, Check } from 'lucide-react';
+import { Copy, Share2, Download, Mail, MessageCircle, Check, FlaskConical, Loader2 } from 'lucide-react';
 import {
   generateAllSurveyLinks,
   getStakeholderColor,
@@ -9,6 +9,9 @@ import {
   generateWhatsAppText,
   type StakeholderType,
 } from '../../lib/surveyLinkGenerator';
+import { simulateResponses, clearSimulatedResponses } from '../../lib/simulateResponses';
+
+const SIMULATE_BATCH_SIZE = 5;
 
 interface SurveyLinksDisplayProps {
   assessmentId: string;
@@ -23,6 +26,9 @@ export function SurveyLinksDisplay({
 }: SurveyLinksDisplayProps) {
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [showQRCodes, setShowQRCodes] = useState(false);
+  const [simulating, setSimulating] = useState<Partial<Record<StakeholderType, boolean>>>({});
+  const [simulatedAdded, setSimulatedAdded] = useState<Partial<Record<StakeholderType, number>>>({});
+  const [isClearingTestData, setIsClearingTestData] = useState(false);
 
   const surveyLinks = generateAllSurveyLinks(assessmentId, expectedRespondents);
 
@@ -60,6 +66,37 @@ export function SurveyLinksDisplay({
     window.open(whatsappLink, '_blank');
   };
 
+  const handleSimulate = async (type: StakeholderType) => {
+    setSimulating(prev => ({ ...prev, [type]: true }));
+    setSimulatedAdded(prev => ({ ...prev, [type]: undefined }));
+    try {
+      const written = await simulateResponses(assessmentId, type, SIMULATE_BATCH_SIZE);
+      setSimulatedAdded(prev => ({ ...prev, [type]: written }));
+      setTimeout(() => setSimulatedAdded(prev => ({ ...prev, [type]: undefined })), 4000);
+    } catch (error) {
+      console.error('Failed to simulate responses:', error);
+      alert('Could not generate simulated responses. Please check your connection and try again.');
+    } finally {
+      setSimulating(prev => ({ ...prev, [type]: false }));
+    }
+  };
+
+  const handleClearTestData = async () => {
+    if (!window.confirm('Remove all simulated test responses from this assessment event? Real respondent data will not be affected.')) {
+      return;
+    }
+    setIsClearingTestData(true);
+    try {
+      const deleted = await clearSimulatedResponses(assessmentId);
+      alert(deleted > 0 ? `Removed ${deleted} simulated response(s).` : 'No simulated test data found.');
+    } catch (error) {
+      console.error('Failed to clear simulated responses:', error);
+      alert('Could not clear simulated test data. Please check your connection and try again.');
+    } finally {
+      setIsClearingTestData(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -70,8 +107,16 @@ export function SurveyLinksDisplay({
         </p>
       </div>
 
-      {/* Toggle QR Codes */}
-      <div className="flex justify-end">
+      {/* Toggle QR Codes / Clear Test Data */}
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={handleClearTestData}
+          disabled={isClearingTestData}
+          className="px-4 py-2 bg-amber-50 border border-amber-300 text-amber-800 rounded-lg font-medium hover:bg-amber-100 transition disabled:opacity-60"
+          title="Remove all simulated test responses for this assessment event"
+        >
+          {isClearingTestData ? 'Clearing...' : '🧹 Clear Test Data'}
+        </button>
         <button
           onClick={() => setShowQRCodes(!showQRCodes)}
           className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-medium hover:bg-blue-200 transition"
@@ -129,7 +174,7 @@ export function SurveyLinksDisplay({
               )}
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 <button
                   onClick={() => handleCopyLink(surveyLink.url, surveyLink.stakeholderType)}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1 ${
@@ -152,6 +197,24 @@ export function SurveyLinksDisplay({
                 </button>
 
                 <button
+                  onClick={() => handleSimulate(surveyLink.stakeholderType)}
+                  disabled={simulating[surveyLink.stakeholderType]}
+                  className="px-3 py-2 bg-amber-50 border border-dashed border-amber-400 hover:bg-amber-100 text-amber-800 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1 disabled:opacity-60"
+                  title={`Generate ${SIMULATE_BATCH_SIZE} test responses for this stakeholder type (for testing the dashboard and analysis, not real data)`}
+                >
+                  {simulating[surveyLink.stakeholderType] ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FlaskConical className="w-4 h-4" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {simulatedAdded[surveyLink.stakeholderType] != null
+                      ? `+${simulatedAdded[surveyLink.stakeholderType]} added`
+                      : 'Simulate'}
+                  </span>
+                </button>
+
+                <button
                   onClick={() => handleEmailShare(surveyLink.url, surveyLink.stakeholderType)}
                   className="px-3 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1"
                   title="Send via email"
@@ -169,6 +232,12 @@ export function SurveyLinksDisplay({
                   <span className="hidden sm:inline">WhatsApp</span>
                 </button>
               </div>
+
+              <p className="text-xs text-amber-700 mt-2">
+                🧪 <strong>Simulate</strong> adds {SIMULATE_BATCH_SIZE} randomized test responses for this
+                stakeholder type, so you can check the dashboard and analysis without collecting real responses.
+                Simulated entries are tagged <code>isSimulated: true</code> in the database.
+              </p>
             </div>
           );
         })}

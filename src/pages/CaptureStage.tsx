@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  FileText, 
-  UploadCloud, 
-  Users, 
+  FileText,
+  Users,
   ArrowRight, 
   CheckCircle2, 
   Server, 
@@ -28,6 +27,9 @@ import { useAppStore } from '../store';
 import { SURVEY_QUESTIONS } from '../components/DeepDiveAssessment';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { ObjectiveDataCapture } from '../components/CaptureStage/ObjectiveDataCapture';
+import { DiagnosticReport } from '../components/MultiUserAssessment';
+import { listAssessmentEventsForSchool } from '../lib/assessmentEventService';
 
 interface StakeholderItem {
   roleKey: 'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other';
@@ -42,10 +44,37 @@ interface StakeholderItem {
 
 export const CaptureStage = () => {
   const { dimensions, activeSchool, customDomain } = useAppStore();
-  
+
   // Modals state
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   const [deployTab, setDeployTab] = useState<'links' | 'campaign' | 'qrcode'>('links');
+
+  // Diagnostic Analysis (subjective + objective + gap analysis) modal state
+  const [reportEvent, setReportEvent] = useState<{ id: string; eventName: string } | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [reportLoadError, setReportLoadError] = useState('');
+
+  const handleOpenDiagnosticAnalysis = async () => {
+    if (!activeSchool?.id) {
+      setReportLoadError('Select a school first.');
+      return;
+    }
+    setIsLoadingReport(true);
+    setReportLoadError('');
+    try {
+      const events = await listAssessmentEventsForSchool(activeSchool.id);
+      if (events.length === 0) {
+        setReportLoadError('No 14D assessment event found yet for this school. Create one first.');
+        return;
+      }
+      setReportEvent({ id: events[0].id, eventName: events[0].eventName });
+    } catch (err) {
+      console.error('Failed to load assessment events for diagnostic analysis:', err);
+      setReportLoadError('Could not load assessment data. Please try again.');
+    } finally {
+      setIsLoadingReport(false);
+    }
+  };
   
   // Active Survey Questionnaire Modal state
   const [activeSurveyRole, setActiveSurveyRole] = useState<'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other' | null>(null);
@@ -483,45 +512,12 @@ export const CaptureStage = () => {
               <Database className="w-6 h-6 text-indigo-500" />
               <h3 className="text-lg font-bold text-gray-900">Operational Data Sync</h3>
             </div>
-            <p className="text-gray-500 text-sm mb-6">Import quantitative data from school ERP systems.</p>
-            
-            <div className="space-y-4 mb-6">
-              <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Server className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">Admissions & Fee</p>
-                    <p className="text-xs text-gray-500">Synced 2 hours ago</p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">Active</span>
-              </div>
-              
-              <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Server className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">HR & Staffing</p>
-                    <p className="text-xs text-gray-500">Synced 1 day ago</p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">Active</span>
-              </div>
+            <p className="text-gray-500 text-sm mb-6">
+              Capture real operational data per dimension to independently verify stakeholder perception against
+              actual school data.
+            </p>
 
-              <div className="p-3 bg-white border border-gray-200 border-dashed rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <UploadCloud className="w-5 h-5 text-indigo-500" />
-                  <div>
-                    <p className="text-sm font-bold text-indigo-600">Connect Attendance Module</p>
-                    <p className="text-xs text-gray-500">Required for full diagnosis</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <button className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-2.5 rounded-lg font-bold transition-colors text-sm border border-indigo-200 cursor-pointer">
-              Manage ERP Integrations
-            </button>
+            <ObjectiveDataCapture schoolId={activeSchool?.id || ''} schoolName={activeSchool?.name || ''} />
           </div>
 
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl text-white shadow-sm border border-slate-700 space-y-4">
@@ -547,13 +543,38 @@ export const CaptureStage = () => {
                 💡 Tip: Ensure responses have been collected from at least your primary stakeholder groups (teachers & admin) before generating the diagnostic report.
               </p>
             </div>
-            <button className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-colors text-sm shadow-[0_0_15px_rgba(37,99,235,0.3)] cursor-pointer">
-              Proceed to Diagnostic Analysis
-              <ArrowRight className="w-4 h-4" />
+            <button
+              onClick={handleOpenDiagnosticAnalysis}
+              disabled={isLoadingReport}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-colors text-sm shadow-[0_0_15px_rgba(37,99,235,0.3)] cursor-pointer disabled:opacity-60"
+            >
+              {isLoadingReport ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  Proceed to Diagnostic Analysis
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
+            {reportLoadError && <p className="text-xs text-red-400 text-center mt-2">{reportLoadError}</p>}
           </div>
         </div>
       </div>
+
+      {/* DIAGNOSTIC ANALYSIS MODAL (subjective + objective + gap analysis) */}
+      {reportEvent && activeSchool && (
+        <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-gray-50 rounded-2xl shadow-2xl w-full max-w-5xl my-8 p-6">
+            <DiagnosticReport
+              assessmentId={reportEvent.id}
+              eventName={reportEvent.eventName}
+              schoolName={activeSchool.name}
+              onBack={() => setReportEvent(null)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* DEPLOYMENT & SHARE CONSOLE MODAL */}
       {isDeployModalOpen && (
