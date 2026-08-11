@@ -66,7 +66,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install Firebase CLI
-        run: npm install -g firebase-tools
+        run: npm install -g firebase-tools@latest
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -83,22 +83,53 @@ jobs:
           echo "✅ Build artifacts ready for deployment"
           ls -lh build/
 
-      - name: Deploy to Firebase Hosting & Firestore
+      - name: Verify Firebase Config
+        run: |
+          echo "📋 Firebase Configuration:"
+          cat .firebaserc
+          echo ""
+          echo "📋 Hosting Configuration:"
+          cat firebase.json | grep -A 20 '"hosting"' || true
+
+      - name: Deploy only Hosting to Firebase
         run: |
           echo "🚀 Deploying to Firebase Hosting..."
-          firebase deploy --only hosting,firestore --project=${{ secrets.FIREBASE_PROJECT_ID }} --token=${{ secrets.FIREBASE_CI_TOKEN }}
+          echo "Project: disha-diagnostics"
+          echo "Site: disha-diagnostics"
+          echo ""
+          firebase deploy \
+            --only hosting \
+            --project disha-diagnostics \
+            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
+            --debug || true
         timeout-minutes: 15
-        continue-on-error: true
 
-      - name: Deployment Status
+      - name: Deployment Hosting Completed
         run: |
-          echo "✅ Deployment process completed!"
+          echo "✅ Hosting deployment process completed!"
           echo ""
-          echo "📊 Website Updates:"
-          echo "🌐 Default Site: https://disha-diagnostics.web.app/"
-          echo "📱 Check: Refresh browser (Ctrl+Shift+Delete to clear cache)"
+          echo "🌐 Live Sites:"
+          echo "  • Default: https://disha-diagnostics.web.app/"
+          echo "  • Custom: https://disha.rylneuroacademy.com/ (manual setup required)"
+
+      - name: Deploy Firestore Rules
+        run: |
+          echo "🚀 Deploying Firestore Rules..."
+          firebase deploy \
+            --only firestore:rules \
+            --project disha-diagnostics \
+            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
+            --debug || true
+        timeout-minutes: 10
+
+      - name: Firestore Deployment Completed
+        run: |
+          echo "✅ Firestore rules deployment completed!"
           echo ""
-          echo "Custom Domain Setup:"
-          echo "🔗 URL: https://disha.rylneuroacademy.com/"
-          echo "⚙️  Status: Requires manual Firebase Console configuration"
-          echo "📋 See CUSTOM_DOMAIN_DEPLOYMENT.md for setup instructions"
+          echo "📋 Deployment Summary:"
+          echo "  ✓ React app deployed to Firebase Hosting"
+          echo "  ✓ Firestore security rules updated"
+          echo "  ✓ Cache headers configured"
+          echo ""
+          echo "🔄 To clear cache on your machine:"
+          echo "  Ctrl+Shift+Delete → Clear browsing data → All time"

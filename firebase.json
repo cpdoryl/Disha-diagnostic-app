@@ -44,7 +44,6 @@
   },
   "firestore": {
     "database": "ai-studio-dishadiagnostice-63fe1b2b-7f23-4689-aa1a-cd41267d5918",
-    "rules": "firestore-security-rules.txt",
-    "indexes": "firestore.indexes.json"
+    "rules": "firestore-security-rules.txt"
   }
 }
