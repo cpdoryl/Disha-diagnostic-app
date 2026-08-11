@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../store';
-import { LayoutDashboard, Target, BarChart2, Activity, Settings, LogOut, Menu, X, GraduationCap, Users, CheckSquare, Megaphone, HeartPulse, Plus, Building2, Edit3, Trash2, ChevronDown, Download, FileArchive, Globe } from 'lucide-react';
+import { LayoutDashboard, Target, BarChart2, Activity, Settings, LogOut, Menu, X, GraduationCap, Users, CheckSquare, Megaphone, HeartPulse, Plus, Building2, Edit3, Trash2, ChevronDown, Download, FileArchive } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ViewState, School } from '../../types';
 import { auth } from '../../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { SaathiChatbot } from '../SaathiChatbot';
 import { SchoolRegisterModal } from '../SchoolRegisterModal';
-import { CustomDomainModal } from '../CustomDomainModal';
 import { downloadAllSampleDataAsZIP } from '../../lib/downloadSampleZip';
 import { generateUserGuidePDF } from '../../lib/generateGuidePdf';
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const { currentView, setCurrentView, activeSchool, schools, setActiveSchool, deleteSchool, isLoadingData, isAdmin, customDomain } = useAppStore();
+  const { currentView, setCurrentView, activeSchool, schools, setActiveSchool, deleteSchool, isLoadingData, isAdmin } = useAppStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
-  const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -210,22 +208,8 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
         </nav>
 
         <div className="p-4 border-t border-slate-800 space-y-2">
-          <button 
-            onClick={() => setIsDomainModalOpen(true)}
-            className="flex items-center justify-between px-3.5 py-2.5 text-xs font-bold rounded-xl text-emerald-300 hover:text-white bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/50 w-full transition-all shadow-sm group cursor-pointer"
-            title="Manage Custom Institutional Domain Mapping"
-          >
-            <div className="flex items-center gap-2.5 truncate">
-              <Globe className="w-4 h-4 text-emerald-400 shrink-0" />
-              <div className="text-left truncate">
-                <p className="text-[10px] text-emerald-400 font-extrabold uppercase tracking-wider leading-none mb-0.5">Custom Domain</p>
-                <p className="text-xs font-mono text-slate-200 truncate">{customDomain || 'disha.rylneuroacademy.com'}</p>
-              </div>
-            </div>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0 ml-1"></span>
-          </button>
-          <button 
-            onClick={() => generateUserGuidePDF(activeSchool?.name)} 
+          <button
+            onClick={() => generateUserGuidePDF(activeSchool?.name)}
             className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl text-blue-300 hover:text-white bg-blue-950/60 hover:bg-blue-900/80 border border-blue-800/50 w-full transition-all shadow-sm cursor-pointer"
           >
             <Download className="w-4 h-4 text-blue-400" />
@@ -287,14 +271,10 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </main>
       <SaathiChatbot />
-      <SchoolRegisterModal 
-        isOpen={isRegisterModalOpen} 
-        onClose={() => setIsRegisterModalOpen(false)} 
-        editSchool={editingSchool} 
-      />
-      <CustomDomainModal
-        isOpen={isDomainModalOpen}
-        onClose={() => setIsDomainModalOpen(false)}
+      <SchoolRegisterModal
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        editSchool={editingSchool}
       />
     </div>
   );
