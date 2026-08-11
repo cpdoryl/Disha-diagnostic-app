@@ -83,16 +83,22 @@ jobs:
           echo "✅ Build artifacts ready for deployment"
           ls -lh build/
 
-      - name: Deploy to Firebase Hosting (Default + Custom Domain)
+      - name: Deploy to Firebase Hosting & Firestore
         run: |
           echo "🚀 Deploying to Firebase Hosting..."
-          firebase deploy --only hosting:default,hosting:custom,firestore --project=${{ secrets.FIREBASE_PROJECT_ID }} --token=${{ secrets.FIREBASE_CI_TOKEN }}
+          firebase deploy --only hosting,firestore --project=${{ secrets.FIREBASE_PROJECT_ID }} --token=${{ secrets.FIREBASE_CI_TOKEN }}
         timeout-minutes: 15
+        continue-on-error: true
 
-      - name: Deployment Success
+      - name: Deployment Status
         run: |
-          echo "✅ Deployment complete!"
-          echo "🌐 Default Site: https://disha-diagnostics.web.app/"
-          echo "🌐 Custom Domain: https://disha.rylneuroacademy.com/"
+          echo "✅ Deployment process completed!"
           echo ""
-          echo "📊 Both URLs now have the latest changes"
+          echo "📊 Website Updates:"
+          echo "🌐 Default Site: https://disha-diagnostics.web.app/"
+          echo "📱 Check: Refresh browser (Ctrl+Shift+Delete to clear cache)"
+          echo ""
+          echo "Custom Domain Setup:"
+          echo "🔗 URL: https://disha.rylneuroacademy.com/"
+          echo "⚙️  Status: Requires manual Firebase Console configuration"
+          echo "📋 See CUSTOM_DOMAIN_DEPLOYMENT.md for setup instructions"

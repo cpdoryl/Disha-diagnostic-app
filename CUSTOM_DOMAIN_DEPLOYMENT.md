@@ -2,23 +2,57 @@
 
 ## 📋 Overview
 
-This application is configured to deploy to BOTH the default Firebase Hosting URL and the custom domain automatically with every push to the `main` branch.
+This application is configured to deploy to the default Firebase Hosting URL automatically with every push to the `main` branch. The custom domain can be configured to point to the same Firebase Hosting site.
 
 ---
 
 ## 🌐 Deployment URLs
 
-### **Default Firebase Hosting**
+### **Default Firebase Hosting (Automatic)**
 ```
 https://disha-diagnostics.web.app/
+Status: ✅ Auto-deploys on every push to main
 ```
 
-### **Custom Domain (RYL Academy)**
+### **Custom Domain (Manual Setup Required)**
 ```
 https://disha.rylneuroacademy.com/
+Status: ⏳ Requires manual Firebase Console configuration
 ```
 
-**Both URLs receive the SAME code and are updated simultaneously on every push to `main`.**
+**Once custom domain is configured in Firebase, both URLs will point to the same site and receive identical updates automatically.**
+
+---
+
+## 🔧 How to Setup Custom Domain
+
+### **Step 1: Open Firebase Console**
+```
+https://console.firebase.google.com/project/disha-diagnostics/hosting
+```
+
+### **Step 2: Add Custom Domain**
+1. Click "Add Custom Domain"
+2. Enter: `disha.rylneuroacademy.com`
+3. Click "Continue"
+
+### **Step 3: Verify Domain Ownership**
+Firebase will show DNS records to add:
+1. Go to your domain registrar (GoDaddy, Namecheap, etc.)
+2. Add the provided DNS TXT record
+3. Wait for DNS to propagate (can take 24 hours)
+4. Click "Verify" in Firebase Console
+
+### **Step 4: Wait for SSL Certificate**
+- Firebase automatically provisions SSL certificate
+- Can take 24 hours
+- Both HTTP and HTTPS will work once ready
+
+### **Step 5: Automatic Updates Begin**
+Once domain is verified and SSL is active:
+- Every push to `main` automatically updates both URLs
+- Both URLs receive identical code
+- No manual sync needed
 
 ---
 
