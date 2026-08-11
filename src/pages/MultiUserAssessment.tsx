@@ -17,7 +17,7 @@ import {
   markAssessmentEventAnalyzed,
 } from '../lib/assessmentEventService';
 import { checkObjectiveDataReadiness, ObjectiveReadiness } from '../lib/objectiveDataService';
-import { generateEnhancedDiagnosticReport } from '../lib/enhancedDiagnosticReport';
+import { generateProfessionalDiagnosticReportV3 } from '../lib/professionalDiagnosticReportV3';
 import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle, Database, Download, Layers, Settings, Zap, BarChart3, BookOpen, Target, TrendingUp, Lightbulb, AlertTriangle, CheckCircle } from 'lucide-react';
 
 type Stage = 'history' | 'configuration' | 'deployment' | 'analysis';
@@ -417,7 +417,7 @@ export function MultiUserAssessmentPage() {
       ],
     };
 
-    generateEnhancedDiagnosticReport(reportData);
+    generateProfessionalDiagnosticReportV3(reportData);
   };
 
   useEffect(() => {
