@@ -34,6 +34,7 @@
     ]
   },
   "firestore": {
-    "rules": "firestore-security-rules.txt"
+    "rules": "firestore-security-rules.txt",
+    "indexes": "firestore.indexes.json"
   }
 }

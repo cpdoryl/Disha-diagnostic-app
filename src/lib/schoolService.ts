@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, query, where, limit } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { School } from '../types';
 
@@ -115,6 +115,7 @@ export async function saveSchoolToFirestore(school: School): Promise<void> {
     await setDoc(schoolDocRef, {
       id: school.id,
       name: school.name,
+      nameLower: school.name.trim().toLowerCase(),
       city: school.city,
       board: school.board,
       tier: school.tier,
@@ -128,6 +129,38 @@ export async function saveSchoolToFirestore(school: School): Promise<void> {
     }, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Look up an existing school by (normalized) name so re-registering the same
+ * school never creates a duplicate, orphaning past assessment data.
+ */
+export async function findSchoolByName(name: string): Promise<School | null> {
+  const nameLower = name.trim().toLowerCase();
+  if (!nameLower) return null;
+  try {
+    const q = query(collection(db, SCHOOLS_COLLECTION), where('nameLower', '==', nameLower), limit(1));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    const docSnap = snapshot.docs[0];
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      name: data.name || '',
+      city: data.city || '',
+      board: data.board || '',
+      tier: data.tier || '',
+      feeBand: data.feeBand || '',
+      studentCount: data.studentCount || '',
+      principalName: data.principalName || '',
+      contactEmail: data.contactEmail || '',
+      contactPhone: data.contactPhone || '',
+      address: data.address || '',
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `${SCHOOLS_COLLECTION}?nameLower=${nameLower}`);
+    return null;
   }
 }
 

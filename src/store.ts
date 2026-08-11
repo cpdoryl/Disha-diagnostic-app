@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { ViewState, School, ChallengeDomain, GapPrediction, SimulationModel, Dimension, Student, StaffMember, AttendanceRecord, CommunicationMessage } from './types';
 
-import { collection, getDocs, doc, updateDoc, addDoc, setDoc } from 'firebase/firestore';
-import { db } from './lib/firebase';
+import { collection, getDocs, doc, updateDoc, addDoc, setDoc, getDoc } from 'firebase/firestore';
+import { db, auth } from './lib/firebase';
 import { seedDatabase } from './lib/seed';
-import { saveSchoolToFirestore, deleteSchoolFromFirestore, fetchSchoolsFromFirestore } from './lib/schoolService';
+import { saveSchoolToFirestore, deleteSchoolFromFirestore, fetchSchoolsFromFirestore, findSchoolByName } from './lib/schoolService';
 
 interface AppState {
   currentView: ViewState;
@@ -16,7 +16,7 @@ interface AppState {
   activeSchool: School | null;
   schools: School[];
   setActiveSchool: (school: School | null) => void;
-  addSchool: (schoolData: Omit<School, 'id'>) => School;
+  addSchool: (schoolData: Omit<School, 'id'>) => Promise<School>;
   updateActiveSchool: (updatedData: Partial<School>) => void;
   deleteSchool: (id: string) => void;
   domains: ChallengeDomain[];
@@ -180,26 +180,44 @@ export const useAppStore = create<AppState>((set) => ({
     } else {
       localStorage.removeItem('disha_active_school_id');
     }
+    // Persist per-account too, so the active school survives a new device/browser/login
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      setDoc(doc(db, 'users', uid), { activeSchoolId: school?.id || null }, { merge: true })
+        .catch(err => console.error('Failed to persist active school to user profile:', err));
+    }
     set({ activeSchool: school });
   },
-  addSchool: (schoolData) => {
-    const newSchool: School = {
+  addSchool: async (schoolData) => {
+    // Reuse an existing school with the same name instead of forking a duplicate
+    // that would orphan any assessment data already tied to the original.
+    const existing = await findSchoolByName(schoolData.name).catch(() => null);
+    const resolvedSchool: School = existing || {
       ...schoolData,
       id: 'sch_' + Date.now(),
     };
-    // Persist to Firestore database
-    saveSchoolToFirestore(newSchool).catch(err => console.error('Failed to save school to Firestore:', err));
+
+    if (!existing) {
+      saveSchoolToFirestore(resolvedSchool).catch(err => console.error('Failed to save school to Firestore:', err));
+    }
+
+    localStorage.setItem('disha_active_school_id', resolvedSchool.id);
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      setDoc(doc(db, 'users', uid), { activeSchoolId: resolvedSchool.id }, { merge: true })
+        .catch(err => console.error('Failed to persist active school to user profile:', err));
+    }
 
     set((state) => {
-      const updatedSchools = [...state.schools, newSchool];
+      const alreadyPresent = state.schools.some(s => s.id === resolvedSchool.id);
+      const updatedSchools = alreadyPresent ? state.schools : [...state.schools, resolvedSchool];
       localStorage.setItem('disha_registered_schools', JSON.stringify(updatedSchools));
-      localStorage.setItem('disha_active_school_id', newSchool.id);
       return {
         schools: updatedSchools,
-        activeSchool: newSchool,
+        activeSchool: resolvedSchool,
       };
     });
-    return newSchool;
+    return resolvedSchool;
   },
   updateActiveSchool: (updatedData) => {
     set((state) => {
@@ -262,6 +280,19 @@ export const useAppStore = create<AppState>((set) => ({
         fetchSchoolsFromFirestore(),
       ]);
 
+      // Fall back to the account's remembered active school (Firestore) when this
+      // device/browser has no local record of it — e.g. a fresh login elsewhere.
+      let remoteActiveSchoolId: string | null = null;
+      const uid = auth.currentUser?.uid;
+      if (uid && !localStorage.getItem('disha_active_school_id')) {
+        try {
+          const userSnap = await getDoc(doc(db, 'users', uid));
+          remoteActiveSchoolId = userSnap.exists() ? (userSnap.data().activeSchoolId || null) : null;
+        } catch (err) {
+          console.error('Failed to load active school from user profile:', err);
+        }
+      }
+
       set(state => {
         let mergedSchools = state.schools;
         if (fetchedSchools && fetchedSchools.length > 0) {
@@ -272,7 +303,7 @@ export const useAppStore = create<AppState>((set) => ({
           mergedSchools = Array.from(schoolMap.values());
         }
 
-        const savedActiveId = localStorage.getItem('disha_active_school_id');
+        const savedActiveId = localStorage.getItem('disha_active_school_id') || remoteActiveSchoolId;
         let currentActive = state.activeSchool;
         if (savedActiveId && mergedSchools.length > 0) {
           const match = mergedSchools.find(s => s.id === savedActiveId);
@@ -281,6 +312,9 @@ export const useAppStore = create<AppState>((set) => ({
           currentActive = mergedSchools[0];
         }
 
+        if (currentActive) {
+          localStorage.setItem('disha_active_school_id', currentActive.id);
+        }
         localStorage.setItem('disha_registered_schools', JSON.stringify(mergedSchools));
 
         return {

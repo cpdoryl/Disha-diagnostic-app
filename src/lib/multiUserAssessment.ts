@@ -29,6 +29,7 @@ export interface AssessmentConfiguration {
   id: string;
   schoolId: string;
   schoolName: string;
+  eventName: string;
   assessmentType: '14d-multilateral';
   createdAt: Date;
 
@@ -44,8 +45,9 @@ export interface AssessmentConfiguration {
   // Tracking
   totalExpected: number;
 
-  // Status
-  status: 'configured' | 'in-progress' | 'locked' | 'analyzed';
+  // Status - persisted in Firestore, source of truth for whether this event
+  // still accepts responses and whether analysis may proceed.
+  status: 'active' | 'locked' | 'analyzed';
   configuredAt: Date;
   lockedAt?: Date;
 
@@ -87,6 +89,7 @@ export interface AssessmentProgress {
 export function createAssessmentConfiguration(
   schoolId: string,
   schoolName: string,
+  eventName: string,
   expectedCounts: Record<StakeholderType, number>
 ): AssessmentConfiguration {
   const totalExpected = Object.values(expectedCounts).reduce((a, b) => a + b, 0);
@@ -95,6 +98,7 @@ export function createAssessmentConfiguration(
     id: `config_${schoolId}_${Date.now()}`,
     schoolId,
     schoolName,
+    eventName,
     assessmentType: '14d-multilateral',
     createdAt: new Date(),
     expectedRespondents: {
@@ -105,7 +109,7 @@ export function createAssessmentConfiguration(
       other: expectedCounts.other || 0,
     },
     totalExpected,
-    status: 'configured',
+    status: 'active',
     configuredAt: new Date(),
   };
 }
@@ -131,6 +135,22 @@ export function initializeAssessmentProgress(
     responses: [],
     isLocked: false,
     lastUpdated: new Date(),
+  };
+}
+
+/**
+ * Rebuild progress for an event reloaded from Firestore, carrying over its
+ * persisted lock state instead of resetting to "unlocked" on every reload.
+ */
+export function hydrateAssessmentProgress(
+  config: AssessmentConfiguration,
+  persisted: { isLocked: boolean; lockedAt?: Date; lockedBy?: string }
+): AssessmentProgress {
+  return {
+    ...initializeAssessmentProgress(config),
+    isLocked: persisted.isLocked,
+    lockedAt: persisted.lockedAt,
+    lockedBy: persisted.lockedBy,
   };
 }
 
@@ -270,6 +290,7 @@ export function getOverallProgress(
 export default {
   createAssessmentConfiguration,
   initializeAssessmentProgress,
+  hydrateAssessmentProgress,
   addStakeholderResponse,
   lockAssessment,
   unlockAssessment,
