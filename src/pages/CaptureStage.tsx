@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  FileText, 
-  UploadCloud, 
-  Users, 
+  FileText,
+  Users,
   ArrowRight, 
   CheckCircle2, 
   Server, 
@@ -28,6 +27,7 @@ import { useAppStore } from '../store';
 import { SURVEY_QUESTIONS } from '../components/DeepDiveAssessment';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { ObjectiveDataCapture } from '../components/CaptureStage/ObjectiveDataCapture';
 
 interface StakeholderItem {
   roleKey: 'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other';
@@ -483,45 +483,12 @@ export const CaptureStage = () => {
               <Database className="w-6 h-6 text-indigo-500" />
               <h3 className="text-lg font-bold text-gray-900">Operational Data Sync</h3>
             </div>
-            <p className="text-gray-500 text-sm mb-6">Import quantitative data from school ERP systems.</p>
-            
-            <div className="space-y-4 mb-6">
-              <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Server className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">Admissions & Fee</p>
-                    <p className="text-xs text-gray-500">Synced 2 hours ago</p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">Active</span>
-              </div>
-              
-              <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Server className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">HR & Staffing</p>
-                    <p className="text-xs text-gray-500">Synced 1 day ago</p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">Active</span>
-              </div>
+            <p className="text-gray-500 text-sm mb-6">
+              Capture real operational data per dimension to independently verify stakeholder perception against
+              actual school data.
+            </p>
 
-              <div className="p-3 bg-white border border-gray-200 border-dashed rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <UploadCloud className="w-5 h-5 text-indigo-500" />
-                  <div>
-                    <p className="text-sm font-bold text-indigo-600">Connect Attendance Module</p>
-                    <p className="text-xs text-gray-500">Required for full diagnosis</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <button className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-2.5 rounded-lg font-bold transition-colors text-sm border border-indigo-200 cursor-pointer">
-              Manage ERP Integrations
-            </button>
+            <ObjectiveDataCapture schoolId={activeSchool?.id || ''} schoolName={activeSchool?.name || ''} />
           </div>
 
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl text-white shadow-sm border border-slate-700 space-y-4">

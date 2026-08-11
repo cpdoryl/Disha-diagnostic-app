@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { jsPDF } from 'jspdf';
 import {
   Radar,
   RadarChart,
@@ -9,8 +8,11 @@ import {
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
 } from 'recharts';
-import { ArrowLeft, Download, RefreshCw, AlertCircle } from 'lucide-react';
-import { computeDiagnosticReport, getHealthStatus, DiagnosticReportData } from '../../lib/dimensionScoring';
+import { ArrowLeft, Download, RefreshCw, AlertCircle, Database, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { getHealthStatus } from '../../lib/dimensionScoring';
+import { assembleFullDiagnosticReport, FullDiagnosticReportData, DimensionReportCard } from '../../lib/fullDiagnosticReport';
+import { generateDiagnosticReportPdf } from '../../lib/diagnosticReportPdf';
+import { useAppStore } from '../../store';
 
 interface DiagnosticReportProps {
   assessmentId: string;
@@ -27,8 +29,65 @@ const STAKEHOLDER_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
+const GAP_BADGE: Record<string, { label: string; className: string; Icon: React.ElementType }> = {
+  overestimation: { label: 'Overestimated by stakeholders', className: 'bg-amber-100 text-amber-700', Icon: TrendingUp },
+  underestimation: { label: 'Underestimated by stakeholders', className: 'bg-blue-100 text-blue-700', Icon: TrendingDown },
+  alignment: { label: 'Aligned with reality', className: 'bg-green-100 text-green-700', Icon: Minus },
+};
+
+function DimensionCard({ card }: { card: DimensionReportCard }) {
+  const status = card.subjective.status;
+  const gapBadge = card.gap ? GAP_BADGE[card.gap.interpretation] : null;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <h4 className="font-semibold text-gray-800">{card.dimensionName}</h4>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${status.className}`}>
+            {status.label}
+          </span>
+          {gapBadge && (
+            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${gapBadge.className}`}>
+              <gapBadge.Icon className="w-3 h-3" />
+              {gapBadge.label}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+        <div>
+          <p className="text-gray-500 text-xs">Subjective (survey)</p>
+          <p className="font-semibold text-gray-800">{card.subjective.index ?? 'N/A'}/100</p>
+        </div>
+        <div>
+          <p className="text-gray-500 text-xs">Benchmark</p>
+          <p className="font-semibold text-gray-800">{card.benchmark}/100</p>
+        </div>
+        <div>
+          <p className="text-gray-500 text-xs">Objective (operational data)</p>
+          <p className="font-semibold text-gray-800">
+            {card.objective ? `${card.objective.objectiveScore}/100` : 'No data yet'}
+          </p>
+        </div>
+      </div>
+
+      {card.gap && (
+        <p className="text-xs text-gray-500">
+          Gap: {card.gap.gap > 0 ? '+' : ''}
+          {card.gap.gap.toFixed(1)} points (perceived {card.gap.subjectiveScore} vs. data {card.gap.objectiveScore})
+        </p>
+      )}
+
+      <p className="text-sm text-gray-600 leading-relaxed">{card.interpretation}</p>
+    </div>
+  );
+}
+
 export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }: DiagnosticReportProps) {
-  const [report, setReport] = useState<DiagnosticReportData | null>(null);
+  const { setCurrentView } = useAppStore();
+  const [report, setReport] = useState<FullDiagnosticReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -36,7 +95,7 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
     let cancelled = false;
     setIsLoading(true);
     setError('');
-    computeDiagnosticReport(assessmentId)
+    assembleFullDiagnosticReport(assessmentId, schoolName, eventName)
       .then((data) => {
         if (!cancelled) setReport(data);
       })
@@ -50,65 +109,11 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
     return () => {
       cancelled = true;
     };
-  }, [assessmentId]);
+  }, [assessmentId, schoolName, eventName]);
 
   const handleDownloadPDF = () => {
     if (!report) return;
-
-    const doc = new jsPDF();
-    const marginX = 14;
-    let y = 20;
-
-    doc.setFontSize(18);
-    doc.text('14D Diagnostic Report', marginX, y);
-    y += 10;
-
-    doc.setFontSize(11);
-    doc.text(`School: ${schoolName}`, marginX, y);
-    y += 6;
-    doc.text(`Assessment Event: ${eventName}`, marginX, y);
-    y += 6;
-    doc.text(`Generated: ${report.generatedAt.toLocaleString()}`, marginX, y);
-    y += 6;
-    doc.text(`Total Responses: ${report.totalResponses}`, marginX, y);
-    y += 6;
-
-    const breakdown = Object.entries(report.responsesByStakeholder)
-      .filter(([, count]) => count > 0)
-      .map(([type, count]) => `${STAKEHOLDER_LABELS[type] || type}: ${count}`)
-      .join(', ');
-    if (breakdown) {
-      doc.text(breakdown, marginX, y);
-      y += 10;
-    } else {
-      y += 4;
-    }
-
-    doc.setFontSize(14);
-    doc.text(`Overall Institutional Health Index: ${report.overallIndex ?? 'N/A'}/100`, marginX, y);
-    y += 10;
-
-    doc.setFontSize(12);
-    doc.text('Dimension Breakdown', marginX, y);
-    y += 8;
-    doc.setFontSize(10);
-
-    for (const dim of report.dimensions) {
-      if (y > 275) {
-        doc.addPage();
-        y = 20;
-      }
-      const status = getHealthStatus(dim.index);
-      const scoreText =
-        dim.average != null
-          ? `${dim.average.toFixed(2)}/5  (Index ${dim.index}/100 - ${status.label})  [n=${dim.responseCount}]`
-          : 'No responses recorded';
-      doc.text(`${dim.dimensionName}:`, marginX, y);
-      y += 5;
-      doc.text(scoreText, marginX + 4, y);
-      y += 7;
-    }
-
+    const doc = generateDiagnosticReportPdf(report);
     const safeSchool = schoolName.replace(/[^a-z0-9]+/gi, '-');
     const safeEvent = eventName.replace(/[^a-z0-9]+/gi, '-');
     doc.save(`14D-Diagnostic-Report-${safeSchool}-${safeEvent}.pdf`);
@@ -137,8 +142,9 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
     );
   }
 
-  const overallStatus = getHealthStatus(report.overallIndex);
-  const radarData = report.dimensions.map((dim) => ({
+  const subjective = report.subjective;
+  const overallStatus = getHealthStatus(subjective.overallIndex);
+  const radarData = subjective.dimensions.map((dim) => ({
     dimension: dim.dimensionName,
     score: dim.index ?? 0,
   }));
@@ -162,14 +168,50 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
       {/* Overall Score */}
       <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
         <p className="text-sm text-gray-600 mb-2">Overall Institutional Health Index</p>
-        <p className="text-6xl font-bold text-indigo-600">{report.overallIndex ?? 'N/A'}</p>
+        <p className="text-6xl font-bold text-indigo-600">{subjective.overallIndex ?? 'N/A'}</p>
         <p className="text-gray-500 mb-3">out of 100</p>
         <span className={`inline-block text-sm font-semibold px-3 py-1 rounded-full ${overallStatus.className}`}>
           {overallStatus.label}
         </span>
         <p className="text-sm text-gray-500 mt-4">
-          Based on {report.totalResponses} response{report.totalResponses === 1 ? '' : 's'} across 14 dimensions
+          Based on {subjective.totalResponses} response{subjective.totalResponses === 1 ? '' : 's'} across 14 dimensions
         </p>
+      </div>
+
+      {/* Executive Summary */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="font-semibold text-gray-800 mb-4">Executive Summary</h3>
+        <ul className="space-y-2">
+          {report.executiveSummary.map((line, idx) => (
+            <li key={idx} className="text-sm text-gray-700 leading-relaxed flex gap-2">
+              <span className="text-indigo-500 mt-0.5">•</span>
+              <span>{line}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Objective Data Completeness callout */}
+      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-5 flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-start gap-3">
+          <Database className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-indigo-900">
+              Objective Data Completeness: {report.objectiveCompleteness.overallCompleteness}%
+            </p>
+            <p className="text-sm text-indigo-700 mt-1">
+              {report.objectiveCompleteness.dimensionsWithAnyData}/14 dimensions have operational data captured,{' '}
+              {report.objectiveCompleteness.dimensionsFullyComplete}/14 fully complete. Capturing more lets the report
+              compare stakeholder perception against actual school data.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setCurrentView('CAPTURE')}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition text-sm whitespace-nowrap"
+        >
+          Capture Operational Data
+        </button>
       </div>
 
       {/* Radar Chart */}
@@ -188,45 +230,108 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
         </div>
       </div>
 
-      {/* Dimension Table */}
+      {/* Dimension Summary Table */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 overflow-x-auto">
-        <h3 className="font-semibold text-gray-800 mb-4">Dimension Breakdown</h3>
+        <h3 className="font-semibold text-gray-800 mb-4">Dimension Summary</h3>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-500 border-b border-gray-200">
               <th className="py-2 pr-4">Dimension</th>
               <th className="py-2 pr-4">Avg Score</th>
               <th className="py-2 pr-4">Index</th>
+              <th className="py-2 pr-4">Benchmark</th>
               <th className="py-2 pr-4">Status</th>
               <th className="py-2">Responses</th>
             </tr>
           </thead>
           <tbody>
-            {report.dimensions.map((dim) => {
-              const status = getHealthStatus(dim.index);
-              return (
-                <tr key={dim.dimensionId} className="border-b border-gray-100 last:border-0">
-                  <td className="py-2 pr-4 font-medium text-gray-800">{dim.dimensionName}</td>
-                  <td className="py-2 pr-4 text-gray-700">{dim.average != null ? `${dim.average.toFixed(2)}/5` : '—'}</td>
-                  <td className="py-2 pr-4 text-gray-700">{dim.index ?? '—'}</td>
-                  <td className="py-2 pr-4">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${status.className}`}>
-                      {status.label}
-                    </span>
-                  </td>
-                  <td className="py-2 text-gray-500">{dim.responseCount}</td>
-                </tr>
-              );
-            })}
+            {report.dimensionCards.map((card) => (
+              <tr key={card.dimensionId} className="border-b border-gray-100 last:border-0">
+                <td className="py-2 pr-4 font-medium text-gray-800">{card.dimensionName}</td>
+                <td className="py-2 pr-4 text-gray-700">
+                  {card.subjective.average != null ? `${card.subjective.average.toFixed(2)}/5` : '—'}
+                </td>
+                <td className="py-2 pr-4 text-gray-700">{card.subjective.index ?? '—'}</td>
+                <td className="py-2 pr-4 text-gray-500">{card.benchmark}</td>
+                <td className="py-2 pr-4">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${card.subjective.status.className}`}>
+                    {card.subjective.status.label}
+                  </span>
+                </td>
+                <td className="py-2 text-gray-500">{card.subjective.responseCount}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
+
+      {/* Dimension Deep-Dive */}
+      <div>
+        <h3 className="font-semibold text-gray-800 mb-4">Dimension Deep-Dive</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {report.dimensionCards.map((card) => (
+            <DimensionCard key={card.dimensionId} card={card} />
+          ))}
+        </div>
+      </div>
+
+      {/* Perception vs Reality Gap Analysis */}
+      {report.gapAnalysis && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+          <h3 className="font-semibold text-gray-800">Perception vs Reality Gap Analysis</h3>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-gray-500">Aligned</p>
+              <p className="text-2xl font-bold text-green-600">{report.gapAnalysis.summary.alignedDimensions.length}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Overestimated</p>
+              <p className="text-2xl font-bold text-amber-600">{report.gapAnalysis.summary.overestimatedDimensions.length}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Underestimated</p>
+              <p className="text-2xl font-bold text-blue-600">{report.gapAnalysis.summary.underestimatedDimensions.length}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Avg Gap</p>
+              <p className="text-2xl font-bold text-gray-800">{report.gapAnalysis.summary.averageGap}</p>
+            </div>
+          </div>
+
+          {report.gapAnalysis.insights.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-2">Key Insights</p>
+              <ul className="space-y-1.5">
+                {report.gapAnalysis.insights.map((insight, idx) => (
+                  <li key={idx} className="text-sm text-gray-600 leading-relaxed">
+                    {insight}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {report.gapAnalysis.recommendations.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-2">Recommended Actions</p>
+              <ul className="space-y-1.5">
+                {report.gapAnalysis.recommendations.map((rec, idx) => (
+                  <li key={idx} className="text-sm text-gray-600 leading-relaxed">
+                    {rec}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Respondent Breakdown */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h3 className="font-semibold text-gray-800 mb-4">Respondents</h3>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-sm">
-          {Object.entries(report.responsesByStakeholder).map(([type, count]) => (
+          {Object.entries(subjective.responsesByStakeholder).map(([type, count]) => (
             <div key={type}>
               <p className="text-gray-500">{STAKEHOLDER_LABELS[type] || type}</p>
               <p className="text-2xl font-bold text-gray-800">{count}</p>
