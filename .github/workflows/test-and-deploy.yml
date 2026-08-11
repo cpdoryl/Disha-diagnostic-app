@@ -83,9 +83,16 @@ jobs:
           echo "✅ Build artifacts ready for deployment"
           ls -lh build/
 
-      - name: Deploy to Firebase Hosting and Firestore
-        run: firebase deploy --only hosting,firestore --project=${{ secrets.FIREBASE_PROJECT_ID }} --token=${{ secrets.FIREBASE_CI_TOKEN }}
+      - name: Deploy to Firebase Hosting (Default + Custom Domain)
+        run: |
+          echo "🚀 Deploying to Firebase Hosting..."
+          firebase deploy --only hosting:default,hosting:custom,firestore --project=${{ secrets.FIREBASE_PROJECT_ID }} --token=${{ secrets.FIREBASE_CI_TOKEN }}
         timeout-minutes: 15
 
       - name: Deployment Success
-        run: echo "✅ Deployment complete! Visit https://disha-diagnostics.web.app/"
+        run: |
+          echo "✅ Deployment complete!"
+          echo "🌐 Default Site: https://disha-diagnostics.web.app/"
+          echo "🌐 Custom Domain: https://disha.rylneuroacademy.com/"
+          echo ""
+          echo "📊 Both URLs now have the latest changes"
