@@ -23,6 +23,7 @@
     "express": "^4.21.2",
     "firebase": "^12.16.0",
     "jspdf": "^4.2.1",
+    "jspdf-autotable": "^3.8.4",
     "jszip": "^3.10.1",
     "lucide-react": "^0.546.0",
     "marked": "^18.0.7",
@@ -44,9 +45,9 @@
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
+    "postcss": "^8.4.32",
     "pptxgenjs": "^4.0.1",
     "tailwindcss": "^3.4.1",
-    "postcss": "^8.4.32",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
