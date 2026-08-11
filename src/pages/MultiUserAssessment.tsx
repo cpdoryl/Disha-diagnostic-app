@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '../store';
-import { AssessmentConfiguration, ResponseTracker } from '../components/MultiUserAssessment';
+import { AssessmentConfiguration, ResponseTracker, DiagnosticReport } from '../components/MultiUserAssessment';
 import {
   AssessmentConfiguration as ConfigType,
   AssessmentProgress,
@@ -41,6 +41,7 @@ export function MultiUserAssessmentPage() {
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [eventsError, setEventsError] = useState('');
   const [isOpeningEvent, setIsOpeningEvent] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   const schoolId = activeSchool?.id || 'unknown';
   const schoolName = activeSchool?.name || 'Unknown School';
@@ -68,6 +69,7 @@ export function MultiUserAssessmentPage() {
     setStage('history');
     setConfig(null);
     setProgress(null);
+    setShowReport(false);
     loadEvents();
   }, [schoolId, loadEvents]);
 
@@ -100,6 +102,7 @@ export function MultiUserAssessmentPage() {
           lockedBy: result.lockedBy || undefined,
         })
       );
+      setShowReport(false);
       setStage(result.config.status === 'analyzed' ? 'analysis' : 'deployment');
     } catch (error) {
       console.error('Failed to open assessment event:', error);
@@ -128,6 +131,7 @@ export function MultiUserAssessmentPage() {
     setStage('history');
     setConfig(null);
     setProgress(null);
+    setShowReport(false);
     loadEvents();
   };
 
@@ -306,7 +310,16 @@ export function MultiUserAssessmentPage() {
         )}
 
         {/* Stage 4: Analysis */}
-        {stage === 'analysis' && config && progress && (
+        {stage === 'analysis' && config && progress && showReport && (
+          <DiagnosticReport
+            assessmentId={config.id}
+            eventName={config.eventName}
+            schoolName={config.schoolName}
+            onBack={() => setShowReport(false)}
+          />
+        )}
+
+        {stage === 'analysis' && config && progress && !showReport && (
           <div className="bg-white rounded-lg border border-gray-200 p-8">
             <div className="text-center">
               <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
@@ -360,9 +373,7 @@ export function MultiUserAssessmentPage() {
                   Back to Dashboard
                 </button>
                 <button
-                  onClick={() => {
-                    alert('Proceeding to Diagnostic Report Generation...\n\nIntegration with SynthesizeStage pending router configuration.');
-                  }}
+                  onClick={() => setShowReport(true)}
                   className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition flex items-center justify-center gap-2 order-1 sm:order-2"
                 >
                   <ArrowRight className="w-4 h-4" />
