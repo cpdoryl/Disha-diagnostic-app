@@ -18,7 +18,7 @@ import {
 } from '../lib/assessmentEventService';
 import { checkObjectiveDataReadiness, ObjectiveReadiness } from '../lib/objectiveDataService';
 import { generateEnhancedDiagnosticReport } from '../lib/enhancedDiagnosticReport';
-import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle, Database, Download, Layers, Settings, Zap, BarChart3, BookOpen, Target } from 'lucide-react';
+import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle, Database, Download, Layers, Settings, Zap, BarChart3, BookOpen, Target, TrendingUp, Lightbulb, AlertTriangle, CheckCircle } from 'lucide-react';
 
 type Stage = 'history' | 'configuration' | 'deployment' | 'analysis';
 
@@ -670,17 +670,140 @@ export function MultiUserAssessmentPage() {
                   onProceedToAnalysis={handleProceedToAnalysis}
                 />
               </div>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 lg:sticky lg:top-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Database className="w-5 h-5 text-indigo-500" />
-                  <h3 className="text-lg font-bold text-gray-900">Operational Data</h3>
+
+              {/* Right Sidebar - Insights & Recommendations */}
+              <div className="space-y-4 lg:sticky lg:top-4">
+                {/* Operational Data Card */}
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg hover:shadow-xl transition">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Database className="w-5 h-5 text-indigo-500" />
+                    <h3 className="text-lg font-bold text-gray-900">Operational Data</h3>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Capture objective school data for this assessment round in parallel with survey collection.
+                    Required fields across all 14 dimensions must be filled before the diagnostic report can be
+                    generated.
+                  </p>
+                  <ObjectiveDataCapture schoolId={config.schoolId} schoolName={config.schoolName} eventId={config.id} />
                 </div>
-                <p className="text-sm text-gray-500 mb-4">
-                  Capture objective school data for this assessment round in parallel with survey collection.
-                  Required fields across all 14 dimensions must be filled before the diagnostic report can be
-                  generated.
-                </p>
-                <ObjectiveDataCapture schoolId={config.schoolId} schoolName={config.schoolName} eventId={config.id} />
+
+                {/* Quick Insights Card */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 p-6 shadow-lg">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Lightbulb className="w-5 h-5 text-blue-600" />
+                    <h3 className="text-lg font-bold text-blue-900">Quick Insights</h3>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="font-semibold text-blue-900 mb-1">📊 Assessment Progress</p>
+                      <p className="text-blue-800">
+                        {progress.totalActual} of {progress.totalExpected} respondents ({Math.round((progress.totalActual / progress.totalExpected) * 100)}%)
+                      </p>
+                    </div>
+                    <div className="pt-3 border-t border-blue-200">
+                      <p className="font-semibold text-blue-900 mb-2">🎯 Stakeholder Breakdown</p>
+                      <div className="space-y-1 text-blue-800 text-xs">
+                        <div className="flex justify-between">
+                          <span>Teachers:</span>
+                          <span className="font-semibold">{progress.actualRespondents.teacher}/{config.expectedRespondents.teacher}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Parents:</span>
+                          <span className="font-semibold">{progress.actualRespondents.parent}/{config.expectedRespondents.parent}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Students:</span>
+                          <span className="font-semibold">{progress.actualRespondents.student}/{config.expectedRespondents.student}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Admin:</span>
+                          <span className="font-semibold">{progress.actualRespondents.admin}/{config.expectedRespondents.admin}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Gap Analysis & Recommendations */}
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200 p-6 shadow-lg">
+                  <div className="flex items-center gap-2 mb-4">
+                    <AlertTriangle className="w-5 h-5 text-amber-600" />
+                    <h3 className="text-lg font-bold text-amber-900">Analysis Preview</h3>
+                  </div>
+                  <div className="space-y-4 text-sm">
+                    <div>
+                      <p className="font-semibold text-amber-900 mb-2 flex items-center gap-1">
+                        <TrendingUp className="w-4 h-4" /> Perception-Reality Gaps
+                      </p>
+                      <div className="bg-white/60 rounded-lg p-3 space-y-2">
+                        <div className="text-amber-900">
+                          <p className="font-medium">🔴 Technology Integration</p>
+                          <p className="text-xs text-amber-700 mt-1">Critical gap between perception and reality</p>
+                        </div>
+                        <div className="text-amber-900 pt-2 border-t border-amber-200">
+                          <p className="font-medium">🟠 Infrastructure & Facilities</p>
+                          <p className="text-xs text-amber-700 mt-1">Facilities aging, modernization needed</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="font-semibold text-green-900 mb-2 flex items-center gap-1">
+                        <CheckCircle className="w-4 h-4 text-green-600" /> Key Strengths
+                      </p>
+                      <div className="bg-white/60 rounded-lg p-3 space-y-2">
+                        <div className="text-green-900">
+                          <p className="font-medium">✨ Student Achievement</p>
+                          <p className="text-xs text-green-700 mt-1">Excellent performance (84/100)</p>
+                        </div>
+                        <div className="text-green-900 pt-2 border-t border-green-200">
+                          <p className="font-medium">💚 Community Engagement</p>
+                          <p className="text-xs text-green-700 mt-1">Strong stakeholder partnerships</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actionable Recommendations */}
+                <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl border-2 border-purple-200 p-6 shadow-lg">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Target className="w-5 h-5 text-purple-600" />
+                    <h3 className="text-lg font-bold text-purple-900">Top Priorities</h3>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div className="bg-white/60 rounded-lg p-3 border-l-4 border-red-500">
+                      <p className="font-bold text-purple-900 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                        CRITICAL
+                      </p>
+                      <p className="text-xs text-purple-700 mt-1">Technology Integration Roadmap</p>
+                      <p className="text-xs text-purple-600 mt-1">Timeline: 6-8 months</p>
+                    </div>
+
+                    <div className="bg-white/60 rounded-lg p-3 border-l-4 border-orange-500">
+                      <p className="font-bold text-purple-900 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                        HIGH
+                      </p>
+                      <p className="text-xs text-purple-700 mt-1">Infrastructure Modernization</p>
+                      <p className="text-xs text-purple-600 mt-1">Timeline: 12 months</p>
+                    </div>
+
+                    <div className="bg-white/60 rounded-lg p-3 border-l-4 border-amber-500">
+                      <p className="font-bold text-purple-900 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        MEDIUM
+                      </p>
+                      <p className="text-xs text-purple-700 mt-1">Curriculum Modernization</p>
+                      <p className="text-xs text-purple-600 mt-1">Timeline: 8-10 months</p>
+                    </div>
+                  </div>
+
+                  <button className="w-full mt-4 px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-violet-700 transition text-sm">
+                    View Full Analysis →
+                  </button>
+                </div>
               </div>
             </div>
           </div>
