@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '../store';
 import { AssessmentConfiguration, ResponseTracker, DiagnosticReport } from '../components/MultiUserAssessment';
+import { ObjectiveDataCapture } from '../components/CaptureStage/ObjectiveDataCapture';
 import {
   AssessmentConfiguration as ConfigType,
   AssessmentProgress,
@@ -13,7 +14,8 @@ import {
   listAssessmentEventsForSchool,
   markAssessmentEventAnalyzed,
 } from '../lib/assessmentEventService';
-import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle } from 'lucide-react';
+import { checkObjectiveDataReadiness, ObjectiveReadiness } from '../lib/objectiveDataService';
+import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle, Database } from 'lucide-react';
 
 type Stage = 'history' | 'configuration' | 'deployment' | 'analysis';
 
@@ -42,6 +44,9 @@ export function MultiUserAssessmentPage() {
   const [eventsError, setEventsError] = useState('');
   const [isOpeningEvent, setIsOpeningEvent] = useState(false);
   const [showReport, setShowReport] = useState(false);
+
+  const [objectiveReadiness, setObjectiveReadiness] = useState<ObjectiveReadiness | null>(null);
+  const [isCheckingReadiness, setIsCheckingReadiness] = useState(false);
 
   const schoolId = activeSchool?.id || 'unknown';
   const schoolName = activeSchool?.name || 'Unknown School';
@@ -134,6 +139,27 @@ export function MultiUserAssessmentPage() {
     setShowReport(false);
     loadEvents();
   };
+
+  useEffect(() => {
+    if (stage !== 'analysis' || !config) {
+      return;
+    }
+    let cancelled = false;
+    setIsCheckingReadiness(true);
+    checkObjectiveDataReadiness(config.id)
+      .then((readiness) => {
+        if (!cancelled) setObjectiveReadiness(readiness);
+      })
+      .catch((error) => {
+        console.error('Failed to check objective data readiness:', error);
+      })
+      .finally(() => {
+        if (!cancelled) setIsCheckingReadiness(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [stage, config]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -299,13 +325,29 @@ export function MultiUserAssessmentPage() {
             >
               ← Back to Assessment Events
             </button>
-            <ResponseTracker
-              key={config.id}
-              config={config}
-              progress={progress}
-              onLockStatusChange={handleProgressUpdate}
-              onProceedToAnalysis={handleProceedToAnalysis}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+              <div className="lg:col-span-2">
+                <ResponseTracker
+                  key={config.id}
+                  config={config}
+                  progress={progress}
+                  onLockStatusChange={handleProgressUpdate}
+                  onProceedToAnalysis={handleProceedToAnalysis}
+                />
+              </div>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 lg:sticky lg:top-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Database className="w-5 h-5 text-indigo-500" />
+                  <h3 className="text-lg font-bold text-gray-900">Operational Data</h3>
+                </div>
+                <p className="text-sm text-gray-500 mb-4">
+                  Capture objective school data for this assessment round in parallel with survey collection.
+                  Required fields across all 14 dimensions must be filled before the diagnostic report can be
+                  generated.
+                </p>
+                <ObjectiveDataCapture schoolId={config.schoolId} schoolName={config.schoolName} eventId={config.id} />
+              </div>
+            </div>
           </div>
         )}
 
@@ -359,10 +401,46 @@ export function MultiUserAssessmentPage() {
                 </div>
               </div>
 
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                 <p className="text-sm text-green-800">
                   ✓ Assessment data validated and locked. All {progress.totalActual} responses ready for analysis across 14 diagnostic dimensions.
                 </p>
+              </div>
+
+              <div
+                className={`rounded-lg p-4 mb-8 text-left border ${
+                  objectiveReadiness?.isReady ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
+                }`}
+              >
+                {isCheckingReadiness ? (
+                  <p className="text-sm text-gray-600 flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Checking objective operational data completeness...
+                  </p>
+                ) : objectiveReadiness?.isReady ? (
+                  <p className="text-sm text-green-800">
+                    ✓ Objective operational data complete ({objectiveReadiness.completeness}%) across all 14
+                    dimensions. Ready to generate the full subjective + objective comparison report.
+                  </p>
+                ) : (
+                  <div>
+                    <p className="text-sm text-amber-800 font-semibold mb-1">
+                      Objective operational data is required before generating the report
+                      {objectiveReadiness ? ` (${objectiveReadiness.completeness}% complete)` : ''}.
+                    </p>
+                    {objectiveReadiness && objectiveReadiness.missingByDimension.length > 0 && (
+                      <p className="text-xs text-amber-700 mb-2">
+                        Missing required data for: {objectiveReadiness.missingByDimension.map((d) => d.dimensionName).join(', ')}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => setStage('deployment')}
+                      className="text-xs font-bold text-amber-900 underline hover:text-amber-950"
+                    >
+                      Go enter operational data →
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -374,7 +452,9 @@ export function MultiUserAssessmentPage() {
                 </button>
                 <button
                   onClick={() => setShowReport(true)}
-                  className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition flex items-center justify-center gap-2 order-1 sm:order-2"
+                  disabled={!objectiveReadiness?.isReady}
+                  title={objectiveReadiness?.isReady ? undefined : 'Complete required operational data for all 14 dimensions first'}
+                  className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition flex items-center justify-center gap-2 order-1 sm:order-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
                 >
                   <ArrowRight className="w-4 h-4" />
                   Generate Diagnostic Report

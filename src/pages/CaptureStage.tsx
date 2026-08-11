@@ -30,6 +30,7 @@ import { db } from '../lib/firebase';
 import { ObjectiveDataCapture } from '../components/CaptureStage/ObjectiveDataCapture';
 import { DiagnosticReport } from '../components/MultiUserAssessment';
 import { listAssessmentEventsForSchool } from '../lib/assessmentEventService';
+import { checkObjectiveDataReadiness } from '../lib/objectiveDataService';
 
 interface StakeholderItem {
   roleKey: 'leader' | 'teacher' | 'parent' | 'student' | 'admin' | 'other';
@@ -67,7 +68,17 @@ export const CaptureStage = () => {
         setReportLoadError('No 14D assessment event found yet for this school. Create one first.');
         return;
       }
-      setReportEvent({ id: events[0].id, eventName: events[0].eventName });
+      const eventId = events[0].id;
+      const readiness = await checkObjectiveDataReadiness(eventId);
+      if (!readiness.isReady) {
+        setReportLoadError(
+          `Objective operational data is required first (${readiness.completeness}% complete). Missing required data for: ${readiness.missingByDimension
+            .map((d) => d.dimensionName)
+            .join(', ')} — see Operational Data Sync above.`
+        );
+        return;
+      }
+      setReportEvent({ id: eventId, eventName: events[0].eventName });
     } catch (err) {
       console.error('Failed to load assessment events for diagnostic analysis:', err);
       setReportLoadError('Could not load assessment data. Please try again.');

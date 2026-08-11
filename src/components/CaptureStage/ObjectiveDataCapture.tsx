@@ -15,6 +15,15 @@ import { ObjectiveDataUploadModal } from './ObjectiveDataUploadModal';
 interface ObjectiveDataCaptureProps {
   schoolId: string;
   schoolName: string;
+  /**
+   * When provided, skips auto-resolving/picking an assessment event and
+   * captures data directly against this event - used when the caller
+   * already has a specific event in scope (e.g. the deployment stage of
+   * MultiUserAssessment.tsx). When omitted, the component resolves the
+   * school's most recent event itself (used on Capture Stage, which has
+   * no event in scope).
+   */
+  eventId?: string;
 }
 
 function statusForCompleteness(pct: number): { label: string; className: string } {
@@ -23,11 +32,11 @@ function statusForCompleteness(pct: number): { label: string; className: string 
   return { label: 'Partial', className: 'bg-amber-100 text-amber-700' };
 }
 
-export function ObjectiveDataCapture({ schoolId }: ObjectiveDataCaptureProps) {
+export function ObjectiveDataCapture({ schoolId, eventId: explicitEventId }: ObjectiveDataCaptureProps) {
   const { setCurrentView } = useAppStore();
   const [events, setEvents] = useState<AssessmentEventSummary[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(explicitEventId || null);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(!explicitEventId);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [rawData, setRawData] = useState<RawObjectiveDataByDimension>({});
   const [completeness, setCompleteness] = useState<ObjectiveCompletenessSummary | null>(null);
@@ -36,6 +45,11 @@ export function ObjectiveDataCapture({ schoolId }: ObjectiveDataCaptureProps) {
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
+    if (explicitEventId) {
+      setSelectedEventId(explicitEventId);
+      setIsLoadingEvents(false);
+      return;
+    }
     if (!schoolId) {
       setIsLoadingEvents(false);
       return;
@@ -58,7 +72,7 @@ export function ObjectiveDataCapture({ schoolId }: ObjectiveDataCaptureProps) {
     return () => {
       cancelled = true;
     };
-  }, [schoolId]);
+  }, [schoolId, explicitEventId]);
 
   const refreshObjectiveData = useCallback(() => {
     if (!selectedEventId) return;
@@ -94,7 +108,7 @@ export function ObjectiveDataCapture({ schoolId }: ObjectiveDataCaptureProps) {
     );
   }
 
-  if (events.length === 0) {
+  if (!explicitEventId && events.length === 0) {
     return (
       <div className="text-center py-6">
         <p className="text-sm text-gray-500 mb-4">

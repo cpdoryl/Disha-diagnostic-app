@@ -7,6 +7,8 @@
 import { collection, doc, getDoc, getDocs, setDoc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { getDimensionMetricSchema } from '../data/objectiveMetricsSchema';
+import { FOURTEEN_DIMENSIONS } from '../data/14DimensionsQuestions';
+import { computeAllObjectiveScores, computeObjectiveCompletenessSummary } from './objectiveScoreEngine';
 
 function toDate(value: unknown): Date | null {
   if (value instanceof Timestamp) return value.toDate();
@@ -171,5 +173,38 @@ export async function loadDimensionObjectiveData(
     sourceFileName: data.sourceFileName || null,
     updatedAt: toDate(data.updatedAt),
     updatedBy: data.updatedBy || null,
+  };
+}
+
+export interface ObjectiveReadiness {
+  isReady: boolean;
+  completeness: number;
+  missingByDimension: { dimensionId: string; dimensionName: string; missing: string[] }[];
+}
+
+/**
+ * Whether an event has captured all *required* objective metrics for every
+ * one of the 14 dimensions - the gate applied before a diagnostic report can
+ * be generated. Optional metrics don't block readiness, only completeness %.
+ */
+export async function checkObjectiveDataReadiness(eventId: string): Promise<ObjectiveReadiness> {
+  const raw = await loadObjectiveDataForEvent(eventId);
+  const rawByDimension: Record<string, Record<string, number | undefined>> = {};
+  for (const [dimId, data] of Object.entries(raw)) {
+    rawByDimension[dimId] = data.metrics;
+  }
+  const scores = computeAllObjectiveScores(rawByDimension);
+  const summary = computeObjectiveCompletenessSummary(scores);
+
+  const missingByDimension = FOURTEEN_DIMENSIONS.map((dim) => ({
+    dimensionId: dim.id,
+    dimensionName: dim.name,
+    missing: summary.byDimension[dim.id]?.requiredMissing || [],
+  })).filter((d) => d.missing.length > 0);
+
+  return {
+    isReady: missingByDimension.length === 0,
+    completeness: summary.overallCompleteness,
+    missingByDimension,
   };
 }

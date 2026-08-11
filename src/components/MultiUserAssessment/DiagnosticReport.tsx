@@ -7,6 +7,13 @@ import {
   PolarRadiusAxis,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+  Cell,
 } from 'recharts';
 import { ArrowLeft, Download, RefreshCw, AlertCircle, Database, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { getHealthStatus } from '../../lib/dimensionScoring';
@@ -81,6 +88,32 @@ function DimensionCard({ card }: { card: DimensionReportCard }) {
       )}
 
       <p className="text-sm text-gray-600 leading-relaxed">{card.interpretation}</p>
+
+      {card.rootCause.length > 0 && (
+        <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
+          <p className="text-xs font-semibold text-gray-700 mb-1">Root Cause</p>
+          <ul className="space-y-1">
+            {card.rootCause.map((line, idx) => (
+              <li key={idx} className="text-xs text-gray-600 leading-relaxed">
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {card.actionablePoints.length > 0 && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+          <p className="text-xs font-semibold text-indigo-800 mb-1">Actionable Points</p>
+          <ul className="space-y-1 list-disc list-inside">
+            {card.actionablePoints.map((line, idx) => (
+              <li key={idx} className="text-xs text-indigo-700 leading-relaxed">
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -144,10 +177,25 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
 
   const subjective = report.subjective;
   const overallStatus = getHealthStatus(subjective.overallIndex);
-  const radarData = subjective.dimensions.map((dim) => ({
-    dimension: dim.dimensionName,
-    score: dim.index ?? 0,
+  const hasAnyObjectiveData = report.objectiveCompleteness.dimensionsWithAnyData > 0;
+  const radarData = report.dimensionCards.map((card) => ({
+    dimension: card.dimensionName,
+    Subjective: card.subjective.index ?? 0,
+    Objective: card.objective?.objectiveScore ?? 0,
   }));
+  const comparisonBarData = report.dimensionCards.map((card) => ({
+    name: card.dimensionName,
+    Subjective: card.subjective.index ?? 0,
+    Objective: card.objective?.objectiveScore ?? 0,
+    Benchmark: card.benchmark,
+  }));
+  const gapBarData = report.dimensionCards
+    .filter((card) => card.gap)
+    .map((card) => ({
+      name: card.dimensionName,
+      gap: card.gap!.gap,
+      color: card.gap!.interpretation === 'overestimation' ? '#d97706' : card.gap!.interpretation === 'underestimation' ? '#2563eb' : '#16a34a',
+    }));
 
   return (
     <div className="space-y-6">
@@ -216,19 +264,77 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
 
       {/* Radar Chart */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-800 mb-4">Dimension Radar</h3>
-        <div style={{ width: '100%', height: 400 }}>
+        <h3 className="font-semibold text-gray-800 mb-1">Dimension Radar</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          {hasAnyObjectiveData
+            ? 'Subjective (survey) vs objective (operational data) score per dimension. Dimensions without captured operational data show as 0 on the objective series.'
+            : 'Subjective survey score per dimension. Capture operational data to overlay an objective comparison.'}
+        </p>
+        <div style={{ width: '100%', height: 420 }}>
           <ResponsiveContainer>
             <RadarChart data={radarData} outerRadius="75%">
               <PolarGrid />
               <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 11 }} />
               <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
-              <Radar name="Index Score" dataKey="score" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.4} />
+              <Radar name="Subjective (Survey)" dataKey="Subjective" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.35} />
+              {hasAnyObjectiveData && (
+                <Radar name="Objective (Data)" dataKey="Objective" stroke="#0d9488" fill="#0d9488" fillOpacity={0.25} />
+              )}
               <RechartsTooltip />
+              <Legend />
             </RadarChart>
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Comparison Bar Chart: Subjective vs Objective vs Benchmark */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 overflow-x-auto">
+        <h3 className="font-semibold text-gray-800 mb-1">Subjective vs Objective vs Benchmark</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          Side-by-side comparison of what stakeholders perceive, what the operational data shows, and the sector
+          benchmark, for every dimension.
+        </p>
+        <div style={{ width: '100%', height: 420, minWidth: 720 }}>
+          <ResponsiveContainer>
+            <BarChart data={comparisonBarData} margin={{ bottom: 90 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" interval={0} height={100} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
+              <RechartsTooltip />
+              <Legend />
+              <Bar dataKey="Subjective" fill="#4f46e5" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Objective" fill="#0d9488" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Benchmark" fill="#9ca3af" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Gap / Mismatch Bar Chart */}
+      {gapBarData.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6 overflow-x-auto">
+          <h3 className="font-semibold text-gray-800 mb-1">Perception-Reality Mismatch by Dimension</h3>
+          <p className="text-xs text-gray-400 mb-4">
+            Positive bars (amber) mean stakeholders rate the dimension higher than the data supports; negative bars
+            (blue) mean the data shows better performance than stakeholders perceive.
+          </p>
+          <div style={{ width: '100%', height: Math.max(280, gapBarData.length * 32), minWidth: 480 }}>
+            <ResponsiveContainer>
+              <BarChart data={gapBarData} layout="vertical" margin={{ left: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10 }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={180} />
+                <RechartsTooltip />
+                <Bar dataKey="gap" radius={[0, 3, 3, 0]}>
+                  {gapBarData.map((entry, idx) => (
+                    <Cell key={idx} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Dimension Summary Table */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 overflow-x-auto">

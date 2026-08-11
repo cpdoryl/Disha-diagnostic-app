@@ -227,6 +227,35 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData): j
 
     doc.setFontSize(9);
     y = drawWrappedText(doc, card.interpretation, MARGIN_X, y, CONTENT_WIDTH, 4.5);
+    y += 4;
+
+    if (card.rootCause.length > 0) {
+      y = ensureSpace(doc, y, 6);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.text('Root Cause:', MARGIN_X, y);
+      doc.setFont('helvetica', 'normal');
+      y += 4;
+      doc.setFontSize(8.5);
+      for (const line of card.rootCause) {
+        y = drawWrappedText(doc, `- ${line}`, MARGIN_X, y, CONTENT_WIDTH, 4);
+      }
+      y += 2;
+    }
+
+    if (card.actionablePoints.length > 0) {
+      y = ensureSpace(doc, y, 6);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.text('Actionable Points:', MARGIN_X, y);
+      doc.setFont('helvetica', 'normal');
+      y += 4;
+      doc.setFontSize(8.5);
+      for (const line of card.actionablePoints) {
+        y = drawWrappedText(doc, `- ${line}`, MARGIN_X, y, CONTENT_WIDTH, 4);
+      }
+    }
+
     y += 6;
   }
 
