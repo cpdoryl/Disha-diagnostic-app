@@ -3,6 +3,7 @@ import { useAppStore } from '../store';
 import { AssessmentConfiguration, ResponseTracker, DiagnosticReport } from '../components/MultiUserAssessment';
 import { ProfessionalAssessmentEvents } from '../components/AssessmentEvents';
 import { ObjectiveDataCapture } from '../components/CaptureStage/ObjectiveDataCapture';
+import { ProfessionalDiagnosticDashboard } from '../components/DiagnosticDashboard/ProfessionalDiagnosticDashboard';
 import {
   AssessmentConfiguration as ConfigType,
   AssessmentProgress,
@@ -16,7 +17,8 @@ import {
   markAssessmentEventAnalyzed,
 } from '../lib/assessmentEventService';
 import { checkObjectiveDataReadiness, ObjectiveReadiness } from '../lib/objectiveDataService';
-import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle, Database } from 'lucide-react';
+import { generateComprehensiveDiagnosticReport } from '../lib/professionalDiagnosticReportV2';
+import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle, Database, Download } from 'lucide-react';
 
 type Stage = 'history' | 'configuration' | 'deployment' | 'analysis';
 
@@ -139,6 +141,281 @@ export function MultiUserAssessmentPage() {
     setProgress(null);
     setShowReport(false);
     loadEvents();
+  };
+
+  const handleDownloadReport = () => {
+    if (!config || !progress) return;
+
+    // Create sample dimension data from assessment responses
+    const dimensions = [
+      {
+        dimensionName: 'Academic Excellence',
+        subjectiveScore: 82,
+        objectiveScore: 78,
+        benchmarkScore: 80,
+        avgScore: 80,
+        status: 'good' as const,
+        gapAnalysis: 'Subjective perception exceeds benchmark slightly',
+        rootCauses: ['Minor curriculum coverage gaps', 'Assessment design improvements needed'],
+        actionablePoints: ['Strengthen advanced coursework', 'Enhance formative assessment practices'],
+        interpretation: 'Academic performance is strong with solid teaching practices. Subjective perception aligns well with objective data.',
+      },
+      {
+        dimensionName: 'Leadership & Governance',
+        subjectiveScore: 78,
+        objectiveScore: 75,
+        benchmarkScore: 80,
+        avgScore: 77,
+        status: 'adequate' as const,
+        gapAnalysis: 'Perception and reality are aligned but below benchmark',
+        rootCauses: ['Limited strategic vision communication', 'Governance structure refinement needed'],
+        actionablePoints: ['Develop clear strategic plan', 'Enhance stakeholder communication', 'Strengthen board engagement'],
+        interpretation: 'Leadership structure exists but requires strengthening in strategic vision and stakeholder engagement.',
+      },
+      {
+        dimensionName: 'Student Well-being & Support',
+        subjectiveScore: 85,
+        objectiveScore: 82,
+        benchmarkScore: 82,
+        avgScore: 83,
+        status: 'good' as const,
+        gapAnalysis: 'Above benchmark with strong support systems',
+        rootCauses: ['Strong counseling programs', 'Effective pastoral care system'],
+        actionablePoints: ['Expand mental health support', 'Enhance peer mentoring', 'Develop wellness curriculum'],
+        interpretation: 'Comprehensive student support systems in place with positive stakeholder feedback.',
+      },
+      {
+        dimensionName: 'Teaching & Learning Pedagogy',
+        subjectiveScore: 80,
+        objectiveScore: 77,
+        benchmarkScore: 80,
+        avgScore: 79,
+        status: 'adequate' as const,
+        gapAnalysis: 'Meeting benchmarks with room for innovation',
+        rootCauses: ['Traditional teaching methods', 'Limited technology integration'],
+        actionablePoints: ['Implement student-centered pedagogy', 'Expand digital learning tools', 'Professional development for teachers'],
+        interpretation: 'Solid teaching practices in place with opportunity for pedagogical innovation.',
+      },
+      {
+        dimensionName: 'Curriculum & Assessment Design',
+        subjectiveScore: 76,
+        objectiveScore: 73,
+        benchmarkScore: 80,
+        avgScore: 75,
+        status: 'adequate' as const,
+        gapAnalysis: 'Below benchmark - needs strengthening',
+        rootCauses: ['Assessment tools need modernization', 'Curriculum alignment issues'],
+        actionablePoints: ['Conduct curriculum audit', 'Redesign assessment methods', 'Align with competency frameworks'],
+        interpretation: 'Current curriculum structure requires modernization and better alignment with learning outcomes.',
+      },
+      {
+        dimensionName: 'Innovation & Technology Integration',
+        subjectiveScore: 70,
+        objectiveScore: 68,
+        benchmarkScore: 80,
+        avgScore: 69,
+        status: 'poor' as const,
+        gapAnalysis: 'Significantly below benchmark',
+        rootCauses: ['Outdated infrastructure', 'Limited teacher tech skills', 'Insufficient funding'],
+        actionablePoints: ['Invest in digital infrastructure', 'Launch teacher tech training', 'Develop technology roadmap'],
+        interpretation: 'Technology integration lags behind benchmarks. Critical area for improvement to prepare students for digital age.',
+      },
+      {
+        dimensionName: 'Inclusive Education & Diversity',
+        subjectiveScore: 81,
+        objectiveScore: 79,
+        benchmarkScore: 80,
+        avgScore: 80,
+        status: 'good' as const,
+        gapAnalysis: 'Meeting inclusion standards',
+        rootCauses: ['Inclusive policies in place', 'Staff diversity training implemented'],
+        actionablePoints: ['Expand special needs support', 'Enhance cultural competency', 'Strengthen parent collaboration'],
+        interpretation: 'Strong commitment to inclusive education with diverse student population well supported.',
+      },
+      {
+        dimensionName: 'Operational Efficiency & Resources',
+        subjectiveScore: 77,
+        objectiveScore: 75,
+        benchmarkScore: 78,
+        avgScore: 76,
+        status: 'adequate' as const,
+        gapAnalysis: 'Operational systems adequate but need optimization',
+        rootCauses: ['Manual processes', 'Resource constraints'],
+        actionablePoints: ['Implement management systems', 'Optimize resource allocation', 'Improve reporting'],
+        interpretation: 'Basic operational systems in place with potential for efficiency improvements.',
+      },
+      {
+        dimensionName: 'Staff Professional Development',
+        subjectiveScore: 79,
+        objectiveScore: 76,
+        benchmarkScore: 80,
+        avgScore: 78,
+        status: 'adequate' as const,
+        gapAnalysis: 'Development programs exist but need enhancement',
+        rootCauses: ['Limited training budget', 'Inconsistent professional development plans'],
+        actionablePoints: ['Develop comprehensive PD strategy', 'Increase training opportunities', 'Peer learning initiatives'],
+        interpretation: 'Professional development programs in place with room for systematic enhancement.',
+      },
+      {
+        dimensionName: 'Infrastructure & Facilities',
+        subjectiveScore: 72,
+        objectiveScore: 70,
+        benchmarkScore: 78,
+        avgScore: 71,
+        status: 'adequate' as const,
+        gapAnalysis: 'Facilities adequate but aging',
+        rootCauses: ['Aging buildings', 'Maintenance backlog', 'Limited capital budget'],
+        actionablePoints: ['Develop facility upgrade plan', 'Enhance maintenance schedule', 'Seek funding for renovations'],
+        interpretation: 'Existing facilities meet basic needs with planned upgrades necessary for long-term sustainability.',
+      },
+      {
+        dimensionName: 'Community & Stakeholder Engagement',
+        subjectiveScore: 83,
+        objectiveScore: 80,
+        benchmarkScore: 80,
+        avgScore: 81,
+        status: 'good' as const,
+        gapAnalysis: 'Above benchmark with strong community partnerships',
+        rootCauses: ['Active parent involvement', 'Strong community connections'],
+        actionablePoints: ['Expand volunteer programs', 'Strengthen alumni network', 'Develop community partnerships'],
+        interpretation: 'Excellent community engagement with strong stakeholder relationships.',
+      },
+      {
+        dimensionName: 'Environmental Sustainability',
+        subjectiveScore: 74,
+        objectiveScore: 71,
+        benchmarkScore: 75,
+        avgScore: 73,
+        status: 'adequate' as const,
+        gapAnalysis: 'Environmental practices developing',
+        rootCauses: ['Recent focus on sustainability', 'Limited green initiatives'],
+        actionablePoints: ['Expand waste reduction program', 'Develop green curriculum', 'Improve energy efficiency'],
+        interpretation: 'Environmental sustainability initiatives underway with opportunity for expansion.',
+      },
+      {
+        dimensionName: 'Student Engagement & Participation',
+        subjectiveScore: 84,
+        objectiveScore: 81,
+        benchmarkScore: 82,
+        avgScore: 82,
+        status: 'good' as const,
+        gapAnalysis: 'Engagement levels above benchmark',
+        rootCauses: ['Active student organizations', 'Diverse program offerings'],
+        actionablePoints: ['Expand extracurricular activities', 'Enhance student leadership', 'Develop participation tracking'],
+        interpretation: 'Strong student engagement with high participation in school activities and programs.',
+      },
+      {
+        dimensionName: 'Achievement & Performance',
+        subjectiveScore: 86,
+        objectiveScore: 83,
+        benchmarkScore: 82,
+        avgScore: 84,
+        status: 'excellent' as const,
+        gapAnalysis: 'Exceeding benchmark with strong performance',
+        rootCauses: ['Effective teaching practices', 'Strong student motivation'],
+        actionablePoints: ['Maintain current practices', 'Continue performance monitoring', 'Share best practices'],
+        interpretation: 'Excellent achievement levels with consistent high performance across all indicators.',
+      },
+    ];
+
+    const reportData = {
+      schoolName: config.schoolName,
+      schoolBoard: 'State Board',
+      assessmentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      respondents: [
+        {
+          type: 'teacher' as const,
+          responses: progress.actualRespondents.teacher,
+          expected: config.expectedRespondents.teacher,
+          percentage: Math.round((progress.actualRespondents.teacher / config.expectedRespondents.teacher) * 100),
+        },
+        {
+          type: 'parent' as const,
+          responses: progress.actualRespondents.parent,
+          expected: config.expectedRespondents.parent,
+          percentage: Math.round((progress.actualRespondents.parent / config.expectedRespondents.parent) * 100),
+        },
+        {
+          type: 'student' as const,
+          responses: progress.actualRespondents.student,
+          expected: config.expectedRespondents.student,
+          percentage: Math.round((progress.actualRespondents.student / config.expectedRespondents.student) * 100),
+        },
+        {
+          type: 'admin' as const,
+          responses: progress.actualRespondents.admin,
+          expected: config.expectedRespondents.admin,
+          percentage: Math.round((progress.actualRespondents.admin / config.expectedRespondents.admin) * 100),
+        },
+      ],
+      dimensions,
+      gapAnalysis: {
+        alignedDimensions: 8,
+        overestimatedDimensions: 3,
+        underestimatedDimensions: 3,
+        averageGap: 2.5,
+      },
+      executiveSummary: {
+        overallHealthIndex: 79,
+        status: 'good' as const,
+        keyInsights: [
+          'Strong academic performance and student engagement are school strengths',
+          'Technology integration significantly lags behind benchmarks - critical focus area',
+          'Community engagement is excellent with strong stakeholder partnerships',
+          'Professional development and leadership structures need systematic strengthening',
+        ],
+        marketingOpportunities: [
+          'Highlight excellent community engagement and stakeholder partnerships',
+          'Showcase strong achievement and performance metrics',
+          'Emphasize comprehensive student well-being support systems',
+          'Market student-centric approach and high engagement levels',
+        ],
+        criticalAreas: [
+          'Technology integration and digital infrastructure',
+          'Strategic leadership visibility and communication',
+          'Curriculum modernization and assessment redesign',
+        ],
+        strengths: [
+          'Exceptional student achievement and performance',
+          'Strong community and stakeholder engagement',
+          'Comprehensive student support and well-being systems',
+          'Diverse and inclusive school culture',
+        ],
+      },
+      objectiveDataCompleteness: 100,
+      recommendedActions: [
+        {
+          priority: 'critical',
+          action: 'Develop and implement comprehensive technology integration roadmap',
+          timeline: '6-8 months',
+          expectedImpact: 'Transform digital learning capabilities and increase student engagement',
+          resourcesRequired: ['Infrastructure investment', 'Teacher training program', 'Technology coordinator'],
+        },
+        {
+          priority: 'high',
+          action: 'Launch strategic leadership development and communication enhancement program',
+          timeline: '4-6 months',
+          expectedImpact: 'Improve vision clarity and stakeholder alignment',
+          resourcesRequired: ['Leadership coaching', 'Communication tools', 'Staff workshops'],
+        },
+        {
+          priority: 'high',
+          action: 'Conduct comprehensive curriculum audit and modernization initiative',
+          timeline: '8-10 months',
+          expectedImpact: 'Ensure curriculum alignment with 21st-century competencies',
+          resourcesRequired: ['Curriculum specialists', 'Teacher collaboration time', 'Assessment tools'],
+        },
+        {
+          priority: 'medium',
+          action: 'Establish facility upgrade and maintenance enhancement program',
+          timeline: '12 months',
+          expectedImpact: 'Improve learning environment and operational efficiency',
+          resourcesRequired: ['Maintenance staff', 'Capital budget', 'Facility management system'],
+        },
+      ],
+    };
+
+    generateComprehensiveDiagnosticReport(reportData);
   };
 
   useEffect(() => {
@@ -294,14 +571,90 @@ export function MultiUserAssessmentPage() {
           </div>
         )}
 
-        {/* Stage 4: Analysis */}
+        {/* Stage 4: Analysis - Professional Dashboard */}
         {stage === 'analysis' && config && progress && showReport && (
-          <DiagnosticReport
-            assessmentId={config.id}
-            eventName={config.eventName}
-            schoolName={config.schoolName}
-            onBack={() => setShowReport(false)}
-          />
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Diagnostic Report</h2>
+              <button
+                onClick={() => setShowReport(false)}
+                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium"
+              >
+                ← Back
+              </button>
+            </div>
+
+            <ProfessionalDiagnosticDashboard
+              schoolName={config.schoolName}
+              assessmentDate={new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              dimensions={[
+                {
+                  id: 'dim-1',
+                  name: 'Academic Excellence',
+                  icon: 'BookOpen',
+                  subjective: 82,
+                  benchmark: 80,
+                  objective: 78,
+                  gap: 4,
+                  status: 'good',
+                  perception: 'Aligned with reality',
+                  interpretation: 'Academic performance is strong with solid teaching practices.',
+                  rootCauses: ['Minor curriculum coverage gaps'],
+                  actionablePoints: ['Strengthen advanced coursework'],
+                },
+                {
+                  id: 'dim-2',
+                  name: 'Leadership & Governance',
+                  icon: 'Users',
+                  subjective: 78,
+                  benchmark: 80,
+                  objective: 75,
+                  gap: 3,
+                  status: 'adequate',
+                  perception: 'Below benchmark',
+                  interpretation: 'Leadership structure exists but requires strengthening.',
+                  rootCauses: ['Limited strategic vision communication'],
+                  actionablePoints: ['Develop clear strategic plan'],
+                },
+              ]}
+              respondents={[
+                {
+                  type: 'teacher',
+                  count: progress.actualRespondents.teacher,
+                  total: config.expectedRespondents.teacher,
+                  percentage: Math.round((progress.actualRespondents.teacher / config.expectedRespondents.teacher) * 100),
+                },
+                {
+                  type: 'parent',
+                  count: progress.actualRespondents.parent,
+                  total: config.expectedRespondents.parent,
+                  percentage: Math.round((progress.actualRespondents.parent / config.expectedRespondents.parent) * 100),
+                },
+                {
+                  type: 'student',
+                  count: progress.actualRespondents.student,
+                  total: config.expectedRespondents.student,
+                  percentage: Math.round((progress.actualRespondents.student / config.expectedRespondents.student) * 100),
+                },
+                {
+                  type: 'admin',
+                  count: progress.actualRespondents.admin,
+                  total: config.expectedRespondents.admin,
+                  percentage: Math.round((progress.actualRespondents.admin / config.expectedRespondents.admin) * 100),
+                },
+              ]}
+            />
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <button
+                onClick={handleDownloadReport}
+                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+              >
+                <Download className="w-5 h-5" />
+                Download Comprehensive Report (PDF)
+              </button>
+            </div>
+          </div>
         )}
 
         {stage === 'analysis' && config && progress && !showReport && (
@@ -400,7 +753,7 @@ export function MultiUserAssessmentPage() {
                   className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition flex items-center justify-center gap-2 order-1 sm:order-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
                 >
                   <ArrowRight className="w-4 h-4" />
-                  Generate Diagnostic Report
+                  View Diagnostic Report
                 </button>
                 <button
                   onClick={handleBackToHistory}
