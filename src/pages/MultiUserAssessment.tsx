@@ -18,7 +18,7 @@ import {
 } from '../lib/assessmentEventService';
 import { checkObjectiveDataReadiness, ObjectiveReadiness } from '../lib/objectiveDataService';
 import { generateEnhancedDiagnosticReport } from '../lib/enhancedDiagnosticReport';
-import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle, Database, Download } from 'lucide-react';
+import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle, Database, Download, Layers, Settings, Zap, BarChart3, BookOpen, Target } from 'lucide-react';
 
 type Stage = 'history' | 'configuration' | 'deployment' | 'analysis';
 
@@ -441,45 +441,158 @@ export function MultiUserAssessmentPage() {
     };
   }, [stage, config]);
 
+  // Stage icons for workflow
+  const stageIcons: Record<Stage, React.ElementType> = {
+    history: BookOpen,
+    configuration: Settings,
+    deployment: Zap,
+    analysis: BarChart3,
+  };
+
+  const stageColors: Record<Stage, { bg: string; text: string; icon: string }> = {
+    history: { bg: 'from-blue-600 to-blue-800', text: 'text-blue-600', icon: 'text-blue-500' },
+    configuration: { bg: 'from-indigo-600 to-indigo-800', text: 'text-indigo-600', icon: 'text-indigo-500' },
+    deployment: { bg: 'from-purple-600 to-purple-800', text: 'text-purple-600', icon: 'text-purple-500' },
+    analysis: { bg: 'from-emerald-600 to-emerald-800', text: 'text-emerald-600', icon: 'text-emerald-500' },
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      {/* Page Header */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">14-Dimension Multilateral Assessment</h1>
-        <p className="text-gray-600 mt-2">Multi-stakeholder feedback system with response tracking, for {schoolName}</p>
-      </div>
-
-      {/* Progress Indicator */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
-        <div className="flex items-center justify-between">
-          {STAGE_ORDER.map((s, idx) => (
-            <React.Fragment key={s}>
-              <div
-                className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition ${
-                  STAGE_ORDER.indexOf(stage) >= idx ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-                }`}
-              >
-                {STAGE_ORDER.indexOf(stage) > idx ? <CheckCircle2 className="w-6 h-6" /> : idx + 1}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Professional Header with Gradient */}
+      <div className={`bg-gradient-to-r ${stageColors[stage].bg} text-white shadow-2xl`}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <Layers className="w-8 h-8 text-blue-200" />
+                <span className="text-blue-100 text-sm font-semibold tracking-wider uppercase">14-Dimension Assessment Platform</span>
               </div>
-              {idx < STAGE_ORDER.length - 1 && (
-                <div
-                  className={`flex-1 h-1 mx-2 transition ${
-                    STAGE_ORDER.indexOf(stage) > idx ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
-                />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-        <div className="flex justify-between text-xs text-gray-600 mt-2">
-          {STAGE_ORDER.map((s) => (
-            <span key={s}>{STAGE_LABELS[s]}</span>
-          ))}
+              <h1 className="text-4xl font-black mb-3">School Diagnostic Assessment</h1>
+              <div className="flex flex-col gap-1">
+                <p className="text-blue-100 text-lg font-medium">{schoolName}</p>
+                <p className="text-blue-200 text-sm">Comprehensive multi-stakeholder feedback & strategic analysis system</p>
+              </div>
+            </div>
+            <div className="text-right hidden sm:block">
+              <div className="bg-white/20 backdrop-blur rounded-xl p-4 border border-white/30">
+                <p className="text-blue-100 text-xs font-semibold mb-1">CURRENT STAGE</p>
+                <p className="text-2xl font-bold text-white">{STAGE_LABELS[stage]}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Professional Progress Indicator */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between gap-2">
+              {STAGE_ORDER.map((s, idx) => {
+                const isCompleted = STAGE_ORDER.indexOf(stage) > idx;
+                const isActive = stage === s;
+                const StageIcon = stageIcons[s];
+                const color = stageColors[s];
+
+                return (
+                  <React.Fragment key={s}>
+                    {/* Step Circle */}
+                    <div className="flex flex-col items-center gap-2 flex-1">
+                      <div
+                        className={`relative flex items-center justify-center w-16 h-16 rounded-2xl font-bold text-lg transition-all duration-300 shadow-md ${
+                          isActive
+                            ? `bg-gradient-to-br ${color.bg} text-white scale-110 shadow-xl`
+                            : isCompleted
+                            ? 'bg-green-500 text-white'
+                            : 'bg-gray-100 text-gray-400'
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <CheckCircle2 className="w-8 h-8" />
+                        ) : (
+                          <StageIcon className="w-7 h-7" />
+                        )}
+
+                        {isActive && (
+                          <div className="absolute inset-0 rounded-2xl animate-pulse bg-white/20"></div>
+                        )}
+                      </div>
+
+                      {/* Stage Label */}
+                      <div className="text-center">
+                        <p className={`text-sm font-bold transition ${isActive ? color.text : 'text-gray-600'}`}>
+                          {STAGE_LABELS[s]}
+                        </p>
+                        {isActive && (
+                          <p className="text-xs text-blue-600 font-semibold mt-0.5">Currently here</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Connector Line */}
+                    {idx < STAGE_ORDER.length - 1 && (
+                      <div
+                        className={`flex-1 h-1 rounded-full mx-1 transition-all duration-300 ${
+                          isCompleted
+                            ? 'bg-gradient-to-r from-green-500 to-blue-500'
+                            : 'bg-gray-200'
+                        }`}
+                        style={{ minHeight: '4px' }}
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Progress Info Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {STAGE_ORDER.map((s) => {
+              const isActive = stage === s;
+              const isCompleted = STAGE_ORDER.indexOf(stage) > STAGE_ORDER.indexOf(s);
+
+              let description = '';
+              switch (s) {
+                case 'history':
+                  description = 'View past and current assessment events';
+                  break;
+                case 'configuration':
+                  description = 'Set up assessment parameters and respondents';
+                  break;
+                case 'deployment':
+                  description = 'Collect responses and track progress';
+                  break;
+                case 'analysis':
+                  description = 'View diagnostic insights and reports';
+                  break;
+              }
+
+              return (
+                <div
+                  key={s}
+                  className={`p-3 rounded-lg transition border-2 ${
+                    isActive
+                      ? 'bg-blue-50 border-blue-300 shadow-md'
+                      : isCompleted
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <p className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">
+                    {STAGE_LABELS[s]}
+                  </p>
+                  <p className="text-xs text-gray-600">{description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stage 1: Assessment Event History */}
         {stage === 'history' && (
           <div className="space-y-6">
