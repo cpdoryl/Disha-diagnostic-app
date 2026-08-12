@@ -99,6 +99,22 @@ function drawScoreBar(
   }
 }
 
+function drawLabeledParagraphs(doc: jsPDF, label: string, lines: string[], y: number): number {
+  if (lines.length === 0) return y;
+  y = ensureSpace(doc, y, 6);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text(label, MARGIN_X, y);
+  doc.setFont('helvetica', 'normal');
+  y += 4;
+  doc.setFontSize(8.5);
+  for (const line of lines) {
+    y = drawWrappedText(doc, line, MARGIN_X, y, CONTENT_WIDTH, 4);
+    y += 1.5;
+  }
+  return y + 1;
+}
+
 function drawGapIndicator(doc: jsPDF, x: number, y: number, gap: PerceptionRealityGap): number {
   const label =
     gap.interpretation === 'alignment'
@@ -255,38 +271,12 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData): j
       y += 6;
     }
 
-    doc.setFontSize(9);
-    y = drawWrappedText(doc, card.interpretation, MARGIN_X, y, CONTENT_WIDTH, 4.5);
-    y += 4;
+    y = drawLabeledParagraphs(doc, 'Detailed Analysis:', card.detailedAnalysis, y);
+    y = drawLabeledParagraphs(doc, 'Perception vs Reality Analysis:', card.perceptionRealityAnalysis, y);
+    y = drawLabeledParagraphs(doc, 'Root Cause Analysis:', card.rootCause, y);
+    y = drawLabeledParagraphs(doc, 'Actionable Recommendations:', card.actionablePoints, y);
 
-    if (card.rootCause.length > 0) {
-      y = ensureSpace(doc, y, 6);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.text('Root Cause:', MARGIN_X, y);
-      doc.setFont('helvetica', 'normal');
-      y += 4;
-      doc.setFontSize(8.5);
-      for (const line of card.rootCause) {
-        y = drawWrappedText(doc, `- ${line}`, MARGIN_X, y, CONTENT_WIDTH, 4);
-      }
-      y += 2;
-    }
-
-    if (card.actionablePoints.length > 0) {
-      y = ensureSpace(doc, y, 6);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.text('Actionable Points:', MARGIN_X, y);
-      doc.setFont('helvetica', 'normal');
-      y += 4;
-      doc.setFontSize(8.5);
-      for (const line of card.actionablePoints) {
-        y = drawWrappedText(doc, `- ${line}`, MARGIN_X, y, CONTENT_WIDTH, 4);
-      }
-    }
-
-    y += 6;
+    y += 5;
   }
 
   if (report.gapAnalysis) {

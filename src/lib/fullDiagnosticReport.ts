@@ -1,21 +1,32 @@
 /**
  * Assembles the full diagnostic report bundle consumed by the report UI and
  * PDF export: subjective survey scores (reused as-is from dimensionScoring),
- * benchmark + interpretation prose, objective operational scores (if any
+ * benchmark + detailed analysis prose, objective operational scores (if any
  * data has been captured), and a perception-vs-reality gap analysis via the
  * existing (unmodified) gapAnalyzer.
+ *
+ * Every generated analysis paragraph is deliberately written to show its
+ * work - the numbers it's reading, the calculation it ran, and the
+ * reasoning it drew from that - rather than stating a bare conclusion, so a
+ * reader can verify or challenge the reasoning instead of just trusting it.
  */
 import { computeDiagnosticReport, getHealthStatus, DiagnosticReportData } from './dimensionScoring';
 import { loadObjectiveDataForEvent } from './objectiveDataService';
-import { computeAllObjectiveScores, computeObjectiveCompletenessSummary, ObjectiveCompletenessSummary, RawMetricEntry } from './objectiveScoreEngine';
+import {
+  computeAllObjectiveScores,
+  computeObjectiveCompletenessSummary,
+  computeDimensionObjectiveScore,
+  ObjectiveCompletenessSummary,
+  RawMetricEntry,
+} from './objectiveScoreEngine';
 import { analyzeGaps, GapAnalysisResult, PerceptionRealityGap } from './gapAnalyzer';
 import { DimensionObjectiveScore } from './objectiveMetricsCalculator';
 import {
-  generateSubjectiveInterpretation,
+  buildDetailedAnalysis,
   getSubjectiveBenchmark,
   SUBJECTIVE_BENCHMARK_DATASET_META,
 } from '../data/dimensionBenchmarks';
-import { OBJECTIVE_BENCHMARK_DATASET_META } from '../data/objectiveMetricsSchema';
+import { OBJECTIVE_BENCHMARK_DATASET_META, getDimensionMetricSchema } from '../data/objectiveMetricsSchema';
 import { BenchmarkDatasetMeta } from '../data/benchmarkMeta';
 import { FOURTEEN_DIMENSIONS } from '../data/14DimensionsQuestions';
 
@@ -30,7 +41,8 @@ export interface DimensionReportCard {
   };
   benchmark: number;
   deltaFromBenchmark: number | null;
-  interpretation: string;
+  detailedAnalysis: string[];
+  perceptionRealityAnalysis: string[];
   objective: DimensionObjectiveScore | null;
   objectiveUpdatedAt: Date | null;
   gap: PerceptionRealityGap | null;
@@ -88,21 +100,50 @@ export async function assembleFullDiagnosticReport(
     const objectiveHasData = objective && objective.dataCompleteness > 0 ? objective : null;
     const benchmark = getSubjectiveBenchmark(dim.id);
     const index = subjectiveRow?.index ?? null;
+    const average = subjectiveRow?.average ?? null;
+    const responseCount = subjectiveRow?.responseCount ?? 0;
     const gap = gapAnalysis?.totalGaps.find((g) => g.dimensionId === dim.id) ?? null;
-    const { rootCause, actionablePoints } = buildRootCauseAndActions(dim.name, objectiveHasData, gap);
+    const dimensionRawValues = rawByDimension[dim.id] || {};
+
+    const detailedAnalysis = buildDetailedAnalysis(
+      dim.id,
+      dim.name,
+      index,
+      average,
+      responseCount,
+      subjectiveRow?.byStakeholder || {}
+    );
+    const perceptionRealityAnalysis = buildPerceptionRealityAnalysis(
+      dim.name,
+      index,
+      average,
+      responseCount,
+      benchmark,
+      objectiveHasData,
+      gap
+    );
+    const rootCause = buildRootCauseAnalysis(dim.name, objectiveHasData, gap);
+    const actionablePoints = buildActionableRecommendations(
+      dim.id,
+      dim.name,
+      dimensionRawValues,
+      objectiveHasData,
+      gap
+    );
 
     return {
       dimensionId: dim.id,
       dimensionName: dim.name,
       subjective: {
-        average: subjectiveRow?.average ?? null,
+        average,
         index,
         status: getHealthStatus(index),
-        responseCount: subjectiveRow?.responseCount ?? 0,
+        responseCount,
       },
       benchmark,
       deltaFromBenchmark: index != null ? index - benchmark : null,
-      interpretation: generateSubjectiveInterpretation(dim.id, dim.name, index),
+      detailedAnalysis,
+      perceptionRealityAnalysis,
       objective: objectiveHasData,
       objectiveUpdatedAt: rawObjective[dim.id]?.updatedAt ?? null,
       gap,
@@ -174,65 +215,194 @@ function buildExecutiveSummary(
 }
 
 /**
- * Derives a data-driven root cause and a short list of actionable points for
- * a dimension from its objective metric statuses (which specific metrics
- * are below benchmark) and its gap interpretation (whether the mismatch is
- * a perception problem or an operational one) - not generic boilerplate.
+ * Explicitly walks through the perception-vs-reality comparison for a
+ * dimension: what the survey says, what the operational data says, the
+ * exact subtraction that produces the gap, and the threshold used to
+ * classify it - so the classification is checkable, not just asserted.
  */
-function buildRootCauseAndActions(
+function buildPerceptionRealityAnalysis(
+  dimensionName: string,
+  index: number | null,
+  average: number | null,
+  responseCount: number,
+  benchmark: number,
+  objective: DimensionObjectiveScore | null,
+  gap: PerceptionRealityGap | null
+): string[] {
+  const lines: string[] = [];
+
+  if (index == null) {
+    lines.push(`No survey responses have been recorded yet for ${dimensionName}, so stakeholder perception cannot be established for this comparison.`);
+    return lines;
+  }
+
+  lines.push(
+    `Perception (survey): ${responseCount} respondent${responseCount === 1 ? '' : 's'} rated ${dimensionName} at an average of ${average != null ? average.toFixed(2) : 'N/A'}/5, rescaled to an index of ${index}/100, against a benchmark index of ${benchmark}/100 for this dimension.`
+  );
+
+  if (!objective) {
+    lines.push(
+      `Reality (operational data): not yet captured for this dimension. Without independent operational data there is nothing to compare this ${index}/100 perception against, so it is not yet possible to say whether it reflects reality or not - capture operational data for this dimension to enable that comparison.`
+    );
+    return lines;
+  }
+
+  lines.push(
+    `Reality (operational data): ${objective.metrics.length} metric${objective.metrics.length === 1 ? '' : 's'} captured (${objective.dataCompleteness}% of this dimension's defined metrics), producing an objective score of ${objective.objectiveScore}/100.`
+  );
+
+  if (gap) {
+    const classification =
+      gap.interpretation === 'alignment'
+        ? 'aligned'
+        : gap.interpretation === 'overestimation'
+          ? 'an overestimation (perception higher than reality)'
+          : 'an underestimation (perception lower than reality)';
+    lines.push(
+      `Comparison: ${index} (perception) minus ${objective.objectiveScore} (reality) = ${gap.gap > 0 ? '+' : ''}${gap.gap.toFixed(1)} points. Gaps within plus-or-minus 5 points are classified as aligned; this gap is classified as ${classification}.`
+    );
+    lines.push(gap.insight);
+  }
+
+  return lines;
+}
+
+/**
+ * Root cause analysis: shows the full set of captured evidence (not only
+ * the metrics that look bad), then explicitly reasons from that evidence to
+ * which metrics are most likely driving the objective score, and
+ * cross-checks that against the perception-reality gap to distinguish an
+ * operational problem from a visibility/communication one.
+ */
+function buildRootCauseAnalysis(
   dimensionName: string,
   objective: DimensionObjectiveScore | null,
   gap: PerceptionRealityGap | null
-): { rootCause: string[]; actionablePoints: string[] } {
+): string[] {
   const rootCause: string[] = [];
-  const actionablePoints: string[] = [];
 
   if (!objective) {
     rootCause.push(
-      'No objective operational data has been captured yet for this dimension, so the root cause cannot be verified against real data - only stakeholder perception is available.'
+      `Root cause cannot yet be determined from data for ${dimensionName}: no objective operational metrics have been captured for this dimension. Only stakeholder perception is available, which reflects opinion rather than a verifiable operational measurement - capture operational data to enable this analysis.`
     );
-    actionablePoints.push(`Capture operational data for ${dimensionName} to enable root-cause analysis.`);
-    return { rootCause, actionablePoints };
+    return rootCause;
   }
 
-  const belowBenchmarkMetrics = objective.metrics.filter((m) => m.status === 'below');
+  const evidenceLines = objective.metrics.map((m) => `${m.name}: ${m.value}${m.unit} (benchmark ${m.benchmark}${m.unit}, ${m.status})`);
+  rootCause.push(
+    `Evidence captured for this dimension (${objective.metrics.length} metric${objective.metrics.length === 1 ? '' : 's'}): ${evidenceLines.join('; ')}.`
+  );
 
-  if (belowBenchmarkMetrics.length > 0) {
+  const below = objective.metrics.filter((m) => m.status === 'below');
+  const strong = objective.metrics.filter((m) => m.status === 'meets' || m.status === 'exceeds');
+
+  if (below.length > 0) {
     rootCause.push(
-      `Operational data shows ${belowBenchmarkMetrics.length} metric${belowBenchmarkMetrics.length === 1 ? '' : 's'} below benchmark: ${belowBenchmarkMetrics
-        .map((m) => `${m.name} (${m.value}${m.unit} vs benchmark ${m.benchmark}${m.unit})`)
-        .join('; ')}.`
+      `Reasoning: ${below.length} of ${objective.metrics.length} metric${objective.metrics.length === 1 ? '' : 's'} sit below benchmark (${below.map((m) => m.name).join(', ')}), while ${strong.length} meet or exceed benchmark. Because the objective score is a weighted average across all captured metrics, the below-benchmark metrics listed above are what is pulling this dimension's objective score down - they are the most probable operational root cause, distinct from the metrics that are already at or above benchmark.`
     );
-    for (const m of belowBenchmarkMetrics.slice(0, 3)) {
-      actionablePoints.push(`Improve ${m.name}: currently ${m.value}${m.unit}, target ${m.benchmark}${m.unit}.`);
-    }
   } else {
-    rootCause.push('All captured operational metrics for this dimension meet or exceed benchmark.');
+    rootCause.push(
+      `Reasoning: every captured metric for this dimension meets or exceeds its benchmark, so no captured operational metric is pulling the objective score down. If a weakness is still perceived here, it is more likely a communication or awareness issue than an operational one - see the perception-reality comparison above.`
+    );
+  }
+
+  if (gap) {
+    const gapMagnitude = Math.abs(gap.gap).toFixed(1);
+    if (gap.interpretation === 'underestimation') {
+      rootCause.push(
+        `Cross-checking against perception: stakeholders rate this dimension at ${gap.subjectiveScore}/100, ${gapMagnitude} points below the objective score of ${gap.objectiveScore}/100 computed from the evidence above. Because the underlying data does not show comparable weakness, the more likely explanation is a visibility gap - stakeholders may be unaware of, or discounting, the operational performance shown above - rather than an operational failure.`
+      );
+    } else if (gap.interpretation === 'overestimation') {
+      rootCause.push(
+        `Cross-checking against perception: stakeholders rate this dimension at ${gap.subjectiveScore}/100, ${gapMagnitude} points above the objective score of ${gap.objectiveScore}/100 computed from the evidence above. Because perception is running ahead of the data, the more likely explanation is that stakeholders are extrapolating from partial visibility or past reputation rather than current operational performance.`
+      );
+    } else {
+      rootCause.push(
+        `Cross-checking against perception: stakeholders rate this dimension at ${gap.subjectiveScore}/100, within ${gapMagnitude} points of the objective score of ${gap.objectiveScore}/100 - perception and the underlying data are consistent with each other for this dimension.`
+      );
+    }
+  }
+
+  return rootCause;
+}
+
+/**
+ * Actionable recommendations as ranked, data-simulated choices rather than
+ * commands: for each below-benchmark metric, re-runs the real scoring
+ * engine with that one metric hypothetically moved to its benchmark (all
+ * others held constant) to show the actual projected score impact, so the
+ * "prediction" is a real simulation rather than a fabricated claim.
+ */
+function buildActionableRecommendations(
+  dimensionId: string,
+  dimensionName: string,
+  rawValues: Record<string, RawMetricEntry | undefined>,
+  objective: DimensionObjectiveScore | null,
+  gap: PerceptionRealityGap | null
+): string[] {
+  const points: string[] = [];
+
+  if (!objective) {
+    points.push(
+      `Capture operational data for ${dimensionName} first. Until then, any recommendation here would be a guess rather than a data-grounded choice - the platform will simulate specific, ranked options once metrics are captured.`
+    );
+    return points;
+  }
+
+  const schema = getDimensionMetricSchema(dimensionId);
+  const belowBenchmarkDefs = (schema?.metrics || []).filter((def) => {
+    const entry = rawValues[def.id];
+    if (!entry) return false;
+    return def.direction === 'higher_better' ? entry.value < def.benchmark : entry.value > def.benchmark;
+  });
+
+  const simulations = belowBenchmarkDefs
+    .map((def) => {
+      const entry = rawValues[def.id]!;
+      const simulatedRawValues: Record<string, RawMetricEntry | undefined> = {
+        ...rawValues,
+        [def.id]: { value: def.benchmark, source: entry.source },
+      };
+      const simulatedScore = computeDimensionObjectiveScore(dimensionId, simulatedRawValues);
+      return {
+        label: def.label,
+        unit: def.unit,
+        currentValue: entry.value,
+        benchmark: def.benchmark,
+        impact: simulatedScore.objectiveScore - objective.objectiveScore,
+      };
+    })
+    .sort((a, b) => b.impact - a.impact);
+
+  if (simulations.length > 0) {
+    points.push(
+      `Improvement options for this dimension, ranked by projected impact on the objective score (each simulated by moving that one metric to its benchmark while holding every other captured metric constant):`
+    );
+    for (const sim of simulations.slice(0, 4)) {
+      points.push(
+        `Option: raise ${sim.label} from ${sim.currentValue}${sim.unit} to the ${sim.benchmark}${sim.unit} benchmark -> projected objective score moves from ${objective.objectiveScore} to ${objective.objectiveScore + sim.impact} (${sim.impact > 0 ? '+' : ''}${sim.impact} point${Math.abs(sim.impact) === 1 ? '' : 's'}).`
+      );
+    }
+    points.push(
+      `These are independent, simulated levers - choose based on feasibility and cost, not projected impact size alone. Combining several will compound the effect beyond any single simulation shown here, since each simulation only moves one metric at a time.`
+    );
   }
 
   if (gap) {
     if (gap.interpretation === 'underestimation') {
-      rootCause.push(
-        `Stakeholders perceive this dimension worse (${gap.subjectiveScore}) than the operational data supports (${gap.objectiveScore}) - this points to a communication/visibility gap rather than an operational failure.`
-      );
-      actionablePoints.push(
-        `Communicate ${dimensionName} achievements more visibly to stakeholders (newsletters, dashboards, town halls) - the underlying data is not the problem here.`
+      points.push(
+        `Separate option: since stakeholders currently rate this dimension lower than the data supports, share the metrics above directly with staff and parents - this addresses the perception gap without requiring any operational change, and can be pursued alongside or instead of the options above.`
       );
     } else if (gap.interpretation === 'overestimation') {
-      rootCause.push(
-        `Stakeholders perceive this dimension better (${gap.subjectiveScore}) than the operational data supports (${gap.objectiveScore}) - operational reality is lagging behind perception.`
+      points.push(
+        `Separate consideration: since stakeholders currently rate this dimension higher than the data supports, treat the operational options above as the priority before further promoting this dimension - communicating strength the data doesn't yet back can erode trust once the gap becomes visible.`
       );
-      actionablePoints.push(
-        `Close the gap between perception and reality in ${dimensionName} by acting on the below-benchmark metrics above before communicating further - risk of eroded trust if left unaddressed.`
-      );
-    } else {
-      rootCause.push('Stakeholder perception is aligned with the operational data for this dimension.');
     }
   }
 
-  if (actionablePoints.length === 0) {
-    actionablePoints.push(`Maintain current practices in ${dimensionName} and monitor metrics periodically.`);
+  if (points.length === 0) {
+    points.push(`All captured metrics already meet or exceed benchmark - no operational option is indicated by the data; monitor periodically to confirm this holds.`);
   }
 
-  return { rootCause, actionablePoints };
+  return points;
 }

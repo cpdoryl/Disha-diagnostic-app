@@ -120,18 +120,36 @@ export function getSubjectiveBenchmark(dimensionId: string): number {
   return SUBJECTIVE_INDEX_BENCHMARKS[dimensionId] ?? 75;
 }
 
+const STAKEHOLDER_LABELS: Record<string, string> = {
+  teacher: 'Teachers',
+  parent: 'Parents/Guardians',
+  student: 'Students',
+  admin: 'Admin Staff',
+  other: 'Other',
+};
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 /**
- * Composes dimension-specific interpretation prose from the status bucket
- * (via `getHealthStatus`) plus this dimension's strength/risk framing and
- * its numeric gap to benchmark.
+ * Builds a multi-paragraph, data-grounded detailed analysis for a
+ * dimension's subjective (survey) score: the headline number with the exact
+ * calculation behind it, a stakeholder-group breakdown when more than one
+ * group responded (so the aggregate isn't presented as if it were uniform),
+ * and a pattern-based reading of what that score range typically indicates -
+ * framed as "this pattern typically indicates", not a flat verdict.
  */
-export function generateSubjectiveInterpretation(
+export function buildDetailedAnalysis(
   dimensionId: string,
   dimensionName: string,
-  index: number | null
-): string {
+  index: number | null,
+  average: number | null,
+  responseCount: number,
+  byStakeholder: Partial<Record<string, number | null>>
+): string[] {
   if (index == null) {
-    return `No survey responses have been recorded yet for ${dimensionName}, so no interpretation can be generated.`;
+    return [`No survey responses have been recorded yet for ${dimensionName}, so no detailed analysis can be generated.`];
   }
 
   const benchmark = getSubjectiveBenchmark(dimensionId);
@@ -140,25 +158,50 @@ export function generateSubjectiveInterpretation(
   const delta = index - benchmark;
   const deltaText =
     delta === 0
-      ? `exactly at the ${benchmark} benchmark for this dimension`
+      ? `exactly at the ${benchmark} benchmark set for this dimension`
       : delta > 0
-        ? `${delta} point${delta === 1 ? '' : 's'} above the ${benchmark} benchmark for this dimension`
-        : `${Math.abs(delta)} point${Math.abs(delta) === 1 ? '' : 's'} below the ${benchmark} benchmark for this dimension`;
+        ? `${delta} point${delta === 1 ? '' : 's'} above the ${benchmark} benchmark set for this dimension`
+        : `${Math.abs(delta)} point${Math.abs(delta) === 1 ? '' : 's'} below the ${benchmark} benchmark set for this dimension`;
 
-  const base = `${dimensionName} is scoring ${index}/100 (${status.label}), ${deltaText}.`;
+  const lines: string[] = [];
 
-  if (!lens) {
-    return base;
+  lines.push(
+    `${dimensionName} scores ${index}/100 (${status.label}) from ${responseCount} respondent${responseCount === 1 ? '' : 's'}, ${deltaText}. This index is calculated by averaging each respondent's 1-5 Likert ratings across this dimension's questions to a group average of ${average != null ? average.toFixed(2) : 'N/A'}/5, then rescaling that average onto a 0-100 index (1 = 0, 5 = 100) so it can be compared directly against the benchmark.`
+  );
+
+  const stakeholderEntries = Object.entries(byStakeholder).filter(
+    (entry): entry is [string, number] => entry[1] != null
+  );
+  if (stakeholderEntries.length >= 2) {
+    const sorted = [...stakeholderEntries].sort((a, b) => b[1] - a[1]);
+    const [highKey, highVal] = sorted[0];
+    const [lowKey, lowVal] = sorted[sorted.length - 1];
+    const spread = highVal - lowVal;
+    const breakdown = sorted.map(([key, val]) => `${STAKEHOLDER_LABELS[key] || key} ${val.toFixed(2)}/5`).join(', ');
+    lines.push(
+      spread >= 1
+        ? `Breakdown by stakeholder group: ${breakdown}. There is a notable ${spread.toFixed(2)}-point spread between ${STAKEHOLDER_LABELS[highKey] || highKey} (highest) and ${STAKEHOLDER_LABELS[lowKey] || lowKey} (lowest) - this dimension is not perceived uniformly, and the single aggregate score above may be masking a real difference in experience between groups worth investigating on its own.`
+        : `Breakdown by stakeholder group: ${breakdown}. The spread between the highest- and lowest-rating groups is small (${spread.toFixed(2)} points), indicating fairly consistent perception across stakeholder groups.`
+    );
   }
 
-  if (index >= 80) {
-    return `${base} Stakeholders feel ${lens.strength}. Continue current practices and monitor to sustain this level.`;
+  if (lens) {
+    if (index >= 80) {
+      lines.push(`A score in this range typically indicates ${lens.strength}. Continuing current practices and monitoring to sustain this level is the reasonable path here.`);
+    } else if (index >= 60) {
+      lines.push(
+        `A score in this range typically indicates ${lens.strength}, though there is room to close the gap to benchmark further. ${capitalize(lens.lever)} is a plausible next step suggested by this pattern.`
+      );
+    } else if (index >= 40) {
+      lines.push(
+        `A score in this range typically indicates ${lens.risk}. ${capitalize(lens.lever)} is the lever this pattern most directly points to for closing the gap.`
+      );
+    } else {
+      lines.push(
+        `A score in this range typically indicates ${lens.risk}, and scores this low usually warrant urgent attention. ${capitalize(lens.lever)} is the priority this pattern points to.`
+      );
+    }
   }
-  if (index >= 60) {
-    return `${base} Stakeholders feel ${lens.strength}, though there is room to close the gap further. Focus on ${lens.lever}.`;
-  }
-  if (index >= 40) {
-    return `${base} Stakeholders feel ${lens.risk}. Focus on ${lens.lever} is the fastest lever to close this gap.`;
-  }
-  return `${base} Stakeholders feel ${lens.risk}, and this dimension needs urgent attention. Prioritize ${lens.lever}.`;
+
+  return lines;
 }

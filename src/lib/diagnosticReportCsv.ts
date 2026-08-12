@@ -48,7 +48,7 @@ export function downloadDiagnosticReportCsv(report: FullDiagnosticReportData): v
       confidence?.level ?? '',
       confidence?.sourceSummary ?? '',
       card.objectiveUpdatedAt ? card.objectiveUpdatedAt.toLocaleDateString() : '',
-      card.interpretation,
+      card.detailedAnalysis.join(' '),
     ];
   });
 

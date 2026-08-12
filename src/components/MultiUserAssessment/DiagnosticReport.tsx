@@ -81,42 +81,55 @@ function DimensionCard({ card }: { card: DimensionReportCard }) {
         </div>
       </div>
 
-      {card.gap && (
-        <p className="text-xs text-gray-500">
-          Gap: {card.gap.gap > 0 ? '+' : ''}
-          {card.gap.gap.toFixed(1)} points (perceived {card.gap.subjectiveScore} vs. data {card.gap.objectiveScore})
-        </p>
-      )}
-
       {card.objective && (
         <p className="text-xs text-gray-400">{summarizeDataConfidence(card.objective.metrics)?.description}</p>
       )}
 
-      <p className="text-sm text-gray-600 leading-relaxed">{card.interpretation}</p>
+      <div>
+        <p className="text-xs font-semibold text-gray-700 mb-1">Detailed Analysis</p>
+        <div className="space-y-1.5">
+          {card.detailedAnalysis.map((line, idx) => (
+            <p key={idx} className="text-sm text-gray-600 leading-relaxed">
+              {line}
+            </p>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-sky-50 border border-sky-100 rounded-lg p-3">
+        <p className="text-xs font-semibold text-sky-800 mb-1">Perception vs Reality Analysis</p>
+        <div className="space-y-1.5">
+          {card.perceptionRealityAnalysis.map((line, idx) => (
+            <p key={idx} className="text-xs text-sky-700 leading-relaxed">
+              {line}
+            </p>
+          ))}
+        </div>
+      </div>
 
       {card.rootCause.length > 0 && (
         <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
-          <p className="text-xs font-semibold text-gray-700 mb-1">Root Cause</p>
-          <ul className="space-y-1">
+          <p className="text-xs font-semibold text-gray-700 mb-1">Root Cause Analysis</p>
+          <div className="space-y-1.5">
             {card.rootCause.map((line, idx) => (
-              <li key={idx} className="text-xs text-gray-600 leading-relaxed">
+              <p key={idx} className="text-xs text-gray-600 leading-relaxed">
                 {line}
-              </li>
+              </p>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
       {card.actionablePoints.length > 0 && (
         <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
-          <p className="text-xs font-semibold text-indigo-800 mb-1">Actionable Points</p>
-          <ul className="space-y-1 list-disc list-inside">
+          <p className="text-xs font-semibold text-indigo-800 mb-1">Actionable Recommendations</p>
+          <div className="space-y-1.5">
             {card.actionablePoints.map((line, idx) => (
-              <li key={idx} className="text-xs text-indigo-700 leading-relaxed">
+              <p key={idx} className="text-xs text-indigo-700 leading-relaxed">
                 {line}
-              </li>
+              </p>
             ))}
-          </ul>
+          </div>
         </div>
       )}
     </div>
@@ -415,8 +428,12 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
 
       {/* Dimension Deep-Dive */}
       <div>
-        <h3 className="font-semibold text-gray-800 mb-4">Dimension Deep-Dive</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <h3 className="font-semibold text-gray-800 mb-1">Dimension Deep-Dive</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          All 14 dimensions, each with a detailed analysis, a perception-vs-reality analysis, a root cause analysis,
+          and actionable recommendations - every claim below is tied to the specific numbers it's drawn from.
+        </p>
+        <div className="grid grid-cols-1 gap-4">
           {report.dimensionCards.map((card) => (
             <DimensionCard key={card.dimensionId} card={card} />
           ))}
