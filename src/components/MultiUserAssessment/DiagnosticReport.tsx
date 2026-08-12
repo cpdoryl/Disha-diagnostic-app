@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Radar,
   RadarChart,
@@ -15,10 +15,10 @@ import {
   Legend,
   Cell,
 } from 'recharts';
-import { ArrowLeft, Download, RefreshCw, AlertCircle, Database, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, AlertCircle, Database, TrendingUp, TrendingDown, Minus, Info, Loader2 } from 'lucide-react';
 import { getHealthStatus } from '../../lib/dimensionScoring';
 import { assembleFullDiagnosticReport, FullDiagnosticReportData, DimensionReportCard } from '../../lib/fullDiagnosticReport';
-import { generateDiagnosticReportPdf } from '../../lib/diagnosticReportPdf';
+import { generateDiagnosticReportPdf, ChartImage } from '../../lib/diagnosticReportPdf';
 import { downloadDiagnosticReportCsv } from '../../lib/diagnosticReportCsv';
 import { summarizeDataConfidence } from '../../lib/objectiveScoreEngine';
 
@@ -136,10 +136,22 @@ function DimensionCard({ card }: { card: DimensionReportCard }) {
   );
 }
 
+async function captureChartImage(el: HTMLElement | null): Promise<ChartImage | null> {
+  if (!el) return null;
+  const { default: html2canvas } = await import('html2canvas');
+  const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', logging: false });
+  return { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height };
+}
+
 export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }: DiagnosticReportProps) {
   const [report, setReport] = useState<FullDiagnosticReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState('');
+  const radarRef = useRef<HTMLDivElement>(null);
+  const comparisonBarRef = useRef<HTMLDivElement>(null);
+  const gapBarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -161,12 +173,26 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
     };
   }, [assessmentId, schoolName, eventName]);
 
-  const handleDownloadPDF = () => {
-    if (!report) return;
-    const doc = generateDiagnosticReportPdf(report);
-    const safeSchool = schoolName.replace(/[^a-z0-9]+/gi, '-');
-    const safeEvent = eventName.replace(/[^a-z0-9]+/gi, '-');
-    doc.save(`14D-Diagnostic-Report-${safeSchool}-${safeEvent}.pdf`);
+  const handleDownloadPDF = async () => {
+    if (!report || isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    setPdfError('');
+    try {
+      const [radarChart, comparisonChart, gapChart] = await Promise.all([
+        captureChartImage(radarRef.current),
+        captureChartImage(comparisonBarRef.current),
+        captureChartImage(gapBarRef.current),
+      ]);
+      const doc = generateDiagnosticReportPdf(report, { radarChart, comparisonChart, gapChart });
+      const safeSchool = schoolName.replace(/[^a-z0-9]+/gi, '-');
+      const safeEvent = eventName.replace(/[^a-z0-9]+/gi, '-');
+      doc.save(`14D-Diagnostic-Report-${safeSchool}-${safeEvent}.pdf`);
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      setPdfError('Could not generate the PDF. Please try again.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const handleDownloadCSV = () => {
@@ -236,13 +262,21 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
           </button>
           <button
             onClick={handleDownloadPDF}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2"
+            disabled={isGeneratingPdf}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <Download className="w-4 h-4" />
-            Download PDF
+            {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {isGeneratingPdf ? 'Generating PDF...' : 'Download PDF'}
           </button>
         </div>
       </div>
+
+      {pdfError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{pdfError}</p>
+        </div>
+      )}
 
       {/* Overall Score */}
       <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
@@ -325,7 +359,7 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
             ? 'Subjective (survey) vs objective (operational data) score per dimension. Dimensions without captured operational data show as 0 on the objective series.'
             : 'Subjective survey score per dimension. Capture operational data to overlay an objective comparison.'}
         </p>
-        <div style={{ width: '100%', height: 420 }}>
+        <div ref={radarRef} style={{ width: '100%', height: 420, backgroundColor: '#ffffff' }}>
           <ResponsiveContainer>
             <RadarChart data={radarData} outerRadius="75%">
               <PolarGrid />
@@ -349,7 +383,7 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
           Side-by-side comparison of what stakeholders perceive, what the operational data shows, and the sector
           benchmark, for every dimension.
         </p>
-        <div style={{ width: '100%', height: 420, minWidth: 720 }}>
+        <div ref={comparisonBarRef} style={{ width: '100%', height: 420, minWidth: 720, backgroundColor: '#ffffff' }}>
           <ResponsiveContainer>
             <BarChart data={comparisonBarData} margin={{ bottom: 90 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -373,7 +407,10 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
             Positive bars (amber) mean stakeholders rate the dimension higher than the data supports; negative bars
             (blue) mean the data shows better performance than stakeholders perceive.
           </p>
-          <div style={{ width: '100%', height: Math.max(280, gapBarData.length * 32), minWidth: 480 }}>
+          <div
+            ref={gapBarRef}
+            style={{ width: '100%', height: Math.max(280, gapBarData.length * 32), minWidth: 480, backgroundColor: '#ffffff' }}
+          >
             <ResponsiveContainer>
               <BarChart data={gapBarData} layout="vertical" margin={{ left: 24 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
