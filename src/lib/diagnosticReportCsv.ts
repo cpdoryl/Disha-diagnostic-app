@@ -7,6 +7,7 @@
 import * as XLSX from 'xlsx';
 import { FullDiagnosticReportData } from './fullDiagnosticReport';
 import { summarizeDataConfidence } from './objectiveScoreEngine';
+import { QUADRANT_DEFINITIONS } from './quadrantAnalysis';
 
 const HEADERS = [
   'Dimension ID',
@@ -22,6 +23,7 @@ const HEADERS = [
   'Objective Data Completeness (%)',
   'Perception-Reality Gap',
   'Gap Interpretation',
+  'Perception-Reality Quadrant',
   'Data Confidence Level',
   'Data Source',
   'Objective Data Last Updated',
@@ -29,8 +31,11 @@ const HEADERS = [
 ];
 
 export function downloadDiagnosticReportCsv(report: FullDiagnosticReportData): void {
+  const quadrantByDimension = new Map(report.quadrantAnalysis.entries.map((e) => [e.dimensionId, e.quadrant]));
+
   const rows = report.dimensionCards.map((card) => {
     const confidence = card.objective ? summarizeDataConfidence(card.objective.metrics) : null;
+    const quadrant = quadrantByDimension.get(card.dimensionId);
     return [
       card.dimensionId,
       card.dimensionName,
@@ -45,6 +50,7 @@ export function downloadDiagnosticReportCsv(report: FullDiagnosticReportData): v
       card.objective?.dataCompleteness ?? '',
       card.gap ? Number(card.gap.gap.toFixed(1)) : '',
       card.gap?.interpretation ?? '',
+      quadrant ? QUADRANT_DEFINITIONS[quadrant].label : '',
       confidence?.level ?? '',
       confidence?.sourceSummary ?? '',
       card.objectiveUpdatedAt ? card.objectiveUpdatedAt.toLocaleDateString() : '',

@@ -14,6 +14,11 @@ import {
   CartesianGrid,
   Legend,
   Cell,
+  ScatterChart,
+  Scatter,
+  ReferenceLine,
+  ReferenceArea,
+  ZAxis,
 } from 'recharts';
 import { ArrowLeft, Download, RefreshCw, AlertCircle, Database, TrendingUp, TrendingDown, Minus, Info, Loader2 } from 'lucide-react';
 import { getHealthStatus } from '../../lib/dimensionScoring';
@@ -21,6 +26,7 @@ import { assembleFullDiagnosticReport, FullDiagnosticReportData, DimensionReport
 import { generateDiagnosticReportPdf, ChartImage } from '../../lib/diagnosticReportPdf';
 import { downloadDiagnosticReportCsv } from '../../lib/diagnosticReportCsv';
 import { summarizeDataConfidence } from '../../lib/objectiveScoreEngine';
+import { QUADRANT_DEFINITIONS, QUADRANT_DISPLAY_ORDER, QUADRANT_THRESHOLD, QuadrantId } from '../../lib/quadrantAnalysis';
 
 interface DiagnosticReportProps {
   assessmentId: string;
@@ -42,6 +48,21 @@ const GAP_BADGE: Record<string, { label: string; className: string; Icon: React.
   underestimation: { label: 'Underestimated by stakeholders', className: 'bg-blue-100 text-blue-700', Icon: TrendingDown },
   alignment: { label: 'Aligned with reality', className: 'bg-green-100 text-green-700', Icon: Minus },
 };
+
+const QUADRANT_COLORS: Record<QuadrantId, string> = {
+  excellence: '#16a34a',
+  hidden_potential: '#2563eb',
+  blind_spot: '#d97706',
+  crisis: '#dc2626',
+};
+
+const QUADRANT_BOX_CLASSNAMES: Record<QuadrantId, string> = {
+  excellence: 'bg-green-50 border-green-200 text-green-800',
+  hidden_potential: 'bg-blue-50 border-blue-200 text-blue-800',
+  blind_spot: 'bg-amber-50 border-amber-200 text-amber-800',
+  crisis: 'bg-red-50 border-red-200 text-red-800',
+};
+
 
 function DimensionCard({ card }: { card: DimensionReportCard }) {
   const status = card.subjective.status;
@@ -152,6 +173,7 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
   const radarRef = useRef<HTMLDivElement>(null);
   const comparisonBarRef = useRef<HTMLDivElement>(null);
   const gapBarRef = useRef<HTMLDivElement>(null);
+  const quadrantRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,12 +200,13 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
     setIsGeneratingPdf(true);
     setPdfError('');
     try {
-      const [radarChart, comparisonChart, gapChart] = await Promise.all([
+      const [radarChart, comparisonChart, gapChart, quadrantChart] = await Promise.all([
         captureChartImage(radarRef.current),
         captureChartImage(comparisonBarRef.current),
         captureChartImage(gapBarRef.current),
+        captureChartImage(quadrantRef.current),
       ]);
-      const doc = generateDiagnosticReportPdf(report, { radarChart, comparisonChart, gapChart });
+      const doc = generateDiagnosticReportPdf(report, { radarChart, comparisonChart, gapChart, quadrantChart });
       const safeSchool = schoolName.replace(/[^a-z0-9]+/gi, '-');
       const safeEvent = eventName.replace(/[^a-z0-9]+/gi, '-');
       doc.save(`14D-Diagnostic-Report-${safeSchool}-${safeEvent}.pdf`);
@@ -244,6 +267,14 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
       gap: card.gap!.gap,
       color: card.gap!.interpretation === 'overestimation' ? '#d97706' : card.gap!.interpretation === 'underestimation' ? '#2563eb' : '#16a34a',
     }));
+  const quadrantScatterData = QUADRANT_DISPLAY_ORDER.map((q) => ({
+    quadrant: q,
+    points: report.quadrantAnalysis.byQuadrant[q].map((e) => ({
+      x: e.objectiveScore,
+      y: e.subjectiveScore,
+      name: e.dimensionName,
+    })),
+  }));
 
   return (
     <div className="space-y-6">
@@ -427,6 +458,93 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
           </div>
         </div>
       )}
+
+      {/* Perception-Reality Quadrant Analysis */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="font-semibold text-gray-800 mb-1">Perception-Reality Quadrant Analysis</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          Each dimension with both a survey score and captured operational data is plotted by objective score
+          (horizontal axis) against subjective score (vertical axis). The dividing lines sit at {QUADRANT_THRESHOLD}/100
+          on each axis - the same Adequate/Needs-Attention boundary used throughout this report - splitting the
+          dimensions into four quadrants by where perception and reality actually stand, not just how close they are
+          to each other.
+        </p>
+
+        {quadrantScatterData.every((g) => g.points.length === 0) ? (
+          <p className="text-sm text-gray-500">{report.quadrantAnalysis.summary[0]}</p>
+        ) : (
+          <div ref={quadrantRef} style={{ width: '100%', height: 420, backgroundColor: '#ffffff' }}>
+            <ResponsiveContainer>
+              <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                {/* eslint-disable @typescript-eslint/no-explicit-any */}
+                <ReferenceArea {...({ x1: QUADRANT_THRESHOLD, x2: 100, y1: QUADRANT_THRESHOLD, y2: 100, fill: '#16a34a', fillOpacity: 0.06 } as any)} />
+                <ReferenceArea {...({ x1: 0, x2: QUADRANT_THRESHOLD, y1: QUADRANT_THRESHOLD, y2: 100, fill: '#d97706', fillOpacity: 0.06 } as any)} />
+                <ReferenceArea {...({ x1: QUADRANT_THRESHOLD, x2: 100, y1: 0, y2: QUADRANT_THRESHOLD, fill: '#2563eb', fillOpacity: 0.06 } as any)} />
+                <ReferenceArea {...({ x1: 0, x2: QUADRANT_THRESHOLD, y1: 0, y2: QUADRANT_THRESHOLD, fill: '#dc2626', fillOpacity: 0.06 } as any)} />
+                {/* eslint-enable @typescript-eslint/no-explicit-any */}
+                <ReferenceLine x={QUADRANT_THRESHOLD} stroke="#9ca3af" strokeDasharray="4 4" />
+                <ReferenceLine y={QUADRANT_THRESHOLD} stroke="#9ca3af" strokeDasharray="4 4" />
+                <XAxis type="number" dataKey="x" name="Objective (reality)" domain={[0, 100]} tick={{ fontSize: 10 }} label={{ value: 'Objective score (reality)', position: 'insideBottom', offset: -20, fontSize: 11 }} />
+                <YAxis type="number" dataKey="y" name="Subjective (perception)" domain={[0, 100]} tick={{ fontSize: 10 }} label={{ value: 'Subjective score (perception)', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+                <ZAxis range={[80, 80]} />
+                <RechartsTooltip
+                  cursor={{ strokeDasharray: '3 3' }}
+                  content={({ active, payload }) => {
+                    if (!active || !payload || payload.length === 0) return null;
+                    const p = payload[0].payload as { x: number; y: number; name: string };
+                    return (
+                      <div className="bg-white border border-gray-200 rounded shadow-sm px-3 py-2 text-xs">
+                        <p className="font-semibold text-gray-800">{p.name}</p>
+                        <p className="text-gray-500">Objective (reality): {p.x}/100</p>
+                        <p className="text-gray-500">Subjective (perception): {p.y}/100</p>
+                      </div>
+                    );
+                  }}
+                />
+                <Legend
+                  payload={QUADRANT_DISPLAY_ORDER.map((q) => ({
+                    value: QUADRANT_DEFINITIONS[q].label,
+                    type: 'circle',
+                    color: QUADRANT_COLORS[q],
+                  }))}
+                />
+                {quadrantScatterData.map(
+                  (g) => g.points.length > 0 && <Scatter key={g.quadrant} name={QUADRANT_DEFINITIONS[g.quadrant].label} data={g.points} fill={QUADRANT_COLORS[g.quadrant]} />
+                )}
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+          {QUADRANT_DISPLAY_ORDER.map((q) => {
+            const def = QUADRANT_DEFINITIONS[q];
+            const members = report.quadrantAnalysis.byQuadrant[q];
+            return (
+              <div key={q} className={`rounded-lg border p-3 ${QUADRANT_BOX_CLASSNAMES[q]}`}>
+                <p className="text-xs font-semibold mb-0.5">
+                  {def.label} ({members.length})
+                </p>
+                <p className="text-xs opacity-80 mb-1.5">{def.axisDescription}</p>
+                <p className="text-xs leading-relaxed mb-1.5">{def.explanation}</p>
+                {members.length > 0 && (
+                  <p className="text-xs font-medium">
+                    {members.map((m) => `${m.dimensionName} (${m.subjectiveScore} / ${m.objectiveScore})`).join(', ')}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {report.quadrantAnalysis.excludedCount > 0 && (
+          <p className="text-xs text-gray-400 mt-3">
+            {report.quadrantAnalysis.excludedCount} dimension{report.quadrantAnalysis.excludedCount === 1 ? '' : 's'} not
+            shown above - missing a survey score, captured operational data, or both.
+          </p>
+        )}
+      </div>
 
       {/* Dimension Summary Table */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 overflow-x-auto">

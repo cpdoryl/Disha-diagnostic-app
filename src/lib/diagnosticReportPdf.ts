@@ -13,6 +13,7 @@ import { getHealthStatus } from './dimensionScoring';
 import { PerceptionRealityGap } from './gapAnalyzer';
 import { FullDiagnosticReportData, DimensionReportCard } from './fullDiagnosticReport';
 import { summarizeDataConfidence } from './objectiveScoreEngine';
+import { QUADRANT_DEFINITIONS, QUADRANT_DISPLAY_ORDER, QuadrantId } from './quadrantAnalysis';
 
 export interface ChartImage {
   dataUrl: string;
@@ -24,6 +25,7 @@ export interface DiagnosticReportPdfCharts {
   radarChart?: ChartImage | null;
   comparisonChart?: ChartImage | null;
   gapChart?: ChartImage | null;
+  quadrantChart?: ChartImage | null;
 }
 
 const PAGE_HEIGHT = 297;
@@ -75,6 +77,13 @@ const COLORS = {
   grayBorder: [229, 231, 235] as [number, number, number],
   ink: [20, 20, 20] as [number, number, number],
   muted: [110, 110, 110] as [number, number, number],
+};
+
+const QUADRANT_PALETTE: Record<QuadrantId, { fill: [number, number, number]; border: [number, number, number]; label: [number, number, number]; text: [number, number, number] }> = {
+  excellence: { fill: [240, 253, 244], border: [187, 247, 208], label: [22, 101, 52], text: [22, 101, 52] },
+  hidden_potential: { fill: [239, 246, 255], border: [191, 219, 254], label: [30, 64, 175], text: [30, 64, 175] },
+  blind_spot: { fill: [255, 251, 235], border: [253, 230, 138], label: [146, 64, 14], text: [146, 64, 14] },
+  crisis: { fill: [254, 242, 242], border: [254, 202, 202], label: [153, 27, 27], text: [153, 27, 27] },
 };
 
 function setFill(doc: jsPDF, c: [number, number, number]) {
@@ -526,7 +535,7 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData, ch
   // Each chart is tall enough that it will almost always trigger its own
   // page break via drawChartImage's internal ensureSpace call; no forced
   // breaks here, so we never leave a blank gap under a section header.
-  if (charts?.radarChart || charts?.comparisonChart || charts?.gapChart) {
+  if (charts?.radarChart || charts?.comparisonChart || charts?.gapChart || charts?.quadrantChart) {
     y = drawSectionHeader(doc, 'Visual Analysis', y);
     if (charts.radarChart) {
       y = drawChartImage(
@@ -554,6 +563,15 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData, ch
         'Perception-Reality Mismatch by Dimension',
         'Positive bars (amber) mean stakeholders rate the dimension higher than the data supports; negative bars (blue) mean the data shows better performance than stakeholders perceive.',
         charts.gapChart,
+        y
+      );
+    }
+    if (charts.quadrantChart) {
+      y = drawChartImage(
+        doc,
+        'Perception-Reality Quadrant',
+        `Each dimension with both a survey score and captured operational data, plotted by objective score (horizontal) against subjective score (vertical). Dividing lines sit at ${report.quadrantAnalysis.threshold}/100 on each axis.`,
+        charts.quadrantChart,
         y
       );
     }
@@ -709,6 +727,26 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData, ch
       y += 5;
       y = drawBulletBlock(doc, recommendations, y, COLORS.indigoFill, COLORS.indigoBorder);
     }
+  }
+
+  // Perception-Reality Quadrant Analysis
+  y = drawSectionHeader(doc, 'Perception-Reality Quadrant Analysis', y);
+  doc.setFontSize(9.5);
+  y = drawWrappedText(doc, report.quadrantAnalysis.summary[0], MARGIN_X, y, CONTENT_WIDTH, 4.2);
+  y += 3;
+  for (const q of QUADRANT_DISPLAY_ORDER) {
+    const def = QUADRANT_DEFINITIONS[q];
+    const members = report.quadrantAnalysis.byQuadrant[q];
+    const palette = QUADRANT_PALETTE[q];
+    const lines = [def.explanation];
+    if (members.length > 0) {
+      lines.push(
+        `Dimensions (${members.length}): ${members.map((m) => `${m.dimensionName} (perceived ${m.subjectiveScore}, data ${m.objectiveScore})`).join('; ')}.`
+      );
+    } else {
+      lines.push('No dimension currently falls in this quadrant.');
+    }
+    y = drawColoredBlock(doc, `${def.label} - ${def.axisDescription}`, lines, y, palette);
   }
 
   // Objective Data Completeness appendix
