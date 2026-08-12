@@ -10,7 +10,13 @@ import { loadObjectiveDataForEvent } from './objectiveDataService';
 import { computeAllObjectiveScores, computeObjectiveCompletenessSummary, ObjectiveCompletenessSummary } from './objectiveScoreEngine';
 import { analyzeGaps, GapAnalysisResult, PerceptionRealityGap } from './gapAnalyzer';
 import { DimensionObjectiveScore } from './objectiveMetricsCalculator';
-import { generateSubjectiveInterpretation, getSubjectiveBenchmark } from '../data/dimensionBenchmarks';
+import {
+  generateSubjectiveInterpretation,
+  getSubjectiveBenchmark,
+  SUBJECTIVE_BENCHMARK_DATASET_META,
+} from '../data/dimensionBenchmarks';
+import { OBJECTIVE_BENCHMARK_DATASET_META } from '../data/objectiveMetricsSchema';
+import { BenchmarkDatasetMeta } from '../data/benchmarkMeta';
 import { FOURTEEN_DIMENSIONS } from '../data/14DimensionsQuestions';
 
 export interface DimensionReportCard {
@@ -41,6 +47,10 @@ export interface FullDiagnosticReportData {
   gapAnalysis: GapAnalysisResult | null;
   objectiveCompleteness: ObjectiveCompletenessSummary;
   executiveSummary: string[];
+  benchmarkSources: {
+    subjective: BenchmarkDatasetMeta;
+    objective: BenchmarkDatasetMeta;
+  };
 }
 
 export async function assembleFullDiagnosticReport(
@@ -111,6 +121,10 @@ export async function assembleFullDiagnosticReport(
     gapAnalysis,
     objectiveCompleteness,
     executiveSummary,
+    benchmarkSources: {
+      subjective: SUBJECTIVE_BENCHMARK_DATASET_META,
+      objective: OBJECTIVE_BENCHMARK_DATASET_META,
+    },
   };
 }
 

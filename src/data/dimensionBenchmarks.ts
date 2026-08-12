@@ -5,6 +5,20 @@
  * an external dataset.
  */
 import { getHealthStatus } from '../lib/dimensionScoring';
+import { BenchmarkDatasetMeta } from './benchmarkMeta';
+
+/**
+ * Honest disclosure of what these benchmark numbers actually are: reference
+ * targets set by the DISHA team, not (yet) derived from an aggregated
+ * national survey of assessed schools. Update `version`/`lastUpdated`
+ * whenever the SUBJECTIVE_INDEX_BENCHMARKS values below are revised.
+ */
+export const SUBJECTIVE_BENCHMARK_DATASET_META: BenchmarkDatasetMeta = {
+  version: 'v1.0',
+  methodology:
+    'Illustrative sector-reference targets set by the DISHA team as improvement goals for each dimension - not yet derived from an aggregated multi-school survey dataset. Intended to be recalibrated against real cross-school data as more schools complete assessments on this platform.',
+  lastUpdated: '2026-08-12',
+};
 
 export const SUBJECTIVE_INDEX_BENCHMARKS: Record<string, number> = {
   leadership: 75,

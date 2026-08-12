@@ -10,6 +10,19 @@
  * sourced from an external national dataset - they're meant to be tuned
  * later, not treated as authoritative targets.
  */
+import { BenchmarkDatasetMeta } from './benchmarkMeta';
+
+/**
+ * Honest disclosure of what the `benchmark` value on each metric below
+ * actually is. Update `version`/`lastUpdated` whenever these targets are
+ * revised.
+ */
+export const OBJECTIVE_BENCHMARK_DATASET_META: BenchmarkDatasetMeta = {
+  version: 'v1.0',
+  methodology:
+    'Illustrative sector-reasonable operational targets per metric, set by the DISHA team - not yet sourced from an external national dataset. Intended for recalibration once real cross-school operational data accumulates on this platform.',
+  lastUpdated: '2026-08-12',
+};
 
 export type ObjectiveMetricDataType =
   | 'percentage'

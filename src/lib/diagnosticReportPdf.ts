@@ -178,6 +178,27 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData): j
   }
   y += 4;
 
+  y = drawSectionHeader(doc, 'Benchmark Data Source', y);
+  doc.setFontSize(9);
+  y = drawWrappedText(
+    doc,
+    `Survey benchmarks (${report.benchmarkSources.subjective.version}, updated ${report.benchmarkSources.subjective.lastUpdated}): ${report.benchmarkSources.subjective.methodology}`,
+    MARGIN_X,
+    y,
+    CONTENT_WIDTH,
+    4.2
+  );
+  y += 3;
+  y = drawWrappedText(
+    doc,
+    `Operational data benchmarks (${report.benchmarkSources.objective.version}, updated ${report.benchmarkSources.objective.lastUpdated}): ${report.benchmarkSources.objective.methodology}`,
+    MARGIN_X,
+    y,
+    CONTENT_WIDTH,
+    4.2
+  );
+  y += 6;
+
   y = drawSectionHeader(doc, 'Dimension Deep-Dive', y);
   for (const card of report.dimensionCards) {
     y = ensureSpace(doc, y, 42);

@@ -15,7 +15,7 @@ import {
   Legend,
   Cell,
 } from 'recharts';
-import { ArrowLeft, Download, RefreshCw, AlertCircle, Database, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, AlertCircle, Database, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import { getHealthStatus } from '../../lib/dimensionScoring';
 import { assembleFullDiagnosticReport, FullDiagnosticReportData, DimensionReportCard } from '../../lib/fullDiagnosticReport';
 import { generateDiagnosticReportPdf } from '../../lib/diagnosticReportPdf';
@@ -235,6 +235,30 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
             </li>
           ))}
         </ul>
+      </div>
+
+      {/* Benchmark Data Source disclosure */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
+          <div className="space-y-3 text-sm">
+            <p className="font-semibold text-gray-800">Benchmark Data Source</p>
+            <div>
+              <p className="text-gray-700">
+                <span className="font-medium">Survey benchmarks</span> ({report.benchmarkSources.subjective.version},
+                updated {report.benchmarkSources.subjective.lastUpdated}):
+              </p>
+              <p className="text-gray-500 mt-0.5">{report.benchmarkSources.subjective.methodology}</p>
+            </div>
+            <div>
+              <p className="text-gray-700">
+                <span className="font-medium">Operational data benchmarks</span> ({report.benchmarkSources.objective.version},
+                updated {report.benchmarkSources.objective.lastUpdated}):
+              </p>
+              <p className="text-gray-500 mt-0.5">{report.benchmarkSources.objective.methodology}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Objective Data Completeness callout */}
