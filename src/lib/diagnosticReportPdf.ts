@@ -9,6 +9,7 @@ import { jsPDF } from 'jspdf';
 import { getHealthStatus } from './dimensionScoring';
 import { PerceptionRealityGap } from './gapAnalyzer';
 import { FullDiagnosticReportData } from './fullDiagnosticReport';
+import { summarizeDataConfidence } from './objectiveScoreEngine';
 
 const PAGE_HEIGHT = 297;
 const PAGE_WIDTH = 210;
@@ -96,16 +97,6 @@ function drawScoreBar(
     doc.setLineWidth(0.6);
     doc.line(tickX, y - 1, tickX, y + height + 1);
   }
-}
-
-function summarizeDataConfidence(metrics: { dataQuality: 'tier1' | 'tier2' | 'tier3' }[]): string | null {
-  if (metrics.length === 0) return null;
-  const counts = { tier1: 0, tier2: 0, tier3: 0 };
-  for (const m of metrics) counts[m.dataQuality]++;
-  if (counts.tier1 === metrics.length) return 'Data confidence: High - all metrics system-synced.';
-  if (counts.tier2 === metrics.length) return 'Data confidence: Medium - all metrics uploaded from a file and reviewed.';
-  if (counts.tier3 === metrics.length) return 'Data confidence: Lower - all metrics entered manually, unverified.';
-  return 'Data confidence: Mixed - some metrics uploaded/reviewed, some entered manually.';
 }
 
 function drawGapIndicator(doc: jsPDF, x: number, y: number, gap: PerceptionRealityGap): number {
@@ -247,7 +238,7 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData): j
       if (confidence) {
         doc.setFontSize(7.5);
         doc.setTextColor(130, 130, 130);
-        doc.text(confidence, MARGIN_X, y);
+        doc.text(confidence.description, MARGIN_X, y);
         doc.setTextColor(20, 20, 20);
         y += 5;
       }

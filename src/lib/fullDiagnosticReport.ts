@@ -32,6 +32,7 @@ export interface DimensionReportCard {
   deltaFromBenchmark: number | null;
   interpretation: string;
   objective: DimensionObjectiveScore | null;
+  objectiveUpdatedAt: Date | null;
   gap: PerceptionRealityGap | null;
   rootCause: string[];
   actionablePoints: string[];
@@ -103,6 +104,7 @@ export async function assembleFullDiagnosticReport(
       deltaFromBenchmark: index != null ? index - benchmark : null,
       interpretation: generateSubjectiveInterpretation(dim.id, dim.name, index),
       objective: objectiveHasData,
+      objectiveUpdatedAt: rawObjective[dim.id]?.updatedAt ?? null,
       gap,
       rootCause,
       actionablePoints,

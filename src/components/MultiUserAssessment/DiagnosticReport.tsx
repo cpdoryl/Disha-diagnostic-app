@@ -19,6 +19,8 @@ import { ArrowLeft, Download, RefreshCw, AlertCircle, Database, TrendingUp, Tren
 import { getHealthStatus } from '../../lib/dimensionScoring';
 import { assembleFullDiagnosticReport, FullDiagnosticReportData, DimensionReportCard } from '../../lib/fullDiagnosticReport';
 import { generateDiagnosticReportPdf } from '../../lib/diagnosticReportPdf';
+import { downloadDiagnosticReportCsv } from '../../lib/diagnosticReportCsv';
+import { summarizeDataConfidence } from '../../lib/objectiveScoreEngine';
 
 interface DiagnosticReportProps {
   assessmentId: string;
@@ -34,16 +36,6 @@ const STAKEHOLDER_LABELS: Record<string, string> = {
   admin: 'Admin Staff',
   other: 'Other',
 };
-
-function summarizeDataConfidence(metrics: { dataQuality: 'tier1' | 'tier2' | 'tier3' }[]): string | null {
-  if (metrics.length === 0) return null;
-  const counts = { tier1: 0, tier2: 0, tier3: 0 };
-  for (const m of metrics) counts[m.dataQuality]++;
-  if (counts.tier1 === metrics.length) return 'Data confidence: High — all metrics system-synced.';
-  if (counts.tier2 === metrics.length) return 'Data confidence: Medium — all metrics uploaded from a file and reviewed.';
-  if (counts.tier3 === metrics.length) return 'Data confidence: Lower — all metrics entered manually, unverified.';
-  return 'Data confidence: Mixed — some metrics uploaded/reviewed, some entered manually.';
-}
 
 const GAP_BADGE: Record<string, { label: string; className: string; Icon: React.ElementType }> = {
   overestimation: { label: 'Overestimated by stakeholders', className: 'bg-amber-100 text-amber-700', Icon: TrendingUp },
@@ -97,7 +89,7 @@ function DimensionCard({ card }: { card: DimensionReportCard }) {
       )}
 
       {card.objective && (
-        <p className="text-xs text-gray-400">{summarizeDataConfidence(card.objective.metrics)}</p>
+        <p className="text-xs text-gray-400">{summarizeDataConfidence(card.objective.metrics)?.description}</p>
       )}
 
       <p className="text-sm text-gray-600 leading-relaxed">{card.interpretation}</p>
@@ -164,6 +156,11 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
     doc.save(`14D-Diagnostic-Report-${safeSchool}-${safeEvent}.pdf`);
   };
 
+  const handleDownloadCSV = () => {
+    if (!report) return;
+    downloadDiagnosticReportCsv(report);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16 text-gray-500 gap-2">
@@ -216,13 +213,22 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
           <ArrowLeft className="w-4 h-4" />
           Back to Summary
         </button>
-        <button
-          onClick={handleDownloadPDF}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Download PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadCSV}
+            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download CSV
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
+          </button>
+        </div>
       </div>
 
       {/* Overall Score */}

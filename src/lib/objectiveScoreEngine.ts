@@ -116,6 +116,42 @@ export function computeDimensionObjectiveScore(
   };
 }
 
+export interface DataConfidenceSummary {
+  level: 'High' | 'Medium' | 'Lower' | 'Mixed';
+  sourceSummary: 'System-Synced' | 'Uploaded' | 'Manual' | 'Mixed';
+  description: string;
+}
+
+/**
+ * Summarizes a dimension's data-confidence tier distribution into a single
+ * label, for display (report UI, PDF, CSV export) - centralized here so all
+ * three consumers agree on what "High/Medium/Lower/Mixed" means.
+ */
+export function summarizeDataConfidence(metrics: { dataQuality: 'tier1' | 'tier2' | 'tier3' }[]): DataConfidenceSummary | null {
+  if (metrics.length === 0) return null;
+  const counts = { tier1: 0, tier2: 0, tier3: 0 };
+  for (const m of metrics) counts[m.dataQuality]++;
+
+  if (counts.tier1 === metrics.length) {
+    return { level: 'High', sourceSummary: 'System-Synced', description: 'Data confidence: High - all metrics system-synced.' };
+  }
+  if (counts.tier2 === metrics.length) {
+    return {
+      level: 'Medium',
+      sourceSummary: 'Uploaded',
+      description: 'Data confidence: Medium - all metrics uploaded from a file and reviewed.',
+    };
+  }
+  if (counts.tier3 === metrics.length) {
+    return { level: 'Lower', sourceSummary: 'Manual', description: 'Data confidence: Lower - all metrics entered manually, unverified.' };
+  }
+  return {
+    level: 'Mixed',
+    sourceSummary: 'Mixed',
+    description: 'Data confidence: Mixed - some metrics uploaded/reviewed, some entered manually.',
+  };
+}
+
 export function computeAllObjectiveScores(
   rawByDimension: Record<string, Record<string, RawMetricEntry | undefined>>
 ): DimensionObjectiveScore[] {
