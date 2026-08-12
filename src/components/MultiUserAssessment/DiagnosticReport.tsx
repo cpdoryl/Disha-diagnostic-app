@@ -20,13 +20,32 @@ import {
   ReferenceArea,
   ZAxis,
 } from 'recharts';
-import { ArrowLeft, Download, RefreshCw, AlertCircle, Database, TrendingUp, TrendingDown, Minus, Info, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Download,
+  RefreshCw,
+  AlertCircle,
+  Database,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Info,
+  Loader2,
+  ChevronDown,
+  FileText,
+  FileSpreadsheet,
+  Image as ImageIcon,
+  Mail,
+  X,
+} from 'lucide-react';
 import { getHealthStatus } from '../../lib/dimensionScoring';
 import { assembleFullDiagnosticReport, FullDiagnosticReportData, DimensionReportCard } from '../../lib/fullDiagnosticReport';
 import { generateDiagnosticReportPdf, ChartImage } from '../../lib/diagnosticReportPdf';
 import { downloadDiagnosticReportCsv } from '../../lib/diagnosticReportCsv';
+import { downloadDiagnosticReportExcel } from '../../lib/diagnosticReportExcel';
 import { summarizeDataConfidence } from '../../lib/objectiveScoreEngine';
 import { QUADRANT_DEFINITIONS, QUADRANT_DISPLAY_ORDER, QUADRANT_THRESHOLD, QuadrantId } from '../../lib/quadrantAnalysis';
+import { TIMEFRAME_LABELS, ActionTimeframe } from '../../lib/actionPlan';
 
 interface DiagnosticReportProps {
   assessmentId: string;
@@ -56,11 +75,36 @@ const QUADRANT_COLORS: Record<QuadrantId, string> = {
   crisis: '#dc2626',
 };
 
+const QUADRANT_SOFT_BG: Record<QuadrantId, string> = {
+  excellence: '#f0fdf4',
+  hidden_potential: '#eff6ff',
+  blind_spot: '#fffbeb',
+  crisis: '#fef2f2',
+};
+
 const QUADRANT_BOX_CLASSNAMES: Record<QuadrantId, string> = {
   excellence: 'bg-green-50 border-green-200 text-green-800',
   hidden_potential: 'bg-blue-50 border-blue-200 text-blue-800',
   blind_spot: 'bg-amber-50 border-amber-200 text-amber-800',
   crisis: 'bg-red-50 border-red-200 text-red-800',
+};
+
+const TIMEFRAME_BOX_CLASSNAMES: Record<ActionTimeframe, string> = {
+  '30': 'bg-red-50 border-red-200',
+  '60': 'bg-amber-50 border-amber-200',
+  '90': 'bg-blue-50 border-blue-200',
+};
+
+const TIMEFRAME_BADGE_CLASSNAMES: Record<ActionTimeframe, string> = {
+  '30': 'bg-red-100 text-red-700',
+  '60': 'bg-amber-100 text-amber-700',
+  '90': 'bg-blue-100 text-blue-700',
+};
+
+const TIMEFRAME_INTRO: Record<ActionTimeframe, string> = {
+  '30': 'Urgent — subjective status is At Risk, or the dimension falls in the Crisis quadrant (both perception and data agree it is underperforming).',
+  '60': 'Important — subjective status is Needs Attention, or the dimension falls in the Blind Spot quadrant (stakeholders are more confident than the data currently supports).',
+  '90': 'Strategic — either no survey data has been recorded yet, the dimension falls in the Hidden Potential quadrant (a visibility/communication opportunity), or it is already Strong/Excellence and only needs monitoring.',
 };
 
 
@@ -157,6 +201,158 @@ function DimensionCard({ card }: { card: DimensionReportCard }) {
   );
 }
 
+/** Compact, purpose-built card for the "shareable PNG" export - not a screenshot of the on-screen report, since a 14-dimension scroll doesn't make a useful share image. Rendered off-screen and captured via html2canvas. */
+function ShareableSummaryCard({ report }: { report: FullDiagnosticReportData }) {
+  const overallStatus = getHealthStatus(report.subjective.overallIndex);
+  const quadrantCounts = QUADRANT_DISPLAY_ORDER.map((q) => ({ q, count: report.quadrantAnalysis.byQuadrant[q].length }));
+
+  return (
+    <div style={{ width: 720, padding: 40, backgroundColor: '#ffffff', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 12,
+            backgroundColor: '#4f46e5',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            fontWeight: 700,
+            fontSize: 16,
+            flexShrink: 0,
+          }}
+        >
+          14D
+        </div>
+        <div>
+          <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#111827' }}>{report.schoolName}</p>
+          <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>
+            {report.eventName} — Generated {report.generatedAt.toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'center', padding: '24px 0', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', marginBottom: 24 }}>
+        <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Overall Institutional Health Index</p>
+        <p style={{ margin: '4px 0', fontSize: 56, fontWeight: 700, color: '#4f46e5' }}>{report.subjective.overallIndex ?? 'N/A'}</p>
+        <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>out of 100 — {overallStatus.label}</p>
+      </div>
+
+      <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Key Points</p>
+      <ul style={{ paddingLeft: 18, margin: 0, marginBottom: 24 }}>
+        {report.executiveSummary.slice(0, 3).map((line, idx) => (
+          <li key={idx} style={{ fontSize: 13, color: '#374151', marginBottom: 6, lineHeight: 1.4 }}>
+            {line}
+          </li>
+        ))}
+      </ul>
+
+      <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Perception-Reality Quadrant Breakdown</p>
+      <div style={{ display: 'flex', gap: 10 }}>
+        {quadrantCounts.map(({ q, count }) => (
+          <div key={q} style={{ flex: 1, textAlign: 'center', padding: '10px 4px', borderRadius: 8, backgroundColor: QUADRANT_SOFT_BG[q] }}>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: QUADRANT_COLORS[q] }}>{count}</p>
+            <p style={{ margin: 0, fontSize: 10, color: '#4b5563' }}>{QUADRANT_DEFINITIONS[q].label}</p>
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 24, textAlign: 'center' }}>DISHA 14-Dimension School Diagnostic Engine</p>
+    </div>
+  );
+}
+
+function buildMailtoUrl(recipients: string, subject: string, body: string): string {
+  const to = recipients
+    .split(/[,;\n]+/)
+    .map((e) => e.trim())
+    .filter(Boolean)
+    .join(',');
+  return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function EmailShareModal({ report, onClose }: { report: FullDiagnosticReportData; onClose: () => void }) {
+  const [recipients, setRecipients] = useState('');
+  const defaultSubject = `14D Diagnostic Report - ${report.schoolName} - ${report.eventName}`;
+  const defaultBody = [
+    `14D Diagnostic Report - ${report.schoolName}`,
+    `Assessment: ${report.eventName}`,
+    `Overall Institutional Health Index: ${report.subjective.overallIndex ?? 'N/A'}/100`,
+    '',
+    'Key points:',
+    ...report.executiveSummary.slice(0, 3).map((line) => `- ${line}`),
+    '',
+    "The full report is attached - please download the PDF or Excel report from the report page and attach it here before sending (this only pre-fills the message; browsers can't attach files automatically).",
+  ].join('\n');
+  const [subject, setSubject] = useState(defaultSubject);
+  const [body, setBody] = useState(defaultBody);
+
+  const handleOpenEmail = () => {
+    window.location.href = buildMailtoUrl(recipients, subject, body);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between">
+          <h3 className="font-semibold text-gray-800 text-lg">Share Report via Email</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="text-sm text-gray-500">
+          This opens your email client with the message pre-filled. Browsers can't attach files automatically — download
+          the PDF or Excel report first and attach it before sending.
+        </p>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Recipient email(s)</label>
+          <input
+            type="text"
+            value={recipients}
+            onChange={(e) => setRecipients(e.target.value)}
+            placeholder="principal@school.edu, admin@school.edu"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-gray-400 mt-1">Separate multiple addresses with commas.</p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+          <input
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Message</label>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={7}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
+            Cancel
+          </button>
+          <button
+            onClick={handleOpenEmail}
+            disabled={!recipients.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Mail className="w-4 h-4" />
+            Open in Email App
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 async function captureChartImage(el: HTMLElement | null): Promise<ChartImage | null> {
   if (!el) return null;
   const { default: html2canvas } = await import('html2canvas');
@@ -168,12 +364,27 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
   const [report, setReport] = useState<FullDiagnosticReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [pdfError, setPdfError] = useState('');
+  const [exportInProgress, setExportInProgress] = useState<'pdf' | 'excel' | 'png' | null>(null);
+  const [exportError, setExportError] = useState('');
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const radarRef = useRef<HTMLDivElement>(null);
   const comparisonBarRef = useRef<HTMLDivElement>(null);
   const gapBarRef = useRef<HTMLDivElement>(null);
   const quadrantRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isExportMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isExportMenuOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -196,9 +407,9 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
   }, [assessmentId, schoolName, eventName]);
 
   const handleDownloadPDF = async () => {
-    if (!report || isGeneratingPdf) return;
-    setIsGeneratingPdf(true);
-    setPdfError('');
+    if (!report || exportInProgress) return;
+    setExportInProgress('pdf');
+    setExportError('');
     try {
       const [radarChart, comparisonChart, gapChart, quadrantChart] = await Promise.all([
         captureChartImage(radarRef.current),
@@ -212,15 +423,50 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
       doc.save(`14D-Diagnostic-Report-${safeSchool}-${safeEvent}.pdf`);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
-      setPdfError('Could not generate the PDF. Please try again.');
+      setExportError('Could not generate the PDF. Please try again.');
     } finally {
-      setIsGeneratingPdf(false);
+      setExportInProgress(null);
     }
   };
 
   const handleDownloadCSV = () => {
     if (!report) return;
     downloadDiagnosticReportCsv(report);
+  };
+
+  const handleDownloadExcel = () => {
+    if (!report || exportInProgress) return;
+    setExportInProgress('excel');
+    setExportError('');
+    try {
+      downloadDiagnosticReportExcel(report);
+    } catch (err) {
+      console.error('Failed to generate Excel workbook:', err);
+      setExportError('Could not generate the Excel workbook. Please try again.');
+    } finally {
+      setExportInProgress(null);
+    }
+  };
+
+  const handleDownloadPNG = async () => {
+    if (!report || exportInProgress) return;
+    setExportInProgress('png');
+    setExportError('');
+    try {
+      const image = await captureChartImage(shareCardRef.current);
+      if (!image) throw new Error('Could not capture summary card');
+      const safeSchool = schoolName.replace(/[^a-z0-9]+/gi, '-');
+      const safeEvent = eventName.replace(/[^a-z0-9]+/gi, '-');
+      const link = document.createElement('a');
+      link.href = image.dataUrl;
+      link.download = `14D-Report-Summary-${safeSchool}-${safeEvent}.png`;
+      link.click();
+    } catch (err) {
+      console.error('Failed to generate PNG summary:', err);
+      setExportError('Could not generate the PNG summary. Please try again.');
+    } finally {
+      setExportInProgress(null);
+    }
   };
 
   if (isLoading) {
@@ -278,34 +524,90 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Off-screen, purpose-built card used only as the source for the PNG summary export */}
+      <div style={{ position: 'fixed', left: -9999, top: 0 }} aria-hidden="true">
+        <div ref={shareCardRef}>
+          <ShareableSummaryCard report={report} />
+        </div>
+      </div>
+
+      {isEmailModalOpen && <EmailShareModal report={report} onClose={() => setIsEmailModalOpen(false)} />}
+
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <button onClick={onBack} className="text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />
           Back to Summary
         </button>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleDownloadCSV}
+            onClick={() => setIsEmailModalOpen(true)}
             className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition flex items-center gap-2"
           >
-            <Download className="w-4 h-4" />
-            Download CSV
+            <Mail className="w-4 h-4" />
+            Share via Email
           </button>
-          <button
-            onClick={handleDownloadPDF}
-            disabled={isGeneratingPdf}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            {isGeneratingPdf ? 'Generating PDF...' : 'Download PDF'}
-          </button>
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setIsExportMenuOpen((open) => !open)}
+              disabled={!!exportInProgress}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {exportInProgress ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {exportInProgress ? `Generating ${exportInProgress.toUpperCase()}...` : 'Export'}
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            {isExportMenuOpen && (
+              <div className="absolute right-0 mt-2 w-60 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+                <button
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handleDownloadPDF();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  PDF Report (full)
+                </button>
+                <button
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handleDownloadExcel();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Excel Workbook (multi-sheet)
+                </button>
+                <button
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handleDownloadCSV();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV (dimension data)
+                </button>
+                <button
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handleDownloadPNG();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  PNG Summary Card
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {pdfError && (
+      {exportError && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-800">{pdfError}</p>
+          <p className="text-sm text-red-800">{exportError}</p>
         </div>
       )}
 
@@ -646,6 +948,71 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
           )}
         </div>
       )}
+
+      {/* 30-60-90 Day Action Plan & Responsibility Matrix */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-5">
+        <div>
+          <h3 className="font-semibold text-gray-800 mb-1">30-60-90 Day Action Plan</h3>
+          <p className="text-xs text-gray-400">
+            Each dimension is placed into a 30/60/90-day bucket based on its subjective status and perception-reality
+            quadrant, not an arbitrary priority call - the criteria for each bucket are stated below it.
+          </p>
+        </div>
+
+        {(['30', '60', '90'] as ActionTimeframe[]).map((tf) => {
+          const items = report.actionPlan.byTimeframe[tf];
+          if (items.length === 0) return null;
+          return (
+            <div key={tf}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${TIMEFRAME_BADGE_CLASSNAMES[tf]}`}>
+                  {TIMEFRAME_LABELS[tf]} ({items.length})
+                </span>
+              </div>
+              <p className={`text-xs rounded-lg border p-2.5 mb-3 ${TIMEFRAME_BOX_CLASSNAMES[tf]}`}>{TIMEFRAME_INTRO[tf]}</p>
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <div key={item.dimensionId} className="border border-gray-100 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-3 flex-wrap mb-1">
+                      <p className="text-sm font-semibold text-gray-800">{item.dimensionName}</p>
+                      <span className="text-xs font-medium text-gray-500">Owner: {item.ownerRole}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">{item.action}</p>
+                    <p className="text-xs text-gray-400 mt-1">Why this timeframe: {item.priorityReason}.</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        <div>
+          <h4 className="font-semibold text-gray-800 mb-1">Responsibility Matrix (by suggested owner role)</h4>
+          <p className="text-xs text-gray-400 mb-3">{report.actionPlan.roleDisclosure}</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-gray-200">
+                  <th className="py-2 pr-4">Suggested Owner Role</th>
+                  <th className="py-2">Dimensions Owned (Timeframe)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.keys(report.actionPlan.byOwnerRole)
+                  .sort()
+                  .map((role) => (
+                    <tr key={role} className="border-b border-gray-100 last:border-0 align-top">
+                      <td className="py-2 pr-4 font-medium text-gray-800 whitespace-nowrap">{role}</td>
+                      <td className="py-2 text-gray-600">
+                        {report.actionPlan.byOwnerRole[role].map((i) => `${i.dimensionName} (${TIMEFRAME_LABELS[i.timeframe]})`).join(', ')}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       {/* Respondent Breakdown */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">

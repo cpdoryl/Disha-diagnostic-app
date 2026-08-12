@@ -14,6 +14,7 @@ import { PerceptionRealityGap } from './gapAnalyzer';
 import { FullDiagnosticReportData, DimensionReportCard } from './fullDiagnosticReport';
 import { summarizeDataConfidence } from './objectiveScoreEngine';
 import { QUADRANT_DEFINITIONS, QUADRANT_DISPLAY_ORDER, QuadrantId } from './quadrantAnalysis';
+import { TIMEFRAME_LABELS, ActionTimeframe } from './actionPlan';
 
 export interface ChartImage {
   dataUrl: string;
@@ -84,6 +85,18 @@ const QUADRANT_PALETTE: Record<QuadrantId, { fill: [number, number, number]; bor
   hidden_potential: { fill: [239, 246, 255], border: [191, 219, 254], label: [30, 64, 175], text: [30, 64, 175] },
   blind_spot: { fill: [255, 251, 235], border: [253, 230, 138], label: [146, 64, 14], text: [146, 64, 14] },
   crisis: { fill: [254, 242, 242], border: [254, 202, 202], label: [153, 27, 27], text: [153, 27, 27] },
+};
+
+const TIMEFRAME_PALETTE: Record<ActionTimeframe, { fill: [number, number, number]; border: [number, number, number] }> = {
+  '30': { fill: [254, 242, 242], border: [254, 202, 202] },
+  '60': { fill: [255, 251, 235], border: [253, 230, 138] },
+  '90': { fill: [239, 246, 255], border: [191, 219, 254] },
+};
+
+const TIMEFRAME_INTRO: Record<ActionTimeframe, string> = {
+  '30': 'Urgent - subjective status is At Risk, or the dimension falls in the Crisis quadrant (both perception and data agree it is underperforming).',
+  '60': 'Important - subjective status is Needs Attention, or the dimension falls in the Blind Spot quadrant (stakeholders are more confident than the data currently supports).',
+  '90': 'Strategic - either no survey data has been recorded yet, the dimension falls in the Hidden Potential quadrant (a visibility/communication opportunity), or it is already Strong/Excellence and only needs monitoring.',
 };
 
 function setFill(doc: jsPDF, c: [number, number, number]) {
@@ -430,6 +443,362 @@ function drawDimensionSummaryTable(doc: jsPDF, cards: DimensionReportCard[], y: 
   return y + 6;
 }
 
+/**
+ * Generic multi-line-cell table: each cell wraps independently, and the row
+ * height is the tallest wrapped cell in that row - used wherever a fixed
+ * single-line-per-row table (like `drawDimensionSummaryTable`) would clip
+ * longer content (action descriptions, metric names, role lists).
+ */
+function drawWrappedTable(doc: jsPDF, columns: { header: string; width: number }[], rows: string[][], y: number): number {
+  const rowPaddingY = 2;
+  const lineHeight = 3.6;
+  const cellFontSize = 7.4;
+  const headerRowHeight = 7;
+
+  const drawHeaderRow = (yy: number): number => {
+    setFill(doc, [243, 244, 246]);
+    doc.rect(MARGIN_X, yy, CONTENT_WIDTH, headerRowHeight, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.6);
+    setText(doc, COLORS.grayText);
+    let x = MARGIN_X + 2;
+    for (const col of columns) {
+      doc.text(col.header, x, yy + 4.8);
+      x += col.width;
+    }
+    doc.setFont('helvetica', 'normal');
+    setText(doc, COLORS.ink);
+    return yy + headerRowHeight;
+  };
+
+  y = ensureSpace(doc, y, headerRowHeight * 2);
+  y = drawHeaderRow(y);
+
+  for (const row of rows) {
+    doc.setFontSize(cellFontSize);
+    const wrappedCells = row.map((cell, i) => doc.splitTextToSize(cell, columns[i].width - 3) as string[]);
+    const rowLines = Math.max(1, ...wrappedCells.map((w) => w.length));
+    const rowHeight = rowLines * lineHeight + rowPaddingY * 2;
+
+    if (y + rowHeight > PAGE_HEIGHT - MARGIN_BOTTOM) {
+      doc.addPage();
+      y = MARGIN_TOP;
+      y = drawHeaderRow(y);
+    }
+
+    doc.setFontSize(cellFontSize);
+    let x = MARGIN_X + 2;
+    for (let i = 0; i < columns.length; i++) {
+      let cy = y + rowPaddingY + 2.6;
+      for (const line of wrappedCells[i]) {
+        doc.text(line, x, cy);
+        cy += lineHeight;
+      }
+      x += columns[i].width;
+    }
+    setDraw(doc, COLORS.grayBorder);
+    doc.setLineWidth(0.15);
+    doc.line(MARGIN_X, y + rowHeight, MARGIN_X + CONTENT_WIDTH, y + rowHeight);
+    y += rowHeight;
+  }
+  return y + 6;
+}
+
+function drawLogoMark(doc: jsPDF, cx: number, cy: number, radius: number): void {
+  setFill(doc, COLORS.indigo);
+  doc.circle(cx, cy, radius, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(radius * 0.95);
+  setText(doc, [255, 255, 255]);
+  doc.text('14D', cx, cy + radius * 0.33, { align: 'center' });
+  setText(doc, COLORS.ink);
+  doc.setFont('helvetica', 'normal');
+}
+
+/**
+ * Full-page cover: no real school/DISHA logo file exists anywhere in this
+ * app, so a vector "14D" badge is drawn programmatically instead of
+ * pretending to have branding that doesn't exist. Ends with `addPage()` so
+ * all substantive content starts fresh on page 2.
+ */
+function drawCoverPage(doc: jsPDF, report: FullDiagnosticReportData): void {
+  const centerX = PAGE_WIDTH / 2;
+  let y = 50;
+
+  drawLogoMark(doc, centerX, y, 16);
+  y += 28;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(21);
+  setText(doc, COLORS.ink);
+  doc.text('14-Dimension Diagnostic Report', centerX, y, { align: 'center' });
+  y += 7.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10.5);
+  setText(doc, COLORS.muted);
+  doc.text('DISHA School Diagnostic Engine', centerX, y, { align: 'center' });
+  y += 15;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  setText(doc, COLORS.ink);
+  doc.text(truncateToWidth(doc, report.schoolName, CONTENT_WIDTH), centerX, y, { align: 'center' });
+  y += 7;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10.5);
+  setText(doc, COLORS.grayText);
+  doc.text(truncateToWidth(doc, report.eventName, CONTENT_WIDTH), centerX, y, { align: 'center' });
+  y += 6;
+  doc.setFontSize(9);
+  setText(doc, COLORS.muted);
+  doc.text(`Generated ${report.generatedAt.toLocaleString()}`, centerX, y, { align: 'center' });
+  y += 13;
+
+  setDraw(doc, COLORS.grayBorder);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN_X + 20, y, PAGE_WIDTH - MARGIN_X - 20, y);
+  y += 13;
+
+  const overallIndex = report.subjective.overallIndex;
+  const overallStatus = getHealthStatus(overallIndex);
+  const stats: { label: string; value: string; color: [number, number, number] }[] = [
+    { label: 'Overall Health Index', value: `${overallIndex ?? 'N/A'}/100`, color: STATUS_COLORS[overallStatus.label] || STATUS_COLORS['No Data'] },
+    { label: 'Status', value: overallStatus.label, color: STATUS_COLORS[overallStatus.label] || STATUS_COLORS['No Data'] },
+    { label: 'Responses', value: String(report.subjective.totalResponses), color: COLORS.indigo },
+    { label: 'Data Completeness', value: `${report.objectiveCompleteness.overallCompleteness}%`, color: COLORS.indigo },
+  ];
+  const tileGap = 6;
+  const tileWidth = (CONTENT_WIDTH - tileGap * 3) / 4;
+  let tx = MARGIN_X;
+  for (const stat of stats) {
+    setFill(doc, COLORS.grayFill);
+    setDraw(doc, COLORS.grayBorder);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(tx, y, tileWidth, 26, 1.5, 1.5, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    setText(doc, stat.color);
+    doc.text(stat.value, tx + tileWidth / 2, y + 12, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.2);
+    setText(doc, COLORS.muted);
+    const labelLines: string[] = doc.splitTextToSize(stat.label, tileWidth - 4);
+    let ly = y + 18;
+    for (const line of labelLines) {
+      doc.text(line, tx + tileWidth / 2, ly, { align: 'center' });
+      ly += 3.4;
+    }
+    tx += tileWidth + tileGap;
+  }
+  y += 26 + 12;
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8.5);
+  setText(doc, COLORS.muted);
+  y = drawWrappedText(
+    doc,
+    'This report combines stakeholder survey perception with captured operational data to produce a data-grounded diagnostic - every claim inside is tied to the specific numbers it is drawn from. See the Methodology & Glossary appendix for how each score is calculated.',
+    MARGIN_X + 15,
+    y,
+    CONTENT_WIDTH - 30,
+    4.3
+  );
+  y += 8;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  setText(doc, COLORS.grayText);
+  doc.text('In This Report', MARGIN_X + 15, y);
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.8);
+  setText(doc, COLORS.grayText);
+  const toc = [
+    'Executive Summary & Benchmark Data Source',
+    'Visual Analysis (Radar, Comparison, Gap, Quadrant charts)',
+    'Dimension Summary & Dimension Deep-Dive (all 14 dimensions)',
+    'Perception vs Reality Gap Analysis',
+    'Perception-Reality Quadrant Analysis',
+    '30-60-90 Day Action Plan & Responsibility Matrix',
+    'Objective Data Completeness',
+    'Appendix A: Full Objective Metric Data',
+    'Appendix B: Methodology & Glossary',
+  ];
+  for (const item of toc) {
+    doc.text(`•  ${item}`, MARGIN_X + 18, y);
+    y += 5;
+  }
+
+  doc.setFontSize(7.5);
+  setText(doc, COLORS.muted);
+  doc.text('Confidential - prepared for internal school use.', centerX, PAGE_HEIGHT - 16, { align: 'center' });
+  setText(doc, COLORS.ink);
+
+  doc.addPage();
+}
+
+/**
+ * 30-60-90 day action plan (grouped tables, one per timeframe bucket) plus a
+ * responsibility matrix grouped by suggested owner role. Owner roles are a
+ * generic default, not real staff data - `report.actionPlan.roleDisclosure`
+ * says so explicitly and is always printed before the matrix.
+ */
+function drawActionPlanSection(doc: jsPDF, report: FullDiagnosticReportData, y: number): number {
+  y = drawSectionHeader(doc, '30-60-90 Day Action Plan', y);
+  doc.setFontSize(9);
+  setText(doc, COLORS.muted);
+  y = drawWrappedText(
+    doc,
+    'Each dimension is placed into a 30/60/90-day bucket based on its subjective status and perception-reality quadrant, not an arbitrary priority call - the criteria for each bucket are stated below it.',
+    MARGIN_X,
+    y,
+    CONTENT_WIDTH,
+    4.2
+  );
+  setText(doc, COLORS.ink);
+  y += 3;
+
+  const columns = [
+    { header: 'Dimension', width: 32 },
+    { header: 'Suggested Action', width: 100 },
+    { header: 'Suggested Owner', width: 50 },
+  ];
+
+  for (const tf of ['30', '60', '90'] as ActionTimeframe[]) {
+    const items = report.actionPlan.byTimeframe[tf];
+    if (items.length === 0) continue;
+
+    y = ensureSpace(doc, y, 10);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    setText(doc, COLORS.grayText);
+    doc.text(`${TIMEFRAME_LABELS[tf]} (${items.length})`, MARGIN_X, y);
+    doc.setFont('helvetica', 'normal');
+    y += 5;
+
+    const palette = TIMEFRAME_PALETTE[tf];
+    y = drawColoredBlock(doc, 'Criteria for this bucket', [TIMEFRAME_INTRO[tf]], y, {
+      fill: palette.fill,
+      border: palette.border,
+      label: COLORS.grayText,
+      text: COLORS.grayText,
+    });
+
+    const rows = items.map((item) => [item.dimensionName, item.action, item.ownerRole]);
+    y = drawWrappedTable(doc, columns, rows, y);
+  }
+
+  y = ensureSpace(doc, y, 12);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  setText(doc, COLORS.grayText);
+  doc.text('Responsibility Matrix (by suggested owner role)', MARGIN_X, y);
+  doc.setFont('helvetica', 'normal');
+  y += 6;
+
+  y = drawColoredBlock(doc, 'Note', [report.actionPlan.roleDisclosure], y, {
+    fill: COLORS.grayFill,
+    border: COLORS.grayBorder,
+    label: COLORS.grayText,
+    text: COLORS.grayText,
+  });
+
+  const roleColumns = [
+    { header: 'Suggested Owner Role', width: 55 },
+    { header: 'Dimensions Owned (Timeframe)', width: 127 },
+  ];
+  const roleRows = Object.keys(report.actionPlan.byOwnerRole)
+    .sort()
+    .map((role) => [
+      role,
+      report.actionPlan.byOwnerRole[role].map((i) => `${i.dimensionName} (${TIMEFRAME_LABELS[i.timeframe]})`).join('; '),
+    ]);
+  y = drawWrappedTable(doc, roleColumns, roleRows, y);
+
+  return y;
+}
+
+/** Appendix A: every captured objective metric across all dimensions, in one reference table. */
+function drawMetricAppendix(doc: jsPDF, report: FullDiagnosticReportData, y: number): number {
+  y = drawSectionHeader(doc, 'Appendix A: Full Objective Metric Data', y);
+
+  const rows: string[][] = [];
+  for (const card of report.dimensionCards) {
+    if (!card.objective) continue;
+    for (const metric of card.objective.metrics) {
+      rows.push([
+        card.dimensionName,
+        metric.name,
+        `${metric.value}${metric.unit}`,
+        `${metric.benchmark}${metric.unit}`,
+        metric.status,
+        metric.dataQuality,
+      ]);
+    }
+  }
+
+  if (rows.length === 0) {
+    doc.setFontSize(9.5);
+    setText(doc, COLORS.muted);
+    y = drawWrappedText(doc, 'No operational metrics have been captured for any dimension yet.', MARGIN_X, y, CONTENT_WIDTH, 4.5);
+    setText(doc, COLORS.ink);
+    return y;
+  }
+
+  const columns = [
+    { header: 'Dimension', width: 32 },
+    { header: 'Metric', width: 62 },
+    { header: 'Value', width: 28 },
+    { header: 'Benchmark', width: 28 },
+    { header: 'Status', width: 18 },
+    { header: 'Data Quality', width: 14 },
+  ];
+  return drawWrappedTable(doc, columns, rows, y);
+}
+
+/** Appendix B: one consolidated reference for how every score/classification in this report is calculated. */
+function drawMethodologyAppendix(doc: jsPDF, y: number): number {
+  y = drawSectionHeader(doc, 'Appendix B: Methodology & Glossary', y);
+
+  const terms: { label: string; text: string }[] = [
+    {
+      label: 'Subjective Index (0-100)',
+      text: 'Each respondent rates a dimension on a 1-5 Likert scale per question. Their per-dimension average (1-5) is rescaled to a 0-100 index (1 = 0, 5 = 100), then averaged across all respondents for that dimension.',
+    },
+    {
+      label: 'Objective Score (0-100)',
+      text: 'Each captured operational metric is normalized to 0-100 against its benchmark (direction-aware: "higher is better" or "lower is better" per metric), then combined into a single per-dimension score, weighting required metrics more heavily than optional ones.',
+    },
+    {
+      label: 'Perception-Reality Gap',
+      text: 'Subjective index minus objective score. Gaps within +/-5 points are classified as Aligned; a gap beyond that is classified as an Overestimation (perception higher than reality) or Underestimation (perception lower than reality).',
+    },
+    {
+      label: 'Perception-Reality Quadrant',
+      text: 'A separate classification from the gap above - it looks at the absolute level of each score (>=60 counts as "high" on that axis, matching the Adequate/Needs-Attention boundary) rather than how close they are to each other, producing four quadrants: Excellence (both high), Hidden Potential (reality high, perception low), Blind Spot (perception high, reality low), and Crisis (both low).',
+    },
+    {
+      label: '30-60-90 Day Action Plan',
+      text: 'Each dimension is bucketed by its subjective status label and quadrant: At Risk status or the Crisis quadrant -> 30 days; Needs Attention status or the Blind Spot quadrant -> 60 days; no data yet, the Hidden Potential quadrant, or an already-Strong/Excellence dimension -> 90 days. Suggested owner roles are a generic default (see the Responsibility Matrix note) - not a record of real staff assignments.',
+    },
+    {
+      label: 'Data Confidence Tiers',
+      text: 'Each captured metric is tagged by how it entered the system: uploaded from a file (Uploaded/Medium confidence) or typed in manually (Manual/Lower confidence, unverified). A dimension shows Mixed confidence when its metrics come from more than one source. System-Synced/High confidence is reserved for a future direct data-system integration, not currently available.',
+    },
+  ];
+
+  for (const term of terms) {
+    y = drawColoredBlock(doc, term.label, [term.text], y, {
+      fill: COLORS.grayFill,
+      border: COLORS.grayBorder,
+      label: COLORS.grayText,
+      text: COLORS.grayText,
+    });
+  }
+
+  return y;
+}
+
 function drawFootersAndPageNumbers(doc: jsPDF, schoolName: string, generatedAt: Date): void {
   const pageCount = doc.getNumberOfPages();
   const leftWidth = 100;
@@ -454,45 +823,10 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData, ch
   const doc = new jsPDF();
   let y = MARGIN_TOP;
 
-  // Cover header
-  setFill(doc, COLORS.indigo);
-  doc.rect(0, 0, PAGE_WIDTH, 38, 'F');
-  setText(doc, [255, 255, 255]);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
-  doc.text('14D Diagnostic Report', MARGIN_X, 18);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10.5);
-  doc.text(truncateToWidth(doc, report.schoolName, CONTENT_WIDTH), MARGIN_X, 26);
-  doc.setFontSize(9);
-  doc.text(
-    `${truncateToWidth(doc, report.eventName, CONTENT_WIDTH * 0.6)}  |  Generated ${report.generatedAt.toLocaleString()}`,
-    MARGIN_X,
-    32.5
-  );
-  setText(doc, COLORS.ink);
-  y = 46;
-
-  const overallIndex = report.subjective.overallIndex;
-  const overallStatus = getHealthStatus(overallIndex);
-  const overallColor = STATUS_COLORS[overallStatus.label] || STATUS_COLORS['No Data'];
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  setText(doc, overallColor);
-  doc.text(`Overall Institutional Health Index: ${overallIndex ?? 'N/A'}/100 (${overallStatus.label})`, MARGIN_X, y);
-  setText(doc, COLORS.ink);
-  doc.setFont('helvetica', 'normal');
-  y += 8;
-
-  doc.setFontSize(10);
-  y = drawWrappedText(
-    doc,
-    `Based on ${report.subjective.totalResponses} response${report.subjective.totalResponses === 1 ? '' : 's'} across 14 dimensions. Objective operational data captured for ${report.objectiveCompleteness.dimensionsWithAnyData}/14 dimensions (${report.objectiveCompleteness.overallCompleteness}% overall completeness).`,
-    MARGIN_X,
-    y,
-    CONTENT_WIDTH
-  );
-  y += 2;
+  // Full cover page (page 1) - headline stats, mini table of contents, then
+  // a page break so all substantive content starts fresh on page 2.
+  drawCoverPage(doc, report);
+  y = MARGIN_TOP;
 
   const breakdown = Object.entries(report.subjective.responsesByStakeholder)
     .filter(([, count]) => count > 0)
@@ -749,6 +1083,9 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData, ch
     y = drawColoredBlock(doc, `${def.label} - ${def.axisDescription}`, lines, y, palette);
   }
 
+  // 30-60-90 Day Action Plan & Responsibility Matrix
+  y = drawActionPlanSection(doc, report, y);
+
   // Objective Data Completeness appendix
   y = drawSectionHeader(doc, 'Objective Data Completeness', y);
   doc.setFontSize(10);
@@ -776,6 +1113,10 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData, ch
     y = drawWrappedText(doc, 'All dimensions have at least 60% objective data completeness.', MARGIN_X, y, CONTENT_WIDTH, 4.5);
     setText(doc, COLORS.ink);
   }
+
+  // Appendices
+  y = drawMetricAppendix(doc, report, y);
+  y = drawMethodologyAppendix(doc, y);
 
   drawFootersAndPageNumbers(doc, report.schoolName, report.generatedAt);
 

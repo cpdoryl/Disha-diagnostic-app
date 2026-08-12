@@ -30,6 +30,7 @@ import { OBJECTIVE_BENCHMARK_DATASET_META, getDimensionMetricSchema } from '../d
 import { BenchmarkDatasetMeta } from '../data/benchmarkMeta';
 import { FOURTEEN_DIMENSIONS } from '../data/14DimensionsQuestions';
 import { classifyQuadrants, QuadrantAnalysisResult } from './quadrantAnalysis';
+import { buildActionPlan, ActionPlanResult } from './actionPlan';
 
 export interface DimensionReportCard {
   dimensionId: string;
@@ -60,6 +61,7 @@ export interface FullDiagnosticReportData {
   dimensionCards: DimensionReportCard[];
   gapAnalysis: GapAnalysisResult | null;
   quadrantAnalysis: QuadrantAnalysisResult;
+  actionPlan: ActionPlanResult;
   objectiveCompleteness: ObjectiveCompletenessSummary;
   executiveSummary: string[];
   benchmarkSources: {
@@ -156,6 +158,7 @@ export async function assembleFullDiagnosticReport(
 
   const executiveSummary = buildExecutiveSummary(subjective, dimensionCards, gapAnalysis, objectiveCompleteness);
   const quadrantAnalysis = classifyQuadrants(dimensionCards);
+  const actionPlan = buildActionPlan(dimensionCards, quadrantAnalysis);
 
   return {
     assessmentId,
@@ -166,6 +169,7 @@ export async function assembleFullDiagnosticReport(
     dimensionCards,
     gapAnalysis,
     quadrantAnalysis,
+    actionPlan,
     objectiveCompleteness,
     executiveSummary,
     benchmarkSources: {
