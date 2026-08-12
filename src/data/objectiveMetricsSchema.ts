@@ -35,6 +35,14 @@ export type ObjectiveMetricDataType =
 
 export type ObjectiveMetricDirection = 'higher_better' | 'lower_better';
 
+/**
+ * How a metric value was captured. Lives here (a pure data file with no
+ * Firestore dependency) rather than in objectiveDataService.ts, since both
+ * objectiveDataService.ts and objectiveScoreEngine.ts need it and importing
+ * it from either of those into the other would create a circular import.
+ */
+export type ObjectiveDataSource = 'manual' | 'upload';
+
 export interface ObjectiveMetricDefinition {
   id: string;
   label: string;

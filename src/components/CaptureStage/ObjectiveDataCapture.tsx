@@ -7,6 +7,7 @@ import {
   computeAllObjectiveScores,
   computeObjectiveCompletenessSummary,
   ObjectiveCompletenessSummary,
+  RawMetricEntry,
 } from '../../lib/objectiveScoreEngine';
 import { useAppStore } from '../../store';
 import { ObjectiveDataEntryModal } from './ObjectiveDataEntryModal';
@@ -81,7 +82,7 @@ export function ObjectiveDataCapture({ schoolId, eventId: explicitEventId }: Obj
     loadObjectiveDataForEvent(selectedEventId)
       .then((raw) => {
         setRawData(raw);
-        const rawByDimension: Record<string, Record<string, number | undefined>> = {};
+        const rawByDimension: Record<string, Record<string, RawMetricEntry | undefined>> = {};
         for (const [dimId, data] of Object.entries(raw)) {
           rawByDimension[dimId] = data.metrics;
         }

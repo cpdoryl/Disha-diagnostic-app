@@ -35,6 +35,16 @@ const STAKEHOLDER_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
+function summarizeDataConfidence(metrics: { dataQuality: 'tier1' | 'tier2' | 'tier3' }[]): string | null {
+  if (metrics.length === 0) return null;
+  const counts = { tier1: 0, tier2: 0, tier3: 0 };
+  for (const m of metrics) counts[m.dataQuality]++;
+  if (counts.tier1 === metrics.length) return 'Data confidence: High — all metrics system-synced.';
+  if (counts.tier2 === metrics.length) return 'Data confidence: Medium — all metrics uploaded from a file and reviewed.';
+  if (counts.tier3 === metrics.length) return 'Data confidence: Lower — all metrics entered manually, unverified.';
+  return 'Data confidence: Mixed — some metrics uploaded/reviewed, some entered manually.';
+}
+
 const GAP_BADGE: Record<string, { label: string; className: string; Icon: React.ElementType }> = {
   overestimation: { label: 'Overestimated by stakeholders', className: 'bg-amber-100 text-amber-700', Icon: TrendingUp },
   underestimation: { label: 'Underestimated by stakeholders', className: 'bg-blue-100 text-blue-700', Icon: TrendingDown },
@@ -84,6 +94,10 @@ function DimensionCard({ card }: { card: DimensionReportCard }) {
           Gap: {card.gap.gap > 0 ? '+' : ''}
           {card.gap.gap.toFixed(1)} points (perceived {card.gap.subjectiveScore} vs. data {card.gap.objectiveScore})
         </p>
+      )}
+
+      {card.objective && (
+        <p className="text-xs text-gray-400">{summarizeDataConfidence(card.objective.metrics)}</p>
       )}
 
       <p className="text-sm text-gray-600 leading-relaxed">{card.interpretation}</p>

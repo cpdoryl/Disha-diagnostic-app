@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { getDimensionMetricSchema } from '../../data/objectiveMetricsSchema';
+import { getDimensionMetricSchema, ObjectiveDataSource } from '../../data/objectiveMetricsSchema';
 import { validateDimensionMetrics } from '../../lib/objectiveDataValidation';
 import { saveDimensionObjectiveData } from '../../lib/objectiveDataService';
+import { RawMetricEntry } from '../../lib/objectiveScoreEngine';
 import { MetricInputField } from './MetricInputField';
 
 interface ObjectiveDataEntryModalProps {
@@ -10,7 +11,7 @@ interface ObjectiveDataEntryModalProps {
   dimensionName: string;
   eventId: string;
   schoolId: string;
-  existingValues: Record<string, number>;
+  existingValues: Record<string, RawMetricEntry>;
   onSaved: () => void;
   onClose: () => void;
 }
@@ -28,7 +29,7 @@ export function ObjectiveDataEntryModal({
   const [values, setValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     for (const def of schema?.metrics || []) {
-      if (existingValues[def.id] != null) initial[def.id] = String(existingValues[def.id]);
+      if (existingValues[def.id] != null) initial[def.id] = String(existingValues[def.id].value);
     }
     return initial;
   });
@@ -46,7 +47,17 @@ export function ObjectiveDataEntryModal({
     setIsSaving(true);
     setSaveError('');
     try {
-      await saveDimensionObjectiveData(eventId, schoolId, dimensionId, result.parsedValues, { source: 'manual' });
+      // A field the admin didn't touch keeps its original source (so an
+      // untouched upload-sourced value isn't silently reclassified as
+      // manual just because the dimension's form was re-saved); a field
+      // that's new or changed becomes 'manual' since it was just typed in.
+      const metricValues: Record<string, { value: number; source: ObjectiveDataSource }> = {};
+      for (const [metricId, value] of Object.entries(result.parsedValues)) {
+        const existing = existingValues[metricId];
+        const source: ObjectiveDataSource = existing && existing.value === value ? existing.source : 'manual';
+        metricValues[metricId] = { value, source };
+      }
+      await saveDimensionObjectiveData(eventId, schoolId, dimensionId, metricValues);
       onSaved();
     } catch (err) {
       console.error('Failed to save objective data:', err);

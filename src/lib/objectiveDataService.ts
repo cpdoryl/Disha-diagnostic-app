@@ -6,9 +6,11 @@
  */
 import { collection, doc, getDoc, getDocs, setDoc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from './firebase';
-import { getDimensionMetricSchema } from '../data/objectiveMetricsSchema';
+import { getDimensionMetricSchema, ObjectiveDataSource } from '../data/objectiveMetricsSchema';
 import { FOURTEEN_DIMENSIONS } from '../data/14DimensionsQuestions';
-import { computeAllObjectiveScores, computeObjectiveCompletenessSummary } from './objectiveScoreEngine';
+import { computeAllObjectiveScores, computeObjectiveCompletenessSummary, RawMetricEntry } from './objectiveScoreEngine';
+
+export type { ObjectiveDataSource };
 
 function toDate(value: unknown): Date | null {
   if (value instanceof Timestamp) return value.toDate();
@@ -18,8 +20,6 @@ function toDate(value: unknown): Date | null {
   }
   return null;
 }
-
-export type ObjectiveDataSource = 'manual' | 'upload';
 
 export interface ObjectiveDataDoc {
   dimensionId: string;
@@ -34,7 +34,7 @@ export interface ObjectiveDataDoc {
 
 export interface RawObjectiveDataByDimension {
   [dimensionId: string]: {
-    metrics: Record<string, number>;
+    metrics: Record<string, RawMetricEntry>;
     completeness: number;
     updatedAt: Date | null;
     sourceFileName: string | null;
@@ -67,16 +67,25 @@ function buildMetricsPayload(
 }
 
 /**
- * Save/update the objective data captured for a single dimension.
+ * Save/update the objective data captured for a single dimension, with a
+ * source recorded per metric (not one blanket source for the whole save) -
+ * so re-opening the entry form and saving without touching an
+ * upload-sourced field doesn't silently reclassify it as manually entered.
  */
 export async function saveDimensionObjectiveData(
   eventId: string,
   schoolId: string,
   dimensionId: string,
-  metricValues: Record<string, number>,
-  meta: { source: ObjectiveDataSource; sourceFileName?: string }
+  metricValues: Record<string, { value: number; source: ObjectiveDataSource }>,
+  meta: { sourceFileName?: string } = {}
 ): Promise<void> {
   const enteredBy = auth.currentUser?.email || null;
+  const metrics: Record<string, { value: number; source: ObjectiveDataSource; enteredBy: string | null }> = {};
+  const plainValues: Record<string, number> = {};
+  for (const [metricId, entry] of Object.entries(metricValues)) {
+    metrics[metricId] = { value: entry.value, source: entry.source, enteredBy };
+    plainValues[metricId] = entry.value;
+  }
 
   await setDoc(
     objectiveDataDocRef(eventId, dimensionId),
@@ -84,8 +93,8 @@ export async function saveDimensionObjectiveData(
       dimensionId,
       eventId,
       schoolId,
-      metrics: buildMetricsPayload(metricValues, meta.source, enteredBy),
-      completeness: computeCompleteness(dimensionId, metricValues),
+      metrics,
+      completeness: computeCompleteness(dimensionId, plainValues),
       sourceFileName: meta.sourceFileName || null,
       updatedAt: serverTimestamp(),
       updatedBy: enteredBy,
@@ -130,7 +139,9 @@ export async function saveMultipleDimensionsObjectiveData(
 
 /**
  * Load every dimension's objective data for an assessment event, keyed by
- * dimension id, as plain numeric values ready for the scoring engine.
+ * dimension id, as {value, source} entries ready for the scoring engine -
+ * source is what lets the engine assign a real data-confidence tier instead
+ * of a hardcoded one.
  */
 export async function loadObjectiveDataForEvent(eventId: string): Promise<RawObjectiveDataByDimension> {
   const snapshot = await getDocs(collection(db, 'assessments', eventId, 'objectiveData'));
@@ -138,10 +149,12 @@ export async function loadObjectiveDataForEvent(eventId: string): Promise<RawObj
 
   snapshot.forEach((docSnap) => {
     const data = docSnap.data();
-    const metrics: Record<string, number> = {};
-    const rawMetrics = (data.metrics || {}) as Record<string, { value: number }>;
+    const metrics: Record<string, RawMetricEntry> = {};
+    const rawMetrics = (data.metrics || {}) as Record<string, { value: number; source?: ObjectiveDataSource }>;
     for (const [metricId, entry] of Object.entries(rawMetrics)) {
-      if (typeof entry?.value === 'number') metrics[metricId] = entry.value;
+      if (typeof entry?.value === 'number') {
+        metrics[metricId] = { value: entry.value, source: entry.source === 'upload' ? 'upload' : 'manual' };
+      }
     }
     result[docSnap.id] = {
       metrics,
@@ -189,7 +202,7 @@ export interface ObjectiveReadiness {
  */
 export async function checkObjectiveDataReadiness(eventId: string): Promise<ObjectiveReadiness> {
   const raw = await loadObjectiveDataForEvent(eventId);
-  const rawByDimension: Record<string, Record<string, number | undefined>> = {};
+  const rawByDimension: Record<string, Record<string, RawMetricEntry | undefined>> = {};
   for (const [dimId, data] of Object.entries(raw)) {
     rawByDimension[dimId] = data.metrics;
   }

@@ -6,10 +6,26 @@
  */
 import { DimensionObjectiveScore, ObjectiveMetric } from './objectiveMetricsCalculator';
 import { FOURTEEN_DIMENSIONS, getDimensionById } from '../data/14DimensionsQuestions';
-import { ObjectiveMetricDefinition, getDimensionMetricSchema } from '../data/objectiveMetricsSchema';
+import { ObjectiveMetricDefinition, ObjectiveDataSource, getDimensionMetricSchema } from '../data/objectiveMetricsSchema';
+
+export interface RawMetricEntry {
+  value: number;
+  source: ObjectiveDataSource;
+}
 
 function clamp(min: number, max: number, value: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Maps how a value was captured to a data-confidence tier. There's no real
+ * ERP/system sync in this app yet, so 'tier1' is reserved for that future
+ * capability - today's two real sources cap out at 'tier2' (uploaded from a
+ * file, reviewed by the admin before saving) and 'tier3' (typed directly,
+ * unverified).
+ */
+function mapSourceToTier(source: ObjectiveDataSource): 'tier1' | 'tier2' | 'tier3' {
+  return source === 'upload' ? 'tier2' : 'tier3';
 }
 
 export function normalizeMetricScore(value: number, definition: ObjectiveMetricDefinition): number {
@@ -24,7 +40,7 @@ export function normalizeMetricScore(value: number, definition: ObjectiveMetricD
 
 export function computeDimensionObjectiveScore(
   dimensionId: string,
-  rawValues: Record<string, number | undefined>
+  rawValues: Record<string, RawMetricEntry | undefined>
 ): DimensionObjectiveScore {
   const schema = getDimensionMetricSchema(dimensionId);
   const dimensionName = getDimensionById(dimensionId)?.name || dimensionId;
@@ -55,8 +71,9 @@ export function computeDimensionObjectiveScore(
     if (def.required) requiredTotal++;
     else optionalTotal++;
 
-    const rawValue = rawValues[def.id];
-    if (rawValue == null || Number.isNaN(rawValue)) continue;
+    const entry = rawValues[def.id];
+    if (entry == null || Number.isNaN(entry.value)) continue;
+    const rawValue = entry.value;
 
     providedCount++;
     if (def.required) requiredProvided++;
@@ -77,7 +94,7 @@ export function computeDimensionObjectiveScore(
       benchmark: def.benchmark,
       status: !meetsOrBeatsBenchmark ? 'below' : gap === 0 ? 'meets' : 'exceeds',
       gap: Math.abs(gap),
-      dataQuality: 'tier1',
+      dataQuality: mapSourceToTier(entry.source),
     });
   }
 
@@ -100,7 +117,7 @@ export function computeDimensionObjectiveScore(
 }
 
 export function computeAllObjectiveScores(
-  rawByDimension: Record<string, Record<string, number | undefined>>
+  rawByDimension: Record<string, Record<string, RawMetricEntry | undefined>>
 ): DimensionObjectiveScore[] {
   return FOURTEEN_DIMENSIONS.map((dim) => computeDimensionObjectiveScore(dim.id, rawByDimension[dim.id] || {}));
 }

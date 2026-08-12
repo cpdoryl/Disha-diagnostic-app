@@ -7,7 +7,7 @@
  */
 import { computeDiagnosticReport, getHealthStatus, DiagnosticReportData } from './dimensionScoring';
 import { loadObjectiveDataForEvent } from './objectiveDataService';
-import { computeAllObjectiveScores, computeObjectiveCompletenessSummary, ObjectiveCompletenessSummary } from './objectiveScoreEngine';
+import { computeAllObjectiveScores, computeObjectiveCompletenessSummary, ObjectiveCompletenessSummary, RawMetricEntry } from './objectiveScoreEngine';
 import { analyzeGaps, GapAnalysisResult, PerceptionRealityGap } from './gapAnalyzer';
 import { DimensionObjectiveScore } from './objectiveMetricsCalculator';
 import {
@@ -61,7 +61,7 @@ export async function assembleFullDiagnosticReport(
   const subjective = await computeDiagnosticReport(assessmentId);
   const rawObjective = await loadObjectiveDataForEvent(assessmentId);
 
-  const rawByDimension: Record<string, Record<string, number | undefined>> = {};
+  const rawByDimension: Record<string, Record<string, RawMetricEntry | undefined>> = {};
   for (const [dimensionId, data] of Object.entries(rawObjective)) {
     rawByDimension[dimensionId] = data.metrics;
   }

@@ -98,6 +98,16 @@ function drawScoreBar(
   }
 }
 
+function summarizeDataConfidence(metrics: { dataQuality: 'tier1' | 'tier2' | 'tier3' }[]): string | null {
+  if (metrics.length === 0) return null;
+  const counts = { tier1: 0, tier2: 0, tier3: 0 };
+  for (const m of metrics) counts[m.dataQuality]++;
+  if (counts.tier1 === metrics.length) return 'Data confidence: High - all metrics system-synced.';
+  if (counts.tier2 === metrics.length) return 'Data confidence: Medium - all metrics uploaded from a file and reviewed.';
+  if (counts.tier3 === metrics.length) return 'Data confidence: Lower - all metrics entered manually, unverified.';
+  return 'Data confidence: Mixed - some metrics uploaded/reviewed, some entered manually.';
+}
+
 function drawGapIndicator(doc: jsPDF, x: number, y: number, gap: PerceptionRealityGap): number {
   const label =
     gap.interpretation === 'alignment'
@@ -232,7 +242,15 @@ export function generateDiagnosticReportPdf(report: FullDiagnosticReportData): j
         color: [79, 70, 229],
         label: `Objective (operational data): ${card.objective.objectiveScore}/100  |  data completeness ${card.objective.dataCompleteness}%`,
       });
-      y += 8;
+      y += 6;
+      const confidence = summarizeDataConfidence(card.objective.metrics);
+      if (confidence) {
+        doc.setFontSize(7.5);
+        doc.setTextColor(130, 130, 130);
+        doc.text(confidence, MARGIN_X, y);
+        doc.setTextColor(20, 20, 20);
+        y += 5;
+      }
     } else {
       doc.setFontSize(8);
       doc.setTextColor(130, 130, 130);
