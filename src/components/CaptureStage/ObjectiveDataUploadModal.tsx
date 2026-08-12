@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { X, Loader2, UploadCloud, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Loader2, UploadCloud, ChevronDown, ChevronRight, FileDown } from 'lucide-react';
 import { FOURTEEN_DIMENSIONS } from '../../data/14DimensionsQuestions';
 import { getDimensionMetricSchema } from '../../data/objectiveMetricsSchema';
 import { parseExcelFile, parseCSVFile } from '../../lib/fileParser';
 import { matchHeadersToObjectiveMetrics } from '../../lib/objectiveMetricsHeaderMatcher';
 import { validateAllDimensions } from '../../lib/objectiveDataValidation';
 import { saveMultipleDimensionsObjectiveData } from '../../lib/objectiveDataService';
+import { downloadObjectiveDataTemplate } from '../../lib/objectiveDataTemplate';
 import { MetricInputField } from './MetricInputField';
 
 interface ObjectiveDataUploadModalProps {
@@ -129,20 +130,30 @@ export function ObjectiveDataUploadModal({ eventId, schoolId, onSaved, onClose }
 
         <div className="p-5 space-y-5">
           {!fileName && (
-            <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-8 cursor-pointer hover:bg-gray-50 transition-colors">
-              <UploadCloud className="w-8 h-8 text-indigo-500" />
-              <p className="text-sm font-semibold text-indigo-600">Choose a CSV or Excel file</p>
-              <p className="text-xs text-gray-400">Column headers will be matched to metrics automatically</p>
-              <input
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFileSelect(file);
-                }}
-              />
-            </label>
+            <>
+              <button
+                onClick={() => downloadObjectiveDataTemplate()}
+                className="w-full flex items-center justify-center gap-2 bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 py-2.5 rounded-lg font-semibold text-sm transition-colors"
+              >
+                <FileDown className="w-4 h-4" />
+                Download Blank Template (Excel)
+              </button>
+
+              <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-8 cursor-pointer hover:bg-gray-50 transition-colors">
+                <UploadCloud className="w-8 h-8 text-indigo-500" />
+                <p className="text-sm font-semibold text-indigo-600">Choose a CSV or Excel file</p>
+                <p className="text-xs text-gray-400">Column headers will be matched to metrics automatically</p>
+                <input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileSelect(file);
+                  }}
+                />
+              </label>
+            </>
           )}
 
           {isParsing && (
