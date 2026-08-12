@@ -28,8 +28,8 @@ export const Dashboard = () => {
           <p className="text-gray-500 mt-1 font-medium">Holistic diagnostic summary for <span className="text-gray-900 font-bold">{activeSchool?.name || 'Your Registered School'}</span></p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setCurrentView('CAPTURE')}
+          <button
+            onClick={() => setCurrentView('14D_ASSESSMENT')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold shadow-sm transition-colors flex items-center gap-2 shadow-[0_0_15px_rgba(37,99,235,0.3)]"
           >
             <Target className="w-5 h-5" />

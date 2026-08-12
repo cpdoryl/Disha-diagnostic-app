@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
 import { Dashboard } from './pages/Dashboard';
 import { useAppStore } from './store';
-import { CaptureStage } from './pages/CaptureStage';
 import { CompareStage } from './pages/CompareStage';
 import { SimulateStage } from './pages/SimulateStage';
 import { SynthesizeStage } from './pages/SynthesizeStage';
@@ -112,8 +111,6 @@ export default function App() {
         return <Dashboard />;
       case 'CHECKUP':
         return <Checkup />;
-      case 'CAPTURE':
-        return <CaptureStage />;
       case 'COMPARE':
         return <CompareStage />;
       case 'SIMULATE':

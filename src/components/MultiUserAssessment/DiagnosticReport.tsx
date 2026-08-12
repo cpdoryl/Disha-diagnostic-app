@@ -19,7 +19,6 @@ import { ArrowLeft, Download, RefreshCw, AlertCircle, Database, TrendingUp, Tren
 import { getHealthStatus } from '../../lib/dimensionScoring';
 import { assembleFullDiagnosticReport, FullDiagnosticReportData, DimensionReportCard } from '../../lib/fullDiagnosticReport';
 import { generateDiagnosticReportPdf } from '../../lib/diagnosticReportPdf';
-import { useAppStore } from '../../store';
 
 interface DiagnosticReportProps {
   assessmentId: string;
@@ -119,7 +118,6 @@ function DimensionCard({ card }: { card: DimensionReportCard }) {
 }
 
 export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }: DiagnosticReportProps) {
-  const { setCurrentView } = useAppStore();
   const [report, setReport] = useState<FullDiagnosticReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -255,7 +253,7 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
           </div>
         </div>
         <button
-          onClick={() => setCurrentView('CAPTURE')}
+          onClick={onBack}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition text-sm whitespace-nowrap"
         >
           Capture Operational Data
