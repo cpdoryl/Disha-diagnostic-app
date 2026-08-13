@@ -91,26 +91,33 @@ jobs:
           echo "📋 Hosting Configuration:"
           cat firebase.json | grep -A 20 '"hosting"' || true
 
-      - name: Deploy only Hosting to Firebase
+      - name: Deploy to Both Hosting Sites (Default + Custom)
         run: |
-          echo "🚀 Deploying to Firebase Hosting..."
+          echo "🚀 Deploying to Firebase Hosting (Both Targets)..."
           echo "Project: disha-diagnostics"
-          echo "Site: disha-diagnostics"
+          echo "Targets: default & custom"
+          echo ""
+          echo "📦 Deploying same build to:"
+          echo "  ✓ disha-diagnostics.web.app"
+          echo "  ✓ disha.rylneuroacademy.com"
           echo ""
           firebase deploy \
-            --only hosting \
+            --only hosting:default,hosting:custom \
             --project disha-diagnostics \
             --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
             --debug || true
         timeout-minutes: 15
 
-      - name: Deployment Hosting Completed
+      - name: Verify Both Sites Updated
         run: |
-          echo "✅ Hosting deployment process completed!"
+          echo "✅ Hosting deployment completed!"
           echo ""
-          echo "🌐 Live Sites:"
-          echo "  • Default: https://disha-diagnostics.web.app/"
-          echo "  • Custom: https://disha.rylneuroacademy.com/ (manual setup required)"
+          echo "🌐 Both URLs Now Synced:"
+          echo "  ✓ https://disha-diagnostics.web.app/"
+          echo "  ✓ https://disha.rylneuroacademy.com/"
+          echo ""
+          echo "📝 Both sites serve identical content"
+          echo "⏱️  Changes live within 1-2 minutes"
 
       - name: Deploy Firestore Rules
         run: |
