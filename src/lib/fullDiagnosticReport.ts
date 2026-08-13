@@ -26,6 +26,7 @@ import {
   getSubjectiveBenchmark,
   SUBJECTIVE_BENCHMARK_DATASET_META,
 } from '../data/dimensionBenchmarks';
+import { generateEnhancedDimensionAnalysis } from './enhancedDimensionAnalysis';
 import { OBJECTIVE_BENCHMARK_DATASET_META, getDimensionMetricSchema } from '../data/objectiveMetricsSchema';
 import { BenchmarkDatasetMeta } from '../data/benchmarkMeta';
 import { FOURTEEN_DIMENSIONS } from '../data/14DimensionsQuestions';
@@ -110,31 +111,26 @@ export async function assembleFullDiagnosticReport(
     const gap = gapAnalysis?.totalGaps.find((g) => g.dimensionId === dim.id) ?? null;
     const dimensionRawValues = rawByDimension[dim.id] || {};
 
-    const detailedAnalysis = buildDetailedAnalysis(
-      dim.id,
-      dim.name,
-      index,
-      average,
-      responseCount,
-      subjectiveRow?.byStakeholder || {}
-    );
-    const perceptionRealityAnalysis = buildPerceptionRealityAnalysis(
-      dim.name,
-      index,
-      average,
-      responseCount,
+    // Use enhanced analysis engine for richer, more detailed insights
+    const enhancedAnalysis = index != null ? generateEnhancedDimensionAnalysis({
+      dimensionId: dim.id,
+      dimensionName: dim.name,
+      score: index,
       benchmark,
-      objectiveHasData,
-      gap
-    );
-    const rootCause = buildRootCauseAnalysis(dim.name, objectiveHasData, gap);
-    const actionablePoints = buildActionableRecommendations(
-      dim.id,
-      dim.name,
-      dimensionRawValues,
-      objectiveHasData,
-      gap
-    );
+      responseCount,
+      byStakeholder: subjectiveRow?.byStakeholder || {},
+      gap: gap ? { type: gap.interpretation, magnitude: Math.abs(gap.magnitude) } : null
+    }) : {
+      detailedAnalysis: [`No survey responses have been recorded yet for ${dim.name}, so detailed analysis cannot be generated.`],
+      perceptionRealityAnalysis: [],
+      rootCauseAnalysis: [],
+      actionableRecommendations: []
+    };
+
+    const detailedAnalysis = enhancedAnalysis.detailedAnalysis;
+    const perceptionRealityAnalysis = enhancedAnalysis.perceptionRealityAnalysis;
+    const rootCause = enhancedAnalysis.rootCauseAnalysis;
+    const actionablePoints = enhancedAnalysis.actionableRecommendations;
 
     return {
       dimensionId: dim.id,
