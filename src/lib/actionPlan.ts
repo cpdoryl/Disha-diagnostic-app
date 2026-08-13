@@ -61,7 +61,7 @@ const DIMENSION_OWNER_ROLES: Record<string, string> = {
 export const ROLE_DISCLOSURE =
   'Owner roles below are a generic suggested starting point based on typical school org structure, not a record of actual staff assignments - this app has no data on your real staff names or roles. Replace these with the actual responsible person before distributing this plan.';
 
-function getOwnerRole(dimensionId: string): string {
+export function getOwnerRole(dimensionId: string): string {
   return DIMENSION_OWNER_ROLES[dimensionId] ?? 'School Leadership Team';
 }
 

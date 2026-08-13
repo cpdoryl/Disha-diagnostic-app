@@ -46,6 +46,7 @@ export interface DimensionReportCard {
   detailedAnalysis: string[];
   perceptionRealityAnalysis: string[];
   objective: DimensionObjectiveScore | null;
+  objectiveRawValues: Record<string, RawMetricEntry | undefined>;
   objectiveUpdatedAt: Date | null;
   gap: PerceptionRealityGap | null;
   rootCause: string[];
@@ -149,6 +150,7 @@ export async function assembleFullDiagnosticReport(
       detailedAnalysis,
       perceptionRealityAnalysis,
       objective: objectiveHasData,
+      objectiveRawValues: dimensionRawValues,
       objectiveUpdatedAt: rawObjective[dim.id]?.updatedAt ?? null,
       gap,
       rootCause,

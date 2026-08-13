@@ -1,226 +1,500 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Stage 3: Reverse Outcome Modeling.
+ *
+ * Every figure on this page is either read directly from the school's real
+ * 14D diagnostic report, or computed by re-running the actual objective
+ * scoring engine (`computeDimensionObjectiveScore`) - the same engine that
+ * produces the report's real scores. There is no invented "confidence
+ * tier", no fictional district precedent, and no made-up per-dimension
+ * weighting: the overall Health Index in this app is a plain equal-weighted
+ * average across the 14 dimensions, so the target cascade below is built on
+ * that same plain average, and metric-level moves reuse the exact
+ * required/optional weighting already defined in the live scoring schema.
+ *
+ * Workflow:
+ *  1. Pick an analyzed 14D assessment event to simulate against.
+ *  2. Set one desired overall objective score; it auto-splits into 14
+ *     per-dimension targets proportional to each dimension's own gap to
+ *     100 - then each target is freely editable by hand.
+ *  3. Run the simulation: for every dimension with a target above its
+ *     current score, the engine greedily finds the minimum ordered set of
+ *     real captured metrics that need to move to reach it, re-scoring with
+ *     the real engine at every step.
+ *  4. Each required move is shown with a suggested owner (reusing the same
+ *     generic role mapping already disclosed on the Action Plan) and, if
+ *     the school enters a ₹-per-unit rate for that metric, an estimated
+ *     cost - cost = |required change| × the rate the school entered, never
+ *     an invented conversion factor.
+ */
+import React, { useEffect, useState } from 'react';
 import { useAppStore } from '../store';
-import { Settings2, ArrowRight, Zap, Target, Activity, Search, ShieldCheck } from 'lucide-react';
+import {
+  Target,
+  RefreshCw,
+  AlertCircle,
+  Info,
+  IndianRupee,
+  Zap,
+  CheckCircle2,
+} from 'lucide-react';
+import { AssessmentEventSummary, listAssessmentEventsForSchool } from '../lib/assessmentEventService';
+import { assembleFullDiagnosticReport, FullDiagnosticReportData } from '../lib/fullDiagnosticReport';
+import {
+  computeDimensionTargetCascade,
+  simulateReverseOutcome,
+  DimensionTargetCascade,
+  ReverseSimulationResult,
+} from '../lib/reverseOutcomeEngine';
+import { getOwnerRole } from '../lib/actionPlan';
+import { CostRatesByDimension, loadCostRatesForEvent, saveCostRate } from '../lib/costRateService';
 
 export const SimulateStage = () => {
-  const { simulations, updateSimulationTarget, activeSchool } = useAppStore();
-  const [selectedSimId, setSelectedSimId] = useState(simulations[0]?.id || '');
-  const sim = simulations.find(s => s.id === selectedSimId) || simulations[0];
-  const [targetVal, setTargetVal] = useState(sim?.targetValue || 0);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const { activeSchool } = useAppStore();
+
+  const [events, setEvents] = useState<AssessmentEventSummary[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [eventsError, setEventsError] = useState('');
+  const [selectedEventId, setSelectedEventId] = useState('');
+
+  const [report, setReport] = useState<FullDiagnosticReportData | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [reportError, setReportError] = useState('');
+
+  const [costRates, setCostRates] = useState<CostRatesByDimension>({});
+  const [desiredOverall, setDesiredOverall] = useState<number>(80);
+  const [cascade, setCascade] = useState<DimensionTargetCascade | null>(null);
+  const [dimensionTargets, setDimensionTargets] = useState<Record<string, number>>({});
+  const [results, setResults] = useState<Record<string, ReverseSimulationResult>>({});
+  const [hasRun, setHasRun] = useState(false);
+  const [savingRateKey, setSavingRateKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (sim) {
-      setTargetVal(sim.targetValue);
+    if (!activeSchool) {
+      setIsLoadingEvents(false);
+      return;
     }
-  }, [sim]);
+    setIsLoadingEvents(true);
+    setEventsError('');
+    listAssessmentEventsForSchool(activeSchool.id)
+      .then((list) => {
+        const analyzed = list.filter((e) => e.status === 'analyzed');
+        setEvents(analyzed);
+        if (analyzed.length > 0) setSelectedEventId(analyzed[0].id);
+      })
+      .catch((err) => {
+        console.error('Failed to load assessment events:', err);
+        setEventsError('Could not load assessment events. Please try again.');
+      })
+      .finally(() => setIsLoadingEvents(false));
+  }, [activeSchool]);
+
+  useEffect(() => {
+    const event = events.find((e) => e.id === selectedEventId);
+    if (!event) {
+      setReport(null);
+      return;
+    }
+    setIsLoadingReport(true);
+    setReportError('');
+    setHasRun(false);
+    setResults({});
+    Promise.all([
+      assembleFullDiagnosticReport(event.id, event.schoolName, event.eventName),
+      loadCostRatesForEvent(event.id),
+    ])
+      .then(([reportData, rates]) => {
+        setReport(reportData);
+        setCostRates(rates);
+        const withData = reportData.dimensionCards.filter((c) => c.objective);
+        const currentOverall =
+          withData.length > 0
+            ? Math.round((withData.reduce((sum, c) => sum + c.objective!.objectiveScore, 0) / withData.length) * 10) / 10
+            : 80;
+        setDesiredOverall(Math.min(100, Math.round(currentOverall + 5)));
+      })
+      .catch((err) => {
+        console.error('Failed to compute report for simulation:', err);
+        setReportError('Could not load the diagnostic report for this event. Please try again.');
+      })
+      .finally(() => setIsLoadingReport(false));
+  }, [selectedEventId, events]);
+
+  const handleApplyCascade = () => {
+    if (!report) return;
+    const result = computeDimensionTargetCascade(report.dimensionCards, desiredOverall);
+    setCascade(result);
+    const nextTargets: Record<string, number> = {};
+    for (const entry of result.entries) {
+      if (entry.hasObjectiveData && entry.suggestedTarget != null) {
+        nextTargets[entry.dimensionId] = entry.suggestedTarget;
+      }
+    }
+    setDimensionTargets(nextTargets);
+    setHasRun(false);
+    setResults({});
+  };
+
+  const handleTargetChange = (dimensionId: string, value: number) => {
+    setDimensionTargets((prev) => ({ ...prev, [dimensionId]: value }));
+    setHasRun(false);
+  };
 
   const handleRunSimulation = () => {
-    setIsSimulating(true);
-    setTimeout(() => {
-      setIsSimulating(false);
-    }, 1500);
-  };
-
-  const handleSaveScenario = async () => {
-    setIsSaving(true);
-    if (sim) {
-      await updateSimulationTarget(sim.id, targetVal);
+    if (!report) return;
+    const nextResults: Record<string, ReverseSimulationResult> = {};
+    for (const card of report.dimensionCards) {
+      const target = dimensionTargets[card.dimensionId];
+      if (!card.objective || target == null || target <= card.objective.objectiveScore) continue;
+      const result = simulateReverseOutcome(card.dimensionId, card.objectiveRawValues, target);
+      if (result) nextResults[card.dimensionId] = result;
     }
-    setIsSaving(false);
+    setResults(nextResults);
+    setHasRun(true);
   };
 
-  if (!sim) {
-    return <div>Loading simulations...</div>;
+  const handleRateChange = async (dimensionId: string, metricId: string, rateText: string) => {
+    const rate = Number(rateText);
+    if (rateText.trim() === '' || Number.isNaN(rate) || rate < 0) return;
+    setCostRates((prev) => ({
+      ...prev,
+      [dimensionId]: { ...(prev[dimensionId] || {}), [metricId]: rate },
+    }));
+    const event = events.find((e) => e.id === selectedEventId);
+    if (!event) return;
+    const key = `${dimensionId}:${metricId}`;
+    setSavingRateKey(key);
+    try {
+      await saveCostRate(event.id, dimensionId, metricId, rate);
+    } catch (err) {
+      console.error('Failed to save cost rate:', err);
+    } finally {
+      setSavingRateKey((cur) => (cur === key ? null : cur));
+    }
+  };
+
+  const achievedOverall = (() => {
+    if (!report) return null;
+    const withData = report.dimensionCards.filter((c) => c.objective);
+    if (withData.length === 0) return null;
+    const sum = withData.reduce((acc, c) => {
+      const target = dimensionTargets[c.dimensionId];
+      return acc + (target != null ? target : c.objective!.objectiveScore);
+    }, 0);
+    return Math.round((sum / withData.length) * 10) / 10;
+  })();
+
+  let totalCost = 0;
+  let pricedItems = 0;
+  let totalItems = 0;
+  for (const [dimensionId, result] of Object.entries(results) as [string, ReverseSimulationResult][]) {
+    for (const step of result.steps) {
+      totalItems += 1;
+      const rate = costRates[dimensionId]?.[step.metricId];
+      if (rate != null) {
+        pricedItems += 1;
+        totalCost += Math.abs(step.toValue - step.fromValue) * rate;
+      }
+    }
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Stage 3: Simulate (Model & Strategize)</h2>
-          <p className="text-gray-500 mt-1">Predictive outcome modeling and target feasibility simulation for 14 diagnostic dimensions.</p>
-        </div>
-        {activeSchool && (
-          <div className="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl text-xs text-emerald-950 flex items-center gap-2 shrink-0">
-            <span className="font-extrabold text-emerald-950">{activeSchool.name}</span>
-            <span className="text-emerald-300">|</span>
-            <span className="font-bold">{activeSchool.board}</span>
-            <span className="text-emerald-300">|</span>
-            <span className="text-emerald-700">{activeSchool.city}</span>
-          </div>
-        )}
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight text-gray-900">Stage 3: Simulate (Reverse Outcome Modeling)</h2>
+        <p className="text-gray-500 mt-1">
+          Set a target score, see exactly which real operational metrics need to move to reach it, who owns each move,
+          and - if you enter your own cost rates - what it's likely to cost.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        
-        {/* Left Column: Target Setter */}
-        <div className="xl:col-span-4 space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
-                <Target className="w-5 h-5" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900">Set Outcome Target</h3>
-            </div>
-            
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Priority Metric to Improve</label>
-                <select 
-                  value={selectedSimId}
-                  onChange={(e) => setSelectedSimId(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-3 font-medium"
-                >
-                  {simulations.map(s => (
-                    <option key={s.id} value={s.id}>{s.targetMetric}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Current Baseline</label>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {sim.currentValue}%
-                  </div>
-                </div>
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">Desired Target</label>
-                  <input 
-                    type="number" 
-                    value={targetVal}
-                    onChange={(e) => setTargetVal(Number(e.target.value))}
-                    className="w-full bg-transparent text-2xl font-bold text-blue-900 border-none focus:ring-0 p-0" 
-                  />
-                </div>
-              </div>
-            </div>
+      {!activeSchool && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+          Select a school first to see its assessment events.
+        </div>
+      )}
 
-            <button 
-              onClick={handleRunSimulation}
-              disabled={isSimulating}
-              className="mt-8 w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
-            >
-              {isSimulating ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Running AI Engine...
-                </>
-              ) : (
-                <>
-                  <Settings2 className="w-5 h-5" />
-                  Run Reverse Model
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 shadow-sm">
-            <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <Search className="w-5 h-5 text-blue-600" /> How reverse modeling works
-            </h3>
-            <p className="text-sm text-gray-700 leading-relaxed font-medium">
-              Instead of guessing which initiatives will work, you define the desired outcome first. Our engine analyzes thousands of school data points to calculate the specific, weighted input changes required across your ecosystem to make that outcome statistically probable.
+      {activeSchool && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Assessment event to simulate against</label>
+          {isLoadingEvents ? (
+            <p className="text-sm text-gray-500 flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin" /> Loading events...
             </p>
-          </div>
+          ) : eventsError ? (
+            <p className="text-sm text-red-600">{eventsError}</p>
+          ) : events.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No analyzed 14D assessment events yet for {activeSchool.name}. Run and lock an assessment in the 14D
+              Assessment flow first, then come back here to simulate against it.
+            </p>
+          ) : (
+            <select
+              value={selectedEventId}
+              onChange={(e) => setSelectedEventId(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg p-3 font-medium focus:ring-blue-500 focus:border-blue-500"
+            >
+              {events.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.eventName}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
+      )}
 
-        {/* Right Column: Results */}
-        <div className="xl:col-span-8 space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
-            {isSimulating && (
-              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-2xl">
-                <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4" />
-                <p className="font-bold text-gray-900">Calculating Input Sensitivities...</p>
-                <p className="text-sm text-gray-500 mt-1">Cross-referencing district precedents</p>
-              </div>
-            )}
+      {isLoadingReport && (
+        <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
+          <RefreshCw className="w-5 h-5 animate-spin" /> Loading diagnostic report...
+        </div>
+      )}
+      {reportError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{reportError}</p>
+        </div>
+      )}
 
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">Simulation Results</h3>
-                <p className="text-gray-500 font-medium">Optimal pathway to achieve {targetVal}% {sim.targetMetric}</p>
-              </div>
-              <div className="bg-emerald-50 px-4 py-3 rounded-xl border border-emerald-100 flex items-center gap-3">
-                <ShieldCheck className="w-8 h-8 text-emerald-500" />
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Feasibility Confidence</p>
-                  <p className="font-black text-emerald-600 text-lg">Tier {sim.confidenceTier} (High)</p>
-                </div>
-              </div>
+      {report && (
+        <>
+          {report.objectiveCompleteness.dimensionsWithAnyData === 0 ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+              No dimension in this event has captured objective operational data yet, so there is nothing to
+              reverse-solve from. Capture operational data in the Deploy stage first.
             </div>
-
-            <div className="space-y-6 mb-10">
-              <h4 className="font-bold text-gray-900 text-lg border-b border-gray-100 pb-2">Required Input Changes</h4>
-              
-              <div className="space-y-4">
-                {sim.requiredChanges.map((change, idx) => (
-                  <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-6 p-5 border border-gray-100 rounded-xl bg-gray-50 hover:bg-white hover:shadow-md transition-all">
-                    <div className="flex-1">
-                      <p className="font-bold text-gray-900 text-lg mb-2">{change.factor}</p>
-                      <div className="flex items-center gap-4 bg-white p-3 rounded-lg border border-gray-100 inline-flex">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-bold text-gray-400 line-through decoration-2">{change.current}</span>
-                          <div className="bg-blue-100 text-blue-600 p-1 rounded">
-                            <ArrowRight className="w-4 h-4" />
-                          </div>
-                          <span className="text-lg font-black text-blue-600">{change.required}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="sm:w-48 bg-white p-4 rounded-lg border border-gray-100">
-                      <div className="flex justify-between text-xs mb-2 font-bold text-gray-500 uppercase tracking-wider">
-                        <span>Relative Impact</span>
-                        <span className="text-gray-900">{change.impact}%</span>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-2.5">
-                        <div 
-                          className="bg-blue-600 h-2.5 rounded-full"
-                          style={{ width: `${change.impact}%` }}
-                        />
-                      </div>
-                    </div>
+          ) : (
+            <>
+              {/* Step 1: overall target */}
+              <div className="bg-white rounded-lg border border-gray-200 p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
+                    <Target className="w-5 h-5" />
                   </div>
-                ))}
+                  <h3 className="text-lg font-bold text-gray-900">Step 1 - Set an Overall Target</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                      Current Overall Objective Score
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {cascade?.currentOverallObjective ?? '—'}
+                      <span className="text-sm font-normal text-gray-400">/100</span>
+                    </p>
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">Desired Overall Target</p>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={desiredOverall}
+                      onChange={(e) => setDesiredOverall(Number(e.target.value))}
+                      className="w-full bg-transparent text-2xl font-bold text-blue-900 border-none focus:ring-0 p-0"
+                    />
+                  </div>
+                  <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-1">
+                      Achieved Overall (from targets below)
+                    </p>
+                    <p className="text-2xl font-bold text-emerald-700">
+                      {achievedOverall ?? '—'}
+                      <span className="text-sm font-normal text-emerald-500">/100</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleApplyCascade}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold transition-all flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Apply to All 14 Dimensions
+                </button>
+                {cascade && <p className="text-xs text-gray-500 mt-3 leading-relaxed">{cascade.note}</p>}
               </div>
-            </div>
 
-            <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
-              <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-2 text-lg">
-                <Activity className="w-5 h-5 text-indigo-600" />
-                District Precedent Match
-              </h4>
-              <p className="text-indigo-800 leading-relaxed font-medium">
-                <span className="font-black">Proof of Possibility: </span>
-                {sim.districtPrecedent} achieved a similar trajectory last academic year by successfully implementing these exact input factor changes.
-              </p>
-            </div>
+              {/* Step 2: dimension targets */}
+              {cascade && (
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">Step 2 - Fine-Tune Each Dimension</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Each target below was auto-suggested by the split above. Edit any of them directly - the "Achieved
+                    Overall" figure recalculates from whatever is in these boxes.
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100">
+                          <th className="py-2 pr-3">Dimension</th>
+                          <th className="py-2 pr-3">Current</th>
+                          <th className="py-2 pr-3">Target</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cascade.entries.map((entry) => (
+                          <tr key={entry.dimensionId} className="border-b border-gray-50 last:border-0">
+                            <td className="py-2 pr-3 font-medium text-gray-800">{entry.dimensionName}</td>
+                            <td className="py-2 pr-3 text-gray-600">
+                              {entry.hasObjectiveData ? `${entry.currentScore}/100` : 'No data'}
+                            </td>
+                            <td className="py-2 pr-3">
+                              {entry.hasObjectiveData ? (
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={dimensionTargets[entry.dimensionId] ?? entry.suggestedTarget ?? 0}
+                                  onChange={(e) => handleTargetChange(entry.dimensionId, Number(e.target.value))}
+                                  className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
+                                />
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button
+                    onClick={handleRunSimulation}
+                    className="mt-5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all flex items-center gap-2"
+                  >
+                    <Zap className="w-4 h-4 fill-current" />
+                    Run Simulation
+                  </button>
+                </div>
+              )}
 
-            <div className="mt-8 flex justify-end gap-4 border-t border-gray-100 pt-6">
-              <button 
-                onClick={handleSaveScenario}
-                disabled={isSaving}
-                className="px-6 py-3 rounded-lg font-bold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                {isSaving ? 'Saving...' : 'Save Scenario'}
-              </button>
-              <button 
-                onClick={() => {
-                  const { setCurrentView } = useAppStore.getState();
-                  setCurrentView('MONITORING');
-                }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all flex items-center gap-2 text-lg"
-              >
-                <Zap className="w-5 h-5 fill-current" />
-                Commit to Target & Monitor
-              </button>
-            </div>
-          </div>
-        </div>
+              {/* Step 3 & 4: results */}
+              {hasRun && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-lg border border-gray-200 p-5">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">Step 3 - Required Actions, Owners & Cost</h3>
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      Each row below moves one real captured metric to its documented benchmark, re-scored with the
+                      same engine that computes your report. Owner roles reuse the same generic suggested mapping shown
+                      on the Action Plan - replace with your real staff assignments. Cost only appears once you enter a
+                      ₹-per-unit rate; it is never estimated for you.
+                    </p>
+                  </div>
 
-      </div>
+                  {Object.keys(results).length === 0 && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
+                      No dimension has a target above its current score, so there is nothing to simulate. Raise a
+                      target in Step 2 and run the simulation again.
+                    </div>
+                  )}
+
+                  {report.dimensionCards
+                    .filter((card) => results[card.dimensionId])
+                    .map((card) => {
+                      const result = results[card.dimensionId];
+                      const owner = getOwnerRole(card.dimensionId);
+                      return (
+                        <div key={card.dimensionId} className="bg-white rounded-lg border border-gray-200 p-5">
+                          <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+                            <div>
+                              <h4 className="font-bold text-gray-900">{card.dimensionName}</h4>
+                              <p className="text-xs text-gray-500">
+                                {result.currentScore}/100 → target {result.targetScore}/100 · Owner: {owner}
+                              </p>
+                            </div>
+                            {result.achievable ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                                <CheckCircle2 className="w-3 h-3" /> Achievable
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                <AlertCircle className="w-3 h-3" /> Not fully achievable
+                              </span>
+                            )}
+                          </div>
+
+                          {!result.achievable && (
+                            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded p-2 mb-3">
+                              Even pushing every currently captured metric to its benchmark caps this dimension at{' '}
+                              {result.maxAchievableScore}/100, reaching {result.finalScore}/100 with the moves below.
+                              Closing the rest of the gap needs additional metrics captured or operational change
+                              beyond what's tracked here.
+                            </p>
+                          )}
+
+                          {result.steps.length === 0 ? (
+                            <p className="text-xs text-gray-500">
+                              Target is already at or below the current score - no metric needs to move.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {result.steps.map((step, idx) => {
+                                const rateKey = `${card.dimensionId}:${step.metricId}`;
+                                const currentRate = costRates[card.dimensionId]?.[step.metricId];
+                                const stepCost = currentRate != null ? Math.abs(step.toValue - step.fromValue) * currentRate : null;
+                                return (
+                                  <div
+                                    key={step.metricId}
+                                    className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 border border-gray-100 rounded-lg bg-gray-50"
+                                  >
+                                    <div className="flex-1">
+                                      <p className="font-semibold text-gray-900 text-sm">
+                                        {idx + 1}. {step.label}
+                                      </p>
+                                      <p className="text-xs text-gray-600">
+                                        {step.fromValue}
+                                        {step.unit} → {step.toValue}
+                                        {step.unit} (benchmark) · score {step.scoreBefore} → {step.scoreAfter}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                                        <IndianRupee className="w-3 h-3" />
+                                        <span>per {step.unit}</span>
+                                      </div>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        placeholder="rate"
+                                        defaultValue={currentRate ?? ''}
+                                        onBlur={(e) => handleRateChange(card.dimensionId, step.metricId, e.target.value)}
+                                        className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                                      />
+                                      {savingRateKey === rateKey && <RefreshCw className="w-3 h-3 animate-spin text-gray-400" />}
+                                      <span className="text-sm font-semibold text-gray-800 w-28 text-right">
+                                        {stepCost != null ? `₹${stepCost.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : 'Not priced'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                  {totalItems > 0 && (
+                    <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info className="w-4 h-4 text-indigo-700" />
+                        <p className="font-bold text-indigo-900">Step 4 - Estimated Cost Rollup</p>
+                      </div>
+                      <p className="text-2xl font-bold text-indigo-800">
+                        ₹{totalCost.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                      </p>
+                      <p className="text-xs text-indigo-700 mt-1">
+                        {pricedItems} of {totalItems} required metric moves have a ₹ rate entered
+                        {pricedItems < totalItems
+                          ? ' - this total is a partial estimate until every row above has a rate.'
+                          : ' - every required move is priced.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 };
