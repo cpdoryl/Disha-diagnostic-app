@@ -186,19 +186,25 @@ export function buildDetailedAnalysis(
   }
 
   if (lens) {
-    if (index >= 80) {
-      lines.push(`A score in this range typically indicates ${lens.strength}. Continuing current practices and monitoring to sustain this level is the reasonable path here.`);
-    } else if (index >= 60) {
+    // Same +/-5 point margin used elsewhere in this report to classify a
+    // perception-reality gap as "aligned" - reused here so "clearly above/
+    // below benchmark" means the same thing everywhere in the app.
+    const marginThreshold = 5;
+    if (delta >= marginThreshold) {
       lines.push(
-        `A score in this range typically indicates ${lens.strength}, though there is room to close the gap to benchmark further. ${capitalize(lens.lever)} is a plausible next step suggested by this pattern.`
+        `Because this clearly exceeds benchmark, a score in this range typically indicates ${lens.strength}. This reads as a genuine, evidenced strength rather than a gap to close - the priority is documenting what is working and sharing it as a best practice (with other dimensions, or with peer schools), while monitoring to sustain the current level.`
       );
-    } else if (index >= 40) {
+    } else if (delta > -marginThreshold) {
       lines.push(
-        `A score in this range typically indicates ${lens.risk}. ${capitalize(lens.lever)} is the lever this pattern most directly points to for closing the gap.`
+        index >= 60
+          ? `This sits within the benchmark's normal range (neither clearly above nor below), and typically indicates ${lens.strength}. Performance here is on track with the target set for this dimension; ${lens.lever} would still be worth pursuing to move clearly ahead of benchmark rather than just meeting it.`
+          : `This sits close to benchmark, but the benchmark itself is only a reference target, not a ceiling - a score in this range typically indicates ${lens.risk}. ${capitalize(lens.lever)} would raise both the absolute score and the margin above benchmark.`
       );
     } else {
       lines.push(
-        `A score in this range typically indicates ${lens.risk}, and scores this low usually warrant urgent attention. ${capitalize(lens.lever)} is the priority this pattern points to.`
+        index < 40
+          ? `Because this sits clearly below benchmark and the absolute score is low, this usually warrants urgent attention - a score in this range typically indicates ${lens.risk}. ${capitalize(lens.lever)} is the priority this pattern points to.`
+          : `Because this sits clearly below benchmark, a score in this range typically indicates ${lens.risk}. ${capitalize(lens.lever)} is the lever this pattern most directly points to for closing the gap.`
       );
     }
   }
