@@ -1,5 +1,13 @@
 {
   "projects": {
     "default": "disha-diagnostics"
+  },
+  "targets": {
+    "disha-diagnostics": {
+      "hosting": {
+        "default": ["disha-diagnostics-web"],
+        "custom": ["disha-ryl-custom"]
+      }
+    }
   }
 }
