@@ -122,6 +122,53 @@ export interface DataConfidenceSummary {
   description: string;
 }
 
+export interface DataConfidenceTierInfo {
+  tier: 'tier1' | 'tier2' | 'tier3';
+  label: string;
+  trust: string;
+  description: string;
+  example: string;
+  available: boolean;
+}
+
+/**
+ * Shared explainer content for the three data-confidence tiers, used by
+ * both the on-screen report and the PDF's methodology appendix so the two
+ * never drift into describing the tiers differently.
+ */
+export const DATA_CONFIDENCE_TIER_INFO: DataConfidenceTierInfo[] = [
+  {
+    tier: 'tier1',
+    label: 'System-Synced',
+    trust: 'Highest trust - not yet available',
+    description:
+      'Reserved for a future direct connection to a school ERP/management system, where a metric would sync automatically rather than being typed or uploaded by a person. No dimension can reach this tier on the platform today.',
+    example: '(Not yet available on this platform)',
+    available: false,
+  },
+  {
+    tier: 'tier2',
+    label: 'Uploaded',
+    trust: 'Medium trust',
+    description:
+      'The value came from an Excel/CSV file the admin uploaded and reviewed before saving - a document exists behind the number, and a person confirmed it before it was recorded.',
+    example: 'Board exam pass rate read from an uploaded results sheet.',
+    available: true,
+  },
+  {
+    tier: 'tier3',
+    label: 'Manual',
+    trust: 'Lower trust, unverified',
+    description:
+      'The value was typed directly into a form field with no supporting document attached. It may well be accurate, but there is nothing on record to verify it against.',
+    example: 'Teacher attrition rate estimated and typed in from memory.',
+    available: true,
+  },
+];
+
+export const DATA_CONFIDENCE_USAGE_NOTE =
+  "A dimension's overall confidence label (High/Medium/Lower/Mixed) reflects the mix of tiers across that dimension's captured metrics - Mixed means some metrics were uploaded and others typed manually. Treat Lower-confidence numbers as directional rather than exact, verify them before high-stakes decisions, and upload the source file for a metric where possible to raise it from Lower to Medium confidence.";
+
 /**
  * Summarizes a dimension's data-confidence tier distribution into a single
  * label, for display (report UI, PDF, CSV export) - centralized here so all

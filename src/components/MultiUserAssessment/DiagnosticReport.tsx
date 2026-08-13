@@ -43,7 +43,7 @@ import { assembleFullDiagnosticReport, FullDiagnosticReportData, DimensionReport
 import { generateDiagnosticReportPdf, ChartImage } from '../../lib/diagnosticReportPdf';
 import { downloadDiagnosticReportCsv } from '../../lib/diagnosticReportCsv';
 import { downloadDiagnosticReportExcel } from '../../lib/diagnosticReportExcel';
-import { summarizeDataConfidence } from '../../lib/objectiveScoreEngine';
+import { summarizeDataConfidence, DATA_CONFIDENCE_TIER_INFO, DATA_CONFIDENCE_USAGE_NOTE } from '../../lib/objectiveScoreEngine';
 import { QUADRANT_DEFINITIONS, QUADRANT_DISPLAY_ORDER, QUADRANT_THRESHOLD, QuadrantId } from '../../lib/quadrantAnalysis';
 import { TIMEFRAME_LABELS, ActionTimeframe } from '../../lib/actionPlan';
 
@@ -349,6 +349,48 @@ function EmailShareModal({ report, onClose }: { report: FullDiagnosticReportData
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Collapsible explainer for the tier1/tier2/tier3 data-confidence badges shown throughout the report - collapsed by default so it doesn't clutter the page for readers who already know what the badges mean. */
+function DataConfidenceExplainer() {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
+      <button onClick={() => setIsExpanded((v) => !v)} className="w-full flex items-center justify-between text-left">
+        <span className="flex items-center gap-3">
+          <Info className="w-5 h-5 text-gray-500 flex-shrink-0" />
+          <span className="font-semibold text-gray-800 text-sm">What does "Data Confidence" mean?</span>
+        </span>
+        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isExpanded && (
+        <div className="mt-4 space-y-3 text-sm pl-8">
+          <p className="text-gray-600">
+            Every objective metric in this report is tagged by how it was captured, so a reader can tell how much to
+            trust each number - not all data is equally verified.
+          </p>
+          <div className="space-y-2">
+            {DATA_CONFIDENCE_TIER_INFO.map((tier) => (
+              <div
+                key={tier.tier}
+                className={`rounded-lg border p-3 ${tier.available ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-100/60 opacity-75'}`}
+              >
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">{tier.label}</span>
+                  <span className="text-xs text-gray-400">{tier.trust}</span>
+                </div>
+                <p className="text-xs text-gray-600 leading-relaxed">{tier.description}</p>
+                <p className="text-xs text-gray-400 mt-1 italic">e.g. {tier.example}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-gray-500 text-xs leading-relaxed">{DATA_CONFIDENCE_USAGE_NOTE}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -660,6 +702,9 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
           </div>
         </div>
       </div>
+
+      {/* Data Confidence explainer */}
+      <DataConfidenceExplainer />
 
       {/* Objective Data Completeness callout */}
       <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-5 flex items-start justify-between gap-4 flex-wrap">

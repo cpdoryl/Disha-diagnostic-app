@@ -12,7 +12,7 @@ import { jsPDF } from 'jspdf';
 import { getHealthStatus } from './dimensionScoring';
 import { PerceptionRealityGap } from './gapAnalyzer';
 import { FullDiagnosticReportData, DimensionReportCard } from './fullDiagnosticReport';
-import { summarizeDataConfidence } from './objectiveScoreEngine';
+import { summarizeDataConfidence, DATA_CONFIDENCE_TIER_INFO, DATA_CONFIDENCE_USAGE_NOTE } from './objectiveScoreEngine';
 import { QUADRANT_DEFINITIONS, QUADRANT_DISPLAY_ORDER, QuadrantId } from './quadrantAnalysis';
 import { TIMEFRAME_LABELS, ActionTimeframe } from './actionPlan';
 
@@ -781,10 +781,6 @@ function drawMethodologyAppendix(doc: jsPDF, y: number): number {
       label: '30-60-90 Day Action Plan',
       text: 'Each dimension is bucketed by its subjective status label and quadrant: At Risk status or the Crisis quadrant -> 30 days; Needs Attention status or the Blind Spot quadrant -> 60 days; no data yet, the Hidden Potential quadrant, or an already-Strong/Excellence dimension -> 90 days. Suggested owner roles are a generic default (see the Responsibility Matrix note) - not a record of real staff assignments.',
     },
-    {
-      label: 'Data Confidence Tiers',
-      text: 'Each captured metric is tagged by how it entered the system: uploaded from a file (Uploaded/Medium confidence) or typed in manually (Manual/Lower confidence, unverified). A dimension shows Mixed confidence when its metrics come from more than one source. System-Synced/High confidence is reserved for a future direct data-system integration, not currently available.',
-    },
   ];
 
   for (const term of terms) {
@@ -795,6 +791,29 @@ function drawMethodologyAppendix(doc: jsPDF, y: number): number {
       text: COLORS.grayText,
     });
   }
+
+  y = ensureSpace(doc, y, 10);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  setText(doc, COLORS.grayText);
+  doc.text('Data Confidence Tiers', MARGIN_X, y);
+  doc.setFont('helvetica', 'normal');
+  y += 6;
+
+  for (const tier of DATA_CONFIDENCE_TIER_INFO) {
+    y = drawColoredBlock(doc, `${tier.label} (${tier.trust})`, [tier.description, `Example: ${tier.example}`], y, {
+      fill: COLORS.grayFill,
+      border: COLORS.grayBorder,
+      label: COLORS.grayText,
+      text: COLORS.grayText,
+    });
+  }
+  y = drawColoredBlock(doc, 'How to use these tiers', [DATA_CONFIDENCE_USAGE_NOTE], y, {
+    fill: COLORS.grayFill,
+    border: COLORS.grayBorder,
+    label: COLORS.grayText,
+    text: COLORS.grayText,
+  });
 
   return y;
 }
