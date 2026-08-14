@@ -3,7 +3,6 @@ import { ViewState, School, ChallengeDomain, GapPrediction, SimulationModel, Dim
 
 import { collection, getDocs, doc, updateDoc, addDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from './lib/firebase';
-import { seedDatabase } from './lib/seed';
 import { saveSchoolToFirestore, deleteSchoolFromFirestore, fetchSchoolsFromFirestore, findSchoolByName } from './lib/schoolService';
 
 interface AppState {
@@ -266,8 +265,6 @@ export const useAppStore = create<AppState>((set) => ({
   fetchData: async () => {
     set({ isLoadingData: true });
     try {
-      await seedDatabase(); // Make sure data exists
-      
       const [domainsSnap, dimensionsSnap, gapsSnap, simSnap, studentsSnap, staffSnap, attendanceSnap, communicationsSnap, fetchedSchools] = await Promise.all([
         getDocs(collection(db, 'domains')),
         getDocs(collection(db, 'dimensions')),
