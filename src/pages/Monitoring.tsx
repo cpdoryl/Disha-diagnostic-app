@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../store';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Bell, Calendar, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { AssessmentTrendViewer } from '../components/AssessmentTrendViewer';
-import { AssessmentHistory, getAssessmentHistorySummary } from '../lib/assessmentVersioning';
+import { AssessmentHistory } from '../lib/assessmentVersioning';
+import { loadSchoolAssessmentHistory } from '../lib/trendAnalysisService';
 
 const generateMockTrend = (base: number, volatility: number) => {
   return Array.from({ length: 30 }).map((_, i) => ({
@@ -16,23 +17,30 @@ const generateMockTrend = (base: number, volatility: number) => {
 export const Monitoring = () => {
   const { domains, activeSchool } = useAppStore();
   const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
+  const [assessmentHistory, setAssessmentHistory] = useState<AssessmentHistory | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
-  // Mock assessment history for demo
-  const mockAssessmentHistory: AssessmentHistory = {
-    schoolId: activeSchool?.id || 'demo-school',
-    schoolName: activeSchool?.name || 'Demo School',
-    totalAssessments: 3,
-    versions: [],
-    trends: [],
-    overallProgress: {
-      startDate: '2026-06-08',
-      endDate: '2026-08-08',
-      averageScoreImprovement: 8.5,
-      dimensionsImproving: 10,
-      dimensionsDeclining: 2,
-      dimensionsStable: 2
-    }
-  };
+  useEffect(() => {
+    if (activeTab !== 'history' || !activeSchool) return;
+    let cancelled = false;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    loadSchoolAssessmentHistory(activeSchool.id, activeSchool.name)
+      .then((history) => {
+        if (!cancelled) setAssessmentHistory(history);
+      })
+      .catch((err) => {
+        console.error('Failed to load assessment trend history:', err);
+        if (!cancelled) setHistoryError('Could not load assessment history. Please try again.');
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, activeSchool?.id]);
 
   const getTrendIcon = (trend: string) => {
     switch(trend) {
@@ -196,21 +204,44 @@ export const Monitoring = () => {
 
       {/* Assessment History Tab */}
       {activeTab === 'history' && (
-        <AssessmentTrendViewer
-          history={mockAssessmentHistory}
-          onSelectVersion={(version) => {
-            console.log('Selected version:', version);
-          }}
-          onExport={(history) => {
-            const json = JSON.stringify(history, null, 2);
-            const blob = new Blob([json], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `assessment-history-${activeSchool?.id}-${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-          }}
-        />
+        <>
+          {historyLoading && (
+            <div className="bg-white p-12 rounded-2xl border border-gray-100 text-center text-gray-500 font-medium">
+              Loading assessment history...
+            </div>
+          )}
+          {!historyLoading && historyError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl font-medium">
+              {historyError}
+            </div>
+          )}
+          {!historyLoading && !historyError && assessmentHistory && (
+            <>
+              {assessmentHistory.totalAssessments < 2 && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-xl text-sm font-medium">
+                  {assessmentHistory.totalAssessments === 0
+                    ? 'No locked assessment events yet. Trends appear once at least two 14D assessment events have been locked for this school.'
+                    : 'Only one locked assessment event so far. Lock a second event to see real trend comparisons.'}
+                </div>
+              )}
+              <AssessmentTrendViewer
+                history={assessmentHistory}
+                onSelectVersion={(version) => {
+                  console.log('Selected version:', version);
+                }}
+                onExport={(history) => {
+                  const json = JSON.stringify(history, null, 2);
+                  const blob = new Blob([json], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `assessment-history-${activeSchool?.id}-${new Date().toISOString().split('T')[0]}.json`;
+                  a.click();
+                }}
+              />
+            </>
+          )}
+        </>
       )}
     </div>
   );
