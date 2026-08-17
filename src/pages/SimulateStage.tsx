@@ -36,6 +36,9 @@ import {
   IndianRupee,
   Zap,
   CheckCircle2,
+  Save,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { AssessmentEventSummary, listAssessmentEventsForSchool } from '../lib/assessmentEventService';
 import { assembleFullDiagnosticReport, FullDiagnosticReportData } from '../lib/fullDiagnosticReport';
@@ -47,6 +50,9 @@ import {
 } from '../lib/reverseOutcomeEngine';
 import { getOwnerRole } from '../lib/actionPlan';
 import { CostRatesByDimension, loadCostRatesForEvent, saveCostRate } from '../lib/costRateService';
+import { loadSimulationScenario, saveSimulationScenario } from '../lib/simulationScenarioService';
+import { generateSimulationPlanPdf } from '../lib/simulationPlanPdf';
+import { downloadSimulationPlanCsv } from '../lib/simulationPlanCsv';
 
 export const SimulateStage = () => {
   const { activeSchool } = useAppStore();
@@ -67,6 +73,9 @@ export const SimulateStage = () => {
   const [results, setResults] = useState<Record<string, ReverseSimulationResult>>({});
   const [hasRun, setHasRun] = useState(false);
   const [savingRateKey, setSavingRateKey] = useState<string | null>(null);
+  const [isSavingScenario, setIsSavingScenario] = useState(false);
+  const [scenarioSavedAt, setScenarioSavedAt] = useState<Date | null>(null);
+  const [restoredScenario, setRestoredScenario] = useState(false);
 
   useEffect(() => {
     if (!activeSchool) {
@@ -98,19 +107,36 @@ export const SimulateStage = () => {
     setReportError('');
     setHasRun(false);
     setResults({});
+    setCascade(null);
+    setRestoredScenario(false);
+    setScenarioSavedAt(null);
     Promise.all([
       assembleFullDiagnosticReport(event.id, event.schoolName, event.eventName),
       loadCostRatesForEvent(event.id),
+      loadSimulationScenario(event.id),
     ])
-      .then(([reportData, rates]) => {
+      .then(([reportData, rates, scenario]) => {
         setReport(reportData);
         setCostRates(rates);
+
+        if (scenario) {
+          setDesiredOverall(scenario.desiredOverall);
+          setDimensionTargets(scenario.dimensionTargets);
+          setCascade(computeDimensionTargetCascade(reportData.dimensionCards, scenario.desiredOverall));
+          setResults(runSimulation(reportData, scenario.dimensionTargets));
+          setHasRun(true);
+          setRestoredScenario(true);
+          setScenarioSavedAt(scenario.updatedAt);
+          return;
+        }
+
         const withData = reportData.dimensionCards.filter((c) => c.objective);
         const currentOverall =
           withData.length > 0
             ? Math.round((withData.reduce((sum, c) => sum + c.objective!.objectiveScore, 0) / withData.length) * 10) / 10
             : 80;
         setDesiredOverall(Math.min(100, Math.round(currentOverall + 5)));
+        setDimensionTargets({});
       })
       .catch((err) => {
         console.error('Failed to compute report for simulation:', err);
@@ -118,6 +144,20 @@ export const SimulateStage = () => {
       })
       .finally(() => setIsLoadingReport(false));
   }, [selectedEventId, events]);
+
+  function runSimulation(
+    reportData: FullDiagnosticReportData,
+    targets: Record<string, number>
+  ): Record<string, ReverseSimulationResult> {
+    const nextResults: Record<string, ReverseSimulationResult> = {};
+    for (const card of reportData.dimensionCards) {
+      const target = targets[card.dimensionId];
+      if (!card.objective || target == null || target <= card.objective.objectiveScore) continue;
+      const result = simulateReverseOutcome(card.dimensionId, card.objectiveRawValues, target);
+      if (result) nextResults[card.dimensionId] = result;
+    }
+    return nextResults;
+  }
 
   const handleApplyCascade = () => {
     if (!report) return;
@@ -132,24 +172,46 @@ export const SimulateStage = () => {
     setDimensionTargets(nextTargets);
     setHasRun(false);
     setResults({});
+    setRestoredScenario(false);
   };
 
   const handleTargetChange = (dimensionId: string, value: number) => {
     setDimensionTargets((prev) => ({ ...prev, [dimensionId]: value }));
     setHasRun(false);
+    setRestoredScenario(false);
   };
 
   const handleRunSimulation = () => {
     if (!report) return;
-    const nextResults: Record<string, ReverseSimulationResult> = {};
-    for (const card of report.dimensionCards) {
-      const target = dimensionTargets[card.dimensionId];
-      if (!card.objective || target == null || target <= card.objective.objectiveScore) continue;
-      const result = simulateReverseOutcome(card.dimensionId, card.objectiveRawValues, target);
-      if (result) nextResults[card.dimensionId] = result;
-    }
-    setResults(nextResults);
+    setResults(runSimulation(report, dimensionTargets));
     setHasRun(true);
+  };
+
+  const handleDownloadPdf = () => {
+    if (!report) return;
+    const doc = generateSimulationPlanPdf(report, results, costRates, desiredOverall, cascade?.currentOverallObjective ?? null, achievedOverall);
+    const safeSchool = report.schoolName.replace(/[^a-z0-9]+/gi, '-');
+    const safeEvent = report.eventName.replace(/[^a-z0-9]+/gi, '-');
+    doc.save(`14D-Simulation-Plan-${safeSchool}-${safeEvent}.pdf`);
+  };
+
+  const handleDownloadCsv = () => {
+    if (!report) return;
+    downloadSimulationPlanCsv(report, results, costRates);
+  };
+
+  const handleSaveScenario = async () => {
+    const event = events.find((e) => e.id === selectedEventId);
+    if (!event) return;
+    setIsSavingScenario(true);
+    try {
+      await saveSimulationScenario(event.id, desiredOverall, dimensionTargets);
+      setScenarioSavedAt(new Date());
+    } catch (err) {
+      console.error('Failed to save scenario:', err);
+    } finally {
+      setIsSavingScenario(false);
+    }
   };
 
   const handleRateChange = async (dimensionId: string, metricId: string, rateText: string) => {
@@ -257,6 +319,14 @@ export const SimulateStage = () => {
 
       {report && (
         <>
+          {restoredScenario && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+              Restored the scenario you last saved for this event
+              {scenarioSavedAt ? ` (${scenarioSavedAt.toLocaleString()})` : ''}. Edit anything below and save again to
+              update it.
+            </div>
+          )}
+
           {report.objectiveCompleteness.dimensionsWithAnyData === 0 ? (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
               No dimension in this event has captured objective operational data yet, so there is nothing to
@@ -356,13 +426,26 @@ export const SimulateStage = () => {
                       </tbody>
                     </table>
                   </div>
-                  <button
-                    onClick={handleRunSimulation}
-                    className="mt-5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all flex items-center gap-2"
-                  >
-                    <Zap className="w-4 h-4 fill-current" />
-                    Run Simulation
-                  </button>
+                  <div className="mt-5 flex items-center gap-3 flex-wrap">
+                    <button
+                      onClick={handleRunSimulation}
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all flex items-center gap-2"
+                    >
+                      <Zap className="w-4 h-4 fill-current" />
+                      Run Simulation
+                    </button>
+                    <button
+                      onClick={handleSaveScenario}
+                      disabled={isSavingScenario}
+                      className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50 transition-all flex items-center gap-2 disabled:opacity-60"
+                    >
+                      {isSavingScenario ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      {isSavingScenario ? 'Saving...' : 'Save Scenario'}
+                    </button>
+                    {scenarioSavedAt && !isSavingScenario && (
+                      <span className="text-xs text-gray-400">Saved {scenarioSavedAt.toLocaleString()}</span>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -370,13 +453,35 @@ export const SimulateStage = () => {
               {hasRun && (
                 <div className="space-y-4">
                   <div className="bg-white rounded-lg border border-gray-200 p-5">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">Step 3 - Required Actions, Owners & Cost</h3>
-                    <p className="text-sm text-gray-500 leading-relaxed">
-                      Each row below moves one real captured metric to its documented benchmark, re-scored with the
-                      same engine that computes your report. Owner roles reuse the same generic suggested mapping shown
-                      on the Action Plan - replace with your real staff assignments. Cost only appears once you enter a
-                      ₹-per-unit rate; it is never estimated for you.
-                    </p>
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">Step 3 - Required Actions, Owners & Cost</h3>
+                        <p className="text-sm text-gray-500 leading-relaxed max-w-2xl">
+                          Each row below moves one real captured metric to its documented benchmark, re-scored with the
+                          same engine that computes your report. Owner roles reuse the same generic suggested mapping
+                          shown on the Action Plan - replace with your real staff assignments. Cost only appears once
+                          you enter a ₹-per-unit rate; it is never estimated for you.
+                        </p>
+                      </div>
+                      {Object.keys(results).length > 0 && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={handleDownloadPdf}
+                            className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition flex items-center gap-2"
+                          >
+                            <Download className="w-4 h-4" />
+                            PDF
+                          </button>
+                          <button
+                            onClick={handleDownloadCsv}
+                            className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition flex items-center gap-2"
+                          >
+                            <FileSpreadsheet className="w-4 h-4" />
+                            CSV
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {Object.keys(results).length === 0 && (

@@ -185,6 +185,9 @@ export function calculateTrends(versions: AssessmentVersion[]): AssessmentTrend[
 
   // Calculate trend for each dimension
   allDimensions.forEach(dimensionId => {
+    const dimensionName =
+      sortedVersions.find(v => v.scores[dimensionId]?.dimensionName)?.scores[dimensionId]?.dimensionName ||
+      dimensionId;
     const versionScores = sortedVersions
       .map((v, idx) => ({
         version: v.versionNumber,
@@ -216,7 +219,7 @@ export function calculateTrends(versions: AssessmentVersion[]): AssessmentTrend[
 
       trends.push({
         dimensionId,
-        dimensionName: versionScores[0]?.benchmark > 0 ? dimensionId : 'Unknown',
+        dimensionName,
         versions: versionScores,
         overallTrend,
         scoreImprovement: improvement,
