@@ -41,6 +41,7 @@ import {
 import { getHealthStatus } from '../../lib/dimensionScoring';
 import { assembleFullDiagnosticReport, FullDiagnosticReportData, DimensionReportCard } from '../../lib/fullDiagnosticReport';
 import { generateDiagnosticReportPdf, ChartImage } from '../../lib/diagnosticReportPdf';
+import { ComprehensiveDiagnosticDashboard } from './ComprehensiveDiagnosticDashboard';
 import { downloadDiagnosticReportCsv } from '../../lib/diagnosticReportCsv';
 import { downloadDiagnosticReportExcel } from '../../lib/diagnosticReportExcel';
 import { summarizeDataConfidence, DATA_CONFIDENCE_TIER_INFO, DATA_CONFIDENCE_USAGE_NOTE } from '../../lib/objectiveScoreEngine';
@@ -574,6 +575,9 @@ export function DiagnosticReport({ assessmentId, eventName, schoolName, onBack }
       </div>
 
       {isEmailModalOpen && <EmailShareModal report={report} onClose={() => setIsEmailModalOpen(false)} />}
+
+      {/* COMPREHENSIVE DASHBOARD - All 14 Dimensions with Full Analysis */}
+      {report && <ComprehensiveDiagnosticDashboard report={report} />}
 
       <div className="flex items-center justify-between flex-wrap gap-3">
         <button onClick={onBack} className="text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-1">
