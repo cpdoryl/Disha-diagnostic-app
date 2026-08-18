@@ -265,7 +265,11 @@ export const useAppStore = create<AppState>((set) => ({
   fetchData: async () => {
     set({ isLoadingData: true });
     try {
-      const [domainsSnap, dimensionsSnap, gapsSnap, simSnap, studentsSnap, staffSnap, attendanceSnap, communicationsSnap, fetchedSchools] = await Promise.all([
+      // Promise.allSettled (not Promise.all): several of these collections are
+      // denied by the Firestore rules for this account, and a single rejection
+      // must not take down the schools fetch that the rest of the app depends
+      // on to restore activeSchool on a fresh browser/device.
+      const [domainsResult, dimensionsResult, gapsResult, simResult, studentsResult, staffResult, attendanceResult, communicationsResult, schoolsResult] = await Promise.allSettled([
         getDocs(collection(db, 'domains')),
         getDocs(collection(db, 'dimensions')),
         getDocs(collection(db, 'gaps')),
@@ -276,6 +280,20 @@ export const useAppStore = create<AppState>((set) => ({
         getDocs(collection(db, 'communications')),
         fetchSchoolsFromFirestore(),
       ]);
+
+      const domainsSnap = domainsResult.status === 'fulfilled' ? domainsResult.value : null;
+      const dimensionsSnap = dimensionsResult.status === 'fulfilled' ? dimensionsResult.value : null;
+      const gapsSnap = gapsResult.status === 'fulfilled' ? gapsResult.value : null;
+      const simSnap = simResult.status === 'fulfilled' ? simResult.value : null;
+      const studentsSnap = studentsResult.status === 'fulfilled' ? studentsResult.value : null;
+      const staffSnap = staffResult.status === 'fulfilled' ? staffResult.value : null;
+      const attendanceSnap = attendanceResult.status === 'fulfilled' ? attendanceResult.value : null;
+      const communicationsSnap = communicationsResult.status === 'fulfilled' ? communicationsResult.value : null;
+      const fetchedSchools = schoolsResult.status === 'fulfilled' ? schoolsResult.value : [];
+
+      if (schoolsResult.status === 'rejected') {
+        console.error('Failed to fetch schools:', schoolsResult.reason);
+      }
 
       // Fall back to the account's remembered active school (Firestore) when this
       // device/browser has no local record of it — e.g. a fresh login elsewhere.
@@ -315,14 +333,14 @@ export const useAppStore = create<AppState>((set) => ({
         localStorage.setItem('disha_registered_schools', JSON.stringify(mergedSchools));
 
         return {
-          domains: domainsSnap.docs.length > 0 ? domainsSnap.docs.map(d => d.data() as ChallengeDomain) : MOCK_DOMAINS,
-          dimensions: dimensionsSnap.docs.length > 0 ? dimensionsSnap.docs.map(d => d.data() as Dimension) : MOCK_DIMENSIONS,
-          gaps: gapsSnap.docs.length > 0 ? gapsSnap.docs.map(d => d.data() as GapPrediction) : MOCK_GAPS,
-          simulations: simSnap.docs.length > 0 ? simSnap.docs.map(d => d.data() as SimulationModel) : MOCK_SIMULATIONS,
-          students: studentsSnap.docs.length > 0 ? studentsSnap.docs.map(d => d.data() as Student) : MOCK_STUDENTS,
-          staff: staffSnap.docs.length > 0 ? staffSnap.docs.map(d => d.data() as StaffMember) : MOCK_STAFF,
-          attendance: attendanceSnap.docs.length > 0 ? attendanceSnap.docs.map(d => d.data() as AttendanceRecord) : MOCK_ATTENDANCE,
-          communications: communicationsSnap.docs.length > 0 ? communicationsSnap.docs.map(d => d.data() as CommunicationMessage) : MOCK_COMMUNICATIONS,
+          domains: domainsSnap && domainsSnap.docs.length > 0 ? domainsSnap.docs.map(d => d.data() as ChallengeDomain) : MOCK_DOMAINS,
+          dimensions: dimensionsSnap && dimensionsSnap.docs.length > 0 ? dimensionsSnap.docs.map(d => d.data() as Dimension) : MOCK_DIMENSIONS,
+          gaps: gapsSnap && gapsSnap.docs.length > 0 ? gapsSnap.docs.map(d => d.data() as GapPrediction) : MOCK_GAPS,
+          simulations: simSnap && simSnap.docs.length > 0 ? simSnap.docs.map(d => d.data() as SimulationModel) : MOCK_SIMULATIONS,
+          students: studentsSnap && studentsSnap.docs.length > 0 ? studentsSnap.docs.map(d => d.data() as Student) : MOCK_STUDENTS,
+          staff: staffSnap && staffSnap.docs.length > 0 ? staffSnap.docs.map(d => d.data() as StaffMember) : MOCK_STAFF,
+          attendance: attendanceSnap && attendanceSnap.docs.length > 0 ? attendanceSnap.docs.map(d => d.data() as AttendanceRecord) : MOCK_ATTENDANCE,
+          communications: communicationsSnap && communicationsSnap.docs.length > 0 ? communicationsSnap.docs.map(d => d.data() as CommunicationMessage) : MOCK_COMMUNICATIONS,
           schools: mergedSchools,
           activeSchool: currentActive,
           isLoadingData: false

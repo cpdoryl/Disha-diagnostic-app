@@ -92,5 +92,10 @@
   "firestore": {
     "database": "ai-studio-dishadiagnostice-63fe1b2b-7f23-4689-aa1a-cd41267d5918",
     "rules": "firestore-security-rules.txt"
+  },
+  "emulators": {
+    "auth": { "port": 9099 },
+    "firestore": { "port": 8080 },
+    "ui": { "enabled": true, "port": 4000 }
   }
 }
