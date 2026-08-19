@@ -4,6 +4,9 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { isAssessmentEventOpen } from '../lib/assessmentEventService';
 import { ChevronLeft, ChevronRight, Send, Check, AlertCircle } from 'lucide-react';
+import { saveAssessmentResponse, getAssessmentStats } from '../lib/assessmentService';
+import { logAuditEvent } from '../lib/auditService';
+import { useAppStore } from '../store';
 
 type SurveyStep = 'welcome' | 'info' | 'survey' | 'summary' | 'confirmation' | 'error';
 type StakeholderType = 'teacher' | 'parent' | 'student' | 'admin' | 'other';
@@ -32,6 +35,9 @@ interface SurveyResponse {
 }
 
 export function StakeholderSurvey() {
+  const { activeSchool } = useAppStore();
+  const schoolId = activeSchool?.id || 'default-school';
+
   // Parse URL params manually: /survey/:assessmentId/:stakeholderType
   const pathname = window.location.pathname;
   const match = pathname.match(/^\/survey\/([^/]+)\/([^/]+)$/);
@@ -255,59 +261,56 @@ export function StakeholderSurvey() {
         throw new Error('This assessment window has closed and is no longer accepting responses.');
       }
 
-      // Prepare response data - include all respondent identification fields
-      const submissionData: any = {
-        assessmentId: assessmentId.trim(),
-        stakeholderType: stakeholderType as StakeholderType,
-        respondentName: respondentInfo.name.trim() || 'Anonymous',
-        respondentDepartment: respondentInfo.department.trim() || 'Not specified',
-        responses,
-        submittedAt: serverTimestamp(),
-        userAgent: navigator.userAgent,
-        submittedTimestamp: new Date().toISOString(),
-      };
-
-      // Add identification fields based on stakeholder type
-      const typeStr = stakeholderType as StakeholderType;
-      if (typeStr === 'teacher') {
-        submissionData.respondentEmail = respondentInfo.email;
-        submissionData.respondentPhone = respondentInfo.phone;
-        submissionData.respondentSubject = respondentInfo.subject;
-        submissionData.respondentClass = respondentInfo.class;
-        submissionData.respondentTeacherId = respondentInfo.teacherId;
-      } else if (typeStr === 'parent') {
-        submissionData.respondentEmail = respondentInfo.email;
-        submissionData.respondentPhone = respondentInfo.phone;
-        submissionData.respondentStudentName = respondentInfo.studentName;
-        submissionData.respondentStudentClass = respondentInfo.class;
-        submissionData.respondentStudentSection = respondentInfo.section;
-      } else if (typeStr === 'admin') {
-        submissionData.respondentEmail = respondentInfo.email;
-        submissionData.respondentPhone = respondentInfo.phone;
-        submissionData.respondentAdminId = respondentInfo.adminId;
-      }
-
       // Validate we have responses
       if (!responses || Object.keys(responses).length === 0) {
         throw new Error('No survey responses recorded');
       }
 
-      // Log submission for debugging
-      console.log('Submitting survey with data:', {
-        assessmentId: submissionData.assessmentId,
-        stakeholderType: submissionData.stakeholderType,
-        respondentName: submissionData.respondentName,
-        responseCount: Object.keys(submissionData.responses).length,
+      // Calculate dimension averages from nested response structure
+      const dimensionAverages: Record<string, number> = {};
+      Object.entries(responses).forEach(([dimensionId, questionResponses]) => {
+        const scores = Object.values(questionResponses as Record<string, number>);
+        if (scores.length > 0) {
+          const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+          dimensionAverages[dimensionId] = Math.round(average * 100) / 100; // Round to 2 decimals
+        }
       });
 
-      // Save to Firebase
-      const docRef = await addDoc(
-        collection(db, 'assessments', assessmentId.trim(), 'responses'),
-        submissionData
+      console.log('📋 Submitting assessment response:', {
+        assessmentId: assessmentId.trim(),
+        stakeholderType,
+        respondentName: respondentInfo.name.trim(),
+        dimensionCount: Object.keys(dimensionAverages).length,
+        dimensionAverages: dimensionAverages
+      });
+
+      // Use assessmentService to save response (integrates with Firestore & Cloud Functions)
+      const responseId = await saveAssessmentResponse(schoolId, assessmentId.trim(), {
+        respondentType: stakeholderType as StakeholderType,
+        respondentEmail: respondentInfo.email || 'no-email-provided',
+        respondentName: respondentInfo.name.trim() || 'Anonymous',
+        respondentId: getRespondentId(),
+        answers: dimensionAverages,
+        feedback: respondentInfo.department || '',
+        schoolId: schoolId
+      });
+
+      console.log('✓ Response saved to Firestore:', responseId);
+
+      // Get updated assessment stats
+      const stats = await getAssessmentStats(schoolId, assessmentId.trim());
+      console.log('✓ Updated assessment stats:', stats);
+
+      // Log audit event
+      await logAuditEvent(
+        schoolId,
+        'ASSESSMENT_RESPONSE_SUBMITTED',
+        'assessment_response',
+        responseId,
+        respondentInfo.email || respondentInfo.name
       );
 
-      console.log('Survey submitted successfully with ID:', docRef.id);
-      setSubmissionId(docRef.id);
+      setSubmissionId(responseId);
       setCurrentStep('confirmation');
     } catch (error: any) {
       console.error('Error submitting survey:', error);
@@ -333,6 +336,15 @@ export function StakeholderSurvey() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Helper to extract respondent ID based on stakeholder type
+  const getRespondentId = (): string => {
+    const typeStr = stakeholderType as StakeholderType;
+    if (typeStr === 'teacher') return respondentInfo.teacherId || '';
+    if (typeStr === 'parent') return respondentInfo.studentName || '';
+    if (typeStr === 'admin') return respondentInfo.adminId || '';
+    return respondentInfo.name || '';
   };
 
   const getProgressPercentage = (): number => {
