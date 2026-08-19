@@ -16,6 +16,7 @@ import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerato
 import { saveCheckupToFirestore, waitForCheckupAnalysis, subscribeToCheckupAnalysis } from '../lib/checkupService';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
+import { logAuditEvent } from '../lib/auditService';
 import {
   HeartPulse,
   HelpCircle,
@@ -897,6 +898,16 @@ HOW TO USE IN DISHA:
 
       setCheckupId(savedCheckupId);
       console.log('✓ Checkup saved to Firestore:', savedCheckupId);
+
+      // Log audit event for checkup submission
+      await logAuditEvent(
+        schoolId,
+        'CHECKUP_SUBMITTED',
+        'checkup',
+        savedCheckupId,
+        user.email || user.uid
+      );
+      console.log('✓ Audit logged for checkup submission');
       console.log('⏳ Waiting for Cloud Function analysis (up to 30 seconds)...');
 
       // Wait for analysis (up to 30 seconds)

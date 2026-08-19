@@ -18,6 +18,7 @@ import {
 import { checkObjectiveDataReadiness, ObjectiveReadiness } from '../lib/objectiveDataService';
 import { triggerReportGeneration } from '../lib/assessmentService';
 import { getReport, subscribeToReport } from '../lib/reportService';
+import { logAuditEvent } from '../lib/auditService';
 import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle, Database, Layers, Settings, Zap, BarChart3, BookOpen, Target, TrendingUp, Lightbulb, AlertTriangle, CheckCircle } from 'lucide-react';
 
 type Stage = 'history' | 'configuration' | 'deployment' | 'analysis';
@@ -166,6 +167,16 @@ export function MultiUserAssessmentPage() {
       if (result?.reportId) {
         setReportId(result.reportId);
         console.log('✓ Report generation triggered:', result.reportId);
+
+        // Log audit event for report generation
+        await logAuditEvent(
+          schoolId,
+          'REPORT_GENERATED',
+          'report',
+          result.reportId,
+          'system'
+        );
+        console.log('✓ Audit logged for report generation');
 
         // Load the report data
         const report = await getReport(schoolId, result.reportId);
