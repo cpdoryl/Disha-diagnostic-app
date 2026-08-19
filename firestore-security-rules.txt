@@ -2,26 +2,162 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ========== CRITICAL: 14D ASSESSMENT SURVEYS ==========
-    // Allow unauthenticated stakeholders to submit survey responses
-    // This MUST work for the app to function
-    match /assessments/{document=**} {
-      allow read, write: if true;
+    // ====== HELPER FUNCTIONS ======
+
+    function isAdmin() {
+      return request.auth != null && request.auth.token.role == 'admin';
     }
 
-    // ========== ALL OTHER COLLECTIONS: AUTHENTICATED ONLY ==========
-    // Everything else requires authentication
+    function isSchoolAdmin(schoolId) {
+      return request.auth != null && request.auth.token.schoolId == schoolId
+        && (request.auth.token.role == 'admin' || request.auth.token.role == 'principal');
+    }
+
+    function isTeacher(schoolId) {
+      return request.auth != null && request.auth.token.schoolId == schoolId
+        && request.auth.token.role == 'teacher';
+    }
+
+    function isParent(schoolId) {
+      return request.auth != null && request.auth.token.schoolId == schoolId
+        && request.auth.token.role == 'parent';
+    }
+
+    function isStudent(schoolId) {
+      return request.auth != null && request.auth.token.schoolId == schoolId
+        && request.auth.token.role == 'student';
+    }
+
+    function isSchoolStakeholder(schoolId) {
+      return isSchoolAdmin(schoolId) || isTeacher(schoolId)
+        || isParent(schoolId) || isStudent(schoolId);
+    }
+
+    // ====== SCHOOLS COLLECTION ======
+
     match /schools/{schoolId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isAdmin()
+        && request.resource.data.schoolName is string
+        && request.resource.data.district is string
+        && request.resource.data.state is string
+        && request.resource.data.createdAt is timestamp;
+      allow update: if isSchoolAdmin(schoolId);
+      allow delete: if isAdmin();
+
+      // ====== ASSESSMENTS SUBCOLLECTION ======
+
+      match /assessments/{assessmentId} {
+        allow read: if true;
+        allow create: if isSchoolAdmin(schoolId)
+          && request.resource.data.assessmentName is string
+          && request.resource.data.status == 'ACTIVE'
+          && request.resource.data.createdAt is timestamp;
+        allow update: if isSchoolAdmin(schoolId);
+
+        // ====== RESPONSES SUBCOLLECTION ======
+
+        match /responses/{responseId} {
+          allow read: if true;
+          allow create: if request.auth != null
+            && request.resource.data.assessmentId == assessmentId
+            && request.resource.data.schoolId == schoolId;
+          allow update: if request.auth != null
+            && request.resource.data.submittedBy == request.auth.uid
+            && request.resource.data.status != 'FINAL';
+          allow delete: if isAdmin();
+        }
+      }
+
+      // ====== CHECKUPS SUBCOLLECTION (STAGE 1) ======
+
+      match /checkups/{checkupId} {
+        allow read: if true;
+        allow create: if isSchoolAdmin(schoolId)
+          && request.resource.data.checkupType == 'FirstOpinion'
+          && request.resource.data.status == 'SUBMITTED';
+        allow update: if isSchoolAdmin(schoolId);
+        allow delete: if isAdmin();
+
+        match /analysis/{analysisId} {
+          allow read: if true;
+          allow create, update: if request.auth == null;
+          allow delete: if isAdmin();
+        }
+      }
+
+      // ====== REPORTS SUBCOLLECTION (STAGE 2) ======
+
+      match /reports/{reportId} {
+        allow read: if true;
+        allow create: if request.auth == null;
+        allow update: if isSchoolAdmin(schoolId);
+        allow delete: if isAdmin();
+      }
+
+      // ====== SIMULATIONS SUBCOLLECTION (STAGE 3) ======
+
+      match /simulations/{simulationId} {
+        allow read: if true;
+        allow create: if isSchoolAdmin(schoolId)
+          && request.resource.data.scenario is map
+          && request.resource.data.baseline is map
+          && request.resource.data.createdAt is timestamp;
+        allow update: if isSchoolAdmin(schoolId);
+        allow delete: if isAdmin();
+
+        match /results/{resultId} {
+          allow read: if true;
+          allow create, update: if request.auth == null;
+          allow delete: if isAdmin();
+        }
+      }
+
+      // ====== AUDIT LOGS SUBCOLLECTION ======
+
+      match /auditLogs/{logId} {
+        allow read: if isAdmin();
+        allow create: if request.auth == null;
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ====== GLOBAL COLLECTIONS ======
+
+    match /dimensionsCatalog/{dimensionId} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /challengesCatalog/{challengeId} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if request.auth != null
+        && (request.auth.uid == userId || isAdmin());
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.email is string
+        && request.resource.data.role is string;
+      allow update: if request.auth != null
+        && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
     }
 
-    // Default: Deny everything else
-    match /{document=**} {
-      allow read, write: if false;
+    match /analytics/{analyticsId} {
+      allow read: if isAdmin();
+      allow create, update: if request.auth == null;
+      allow delete: if isAdmin();
+    }
+
+    match /systemSettings/{settingId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
   }
 }

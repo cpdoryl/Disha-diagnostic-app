@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../store';
-import { Bell, Calendar, TrendingUp, TrendingDown, Minus, CheckCircle2 } from 'lucide-react';
+import { Bell, Calendar, TrendingUp, TrendingDown, Minus, CheckCircle2, Users } from 'lucide-react';
 import { AssessmentTrendViewer } from '../components/AssessmentTrendViewer';
 import { AssessmentHistory } from '../lib/assessmentVersioning';
 import { loadSchoolAssessmentHistory } from '../lib/trendAnalysisService';
@@ -11,6 +11,14 @@ import {
   subscribeToLiveResponses,
   LiveMonitoringSnapshot,
 } from '../lib/liveMonitoringService';
+import { subscribeToResponseUpdates, getAssessmentStats } from '../lib/assessmentService';
+
+interface AssessmentStats {
+  totalReceived: number;
+  totalExpected: number;
+  responseRate: number;
+  responsesByType: Record<string, number>;
+}
 
 export const Monitoring = () => {
   const { activeSchool } = useAppStore();
@@ -21,6 +29,11 @@ export const Monitoring = () => {
   const [liveSnapshot, setLiveSnapshot] = useState<LiveMonitoringSnapshot | null>(null);
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
+
+  // Assessment response tracking
+  const [assessmentStats, setAssessmentStats] = useState<AssessmentStats | null>(null);
+  const [assessmentResponses, setAssessmentResponses] = useState<any[]>([]);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab !== 'history' || !activeSchool) return;
@@ -107,6 +120,49 @@ export const Monitoring = () => {
     };
   }, [activeTab, activeSchool?.id]);
 
+  // Real-time subscription to assessment responses
+  useEffect(() => {
+    if (!selectedAssessmentId || !activeSchool) return;
+
+    console.log('📡 Subscribing to assessment responses:', selectedAssessmentId);
+
+    // Initial stats load
+    getAssessmentStats(activeSchool.id, selectedAssessmentId)
+      .then((stats) => {
+        console.log('✓ Loaded assessment stats:', stats);
+        setAssessmentStats(stats);
+      })
+      .catch((err) => {
+        console.error('Failed to load assessment stats:', err);
+      });
+
+    // Subscribe to real-time response updates
+    const unsubscribe = subscribeToResponseUpdates(
+      activeSchool.id,
+      selectedAssessmentId,
+      (latestResponses) => {
+        console.log('📊 Response update received:', latestResponses.length, 'responses');
+        setAssessmentResponses(latestResponses);
+
+        // Recalculate stats
+        getAssessmentStats(activeSchool.id, selectedAssessmentId)
+          .then((updatedStats) => {
+            console.log('✓ Updated stats:', updatedStats);
+            setAssessmentStats(updatedStats);
+          })
+          .catch((err) => {
+            console.error('Failed to update stats:', err);
+          });
+      }
+    );
+
+    // Cleanup subscription on unmount or when assessment changes
+    return () => {
+      console.log('🧹 Unsubscribing from assessment responses');
+      unsubscribe();
+    };
+  }, [selectedAssessmentId, activeSchool?.id]);
+
   const getTrendIcon = (trend: string) => {
     switch(trend) {
       case 'up': return <TrendingUp className="w-5 h-5 text-emerald-500" />;
@@ -170,6 +226,33 @@ export const Monitoring = () => {
       {/* Live Monitoring Tab */}
       {activeTab === 'live' && (
         <>
+          {/* Assessment ID Selector */}
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <label className="block text-sm font-bold text-gray-900 mb-3">
+              Track Assessment Responses
+            </label>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                placeholder="Enter Assessment ID to track responses..."
+                value={selectedAssessmentId || ''}
+                onChange={(e) => setSelectedAssessmentId(e.target.value || null)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={() => setSelectedAssessmentId(selectedAssessmentId)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+              >
+                Load
+              </button>
+            </div>
+            {selectedAssessmentId && (
+              <p className="text-xs text-gray-500 mt-2">
+                Tracking responses for assessment: <span className="font-mono font-bold">{selectedAssessmentId}</span>
+              </p>
+            )}
+          </div>
+
           {liveLoading && (
             <div className="bg-white p-12 rounded-2xl border border-gray-100 text-center text-gray-500 font-medium">
               Loading live monitoring data...
@@ -221,6 +304,66 @@ export const Monitoring = () => {
                       Not yet captured for this event. Add objective data for the Academic dimension to see this.
                     </p>
                   )}
+                </div>
+
+                {/* Real-time Response Tracking */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-gray-100">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Users className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-xl font-bold text-gray-900">Live Response Tracking</h3>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Real-time response counts by respondent type. Updates automatically as new responses arrive.
+                    </p>
+                  </div>
+                  <div className="p-6">
+                    {assessmentStats ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-100">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">Total Responses</p>
+                            <p className="text-3xl font-black text-blue-900">
+                              {assessmentStats.totalReceived}
+                              <span className="text-sm font-bold text-blue-600 ml-2">/ {assessmentStats.totalExpected}</span>
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">Response Rate</p>
+                            <p className="text-3xl font-black text-blue-900">{assessmentStats.responseRate.toFixed(1)}%</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          {Object.entries(assessmentStats.responsesByType).map(([type, count]) => (
+                            <div key={type} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                              <p className="text-xs font-bold uppercase tracking-wider text-gray-600 mb-1 capitalize">
+                                {type}
+                              </p>
+                              <p className="text-2xl font-black text-gray-900">{count}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {assessmentResponses.length > 0 && (
+                          <div className="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                            <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 mb-2">Latest Submissions</p>
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                              {assessmentResponses.slice(0, 5).map((response, idx) => (
+                                <p key={idx} className="text-xs text-emerald-700">
+                                  <span className="font-bold capitalize">{response.respondentType}:</span> {response.respondentName} ({response.respondentEmail})
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm text-center py-4">
+                        No assessment selected. Click on an assessment to track responses.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

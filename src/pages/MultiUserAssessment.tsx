@@ -16,6 +16,9 @@ import {
   markAssessmentEventAnalyzed,
 } from '../lib/assessmentEventService';
 import { checkObjectiveDataReadiness, ObjectiveReadiness } from '../lib/objectiveDataService';
+import { triggerReportGeneration } from '../lib/assessmentService';
+import { getReport, subscribeToReport } from '../lib/reportService';
+import { logAuditEvent } from '../lib/auditService';
 import { ArrowRight, PlusCircle, CheckCircle2, Lock, Users, Clock, RefreshCw, AlertCircle, Database, Layers, Settings, Zap, BarChart3, BookOpen, Target, TrendingUp, Lightbulb, AlertTriangle, CheckCircle } from 'lucide-react';
 
 type Stage = 'history' | 'configuration' | 'deployment' | 'analysis';
@@ -48,6 +51,12 @@ export function MultiUserAssessmentPage() {
 
   const [objectiveReadiness, setObjectiveReadiness] = useState<ObjectiveReadiness | null>(null);
   const [isCheckingReadiness, setIsCheckingReadiness] = useState(false);
+
+  // Report generation state
+  const [reportData, setReportData] = useState<any>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportId, setReportId] = useState<string | null>(null);
 
   const schoolId = activeSchool?.id || 'unknown';
   const schoolName = activeSchool?.name || 'Unknown School';
@@ -140,6 +149,67 @@ export function MultiUserAssessmentPage() {
     setShowReport(false);
     loadEvents();
   };
+
+  const handleGenerateReport = async () => {
+    if (!config) {
+      setReportError('No assessment configured');
+      return;
+    }
+
+    try {
+      setIsGeneratingReport(true);
+      setReportError(null);
+      console.log('📊 Triggering report generation for assessment:', config.id);
+
+      // Trigger Cloud Function to generate report
+      const result = await triggerReportGeneration(schoolId, config.id);
+
+      if (result?.reportId) {
+        setReportId(result.reportId);
+        console.log('✓ Report generation triggered:', result.reportId);
+
+        // Log audit event for report generation
+        await logAuditEvent(
+          schoolId,
+          'REPORT_GENERATED',
+          'report',
+          result.reportId,
+          'system'
+        );
+        console.log('✓ Audit logged for report generation');
+
+        // Load the report data
+        const report = await getReport(schoolId, result.reportId);
+        if (report) {
+          console.log('✓ Report loaded:', report);
+          setReportData(report);
+          setShowReport(true);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error generating report:', error);
+      setReportError(error.message || 'Failed to generate report. Please try again.');
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+  // Real-time subscription to report updates
+  useEffect(() => {
+    if (!reportId || !schoolId) return;
+
+    console.log('📡 Subscribing to report updates:', reportId);
+
+    const unsubscribe = subscribeToReport(schoolId, reportId, (updatedReport) => {
+      console.log('✓ Report updated:', updatedReport);
+      setReportData(updatedReport);
+    });
+
+    return () => {
+      console.log('🧹 Unsubscribing from report updates');
+      unsubscribe();
+    };
+  }, [reportId, schoolId]);
 
   useEffect(() => {
     if (stage !== 'analysis' || !config) {
@@ -629,6 +699,12 @@ export function MultiUserAssessmentPage() {
                 )}
               </div>
 
+              {reportError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6">
+                  {reportError}
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={() => setStage('deployment')}
@@ -637,13 +713,22 @@ export function MultiUserAssessmentPage() {
                   Back to Dashboard
                 </button>
                 <button
-                  onClick={() => setShowReport(true)}
-                  disabled={!objectiveReadiness?.isReady}
+                  onClick={handleGenerateReport}
+                  disabled={!objectiveReadiness?.isReady || isGeneratingReport}
                   title={objectiveReadiness?.isReady ? undefined : 'Complete required operational data for all 14 dimensions first'}
                   className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition flex items-center justify-center gap-2 order-1 sm:order-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
                 >
-                  <ArrowRight className="w-4 h-4" />
-                  View Diagnostic Report
+                  {isGeneratingReport ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Generating Report...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="w-4 h-4" />
+                      Generate & View Report
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={handleBackToHistory}
