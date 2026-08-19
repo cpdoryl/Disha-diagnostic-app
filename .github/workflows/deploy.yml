@@ -26,6 +26,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -66,22 +67,5 @@ jobs:
           echo "🌐 Live at: https://disha-diagnostics.web.app/"
           echo "📊 Functions Dashboard: https://console.firebase.google.com/project/disha-diagnostics/functions"
           echo "🔐 Firestore: https://console.firebase.google.com/project/disha-diagnostics/firestore"
-
-      - name: Slack Notification (Optional)
-        if: always()
-        uses: slackapi/slack-github-action@v1
-        with:
-          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
-          payload: |
-            {
-              "text": "DISHA Diagnostics Deployment",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Deployment Status*: ${{ job.status }}\n*Branch*: ${{ github.ref }}\n*Commit*: ${{ github.sha }}"
-                  }
-                }
-              ]
-            }
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "🌳 Branch: ${{ github.ref }}"
