@@ -341,7 +341,14 @@ export function MultiUserAssessmentPage() {
             ) : events.length === 0 && schoolId !== 'unknown' ? (
               <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
                 <p className="text-gray-500">No assessment events yet for this school.</p>
-                <p className="text-sm text-gray-400 mt-1">Create one to start collecting 14D responses.</p>
+                <p className="text-sm text-gray-400 mt-1 mb-6">Create one to start collecting 14D responses.</p>
+                <button
+                  onClick={() => setStage('configuration')}
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-bold text-sm transition-colors"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Create New Assessment Event
+                </button>
               </div>
             ) : (
               <ProfessionalAssessmentEvents
