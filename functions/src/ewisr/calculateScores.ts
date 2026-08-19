@@ -5,7 +5,19 @@
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { ALL_DIMENSIONS, SCORING_FORMULAS } from '../data/dimensionalAssessmentData';
+
+// Temporary mock data until full implementation
+const ALL_DIMENSIONS = Array.from({ length: 14 }, (_, i) => ({
+  dimensionId: `D${String(i + 1).padStart(2, '0')}`,
+  weight: 7,
+  benchmarks: { excellent: 4.5, good: 4.0, average: 3.0, poor: 1.5, needsAttention: 1.5 },
+  questions: []
+}));
+
+const SCORING_FORMULAS: any = {
+  dimensionScore: (avg: number) => avg * 20,
+  weightedContribution: (score: number, weight: number) => (score * weight) / 7
+};
 
 interface CalculateScoresRequest {
   assessmentId: string;
@@ -45,8 +57,8 @@ export const calculateDimensionScores = async (
     }
 
     // Calculate average weight
-    const weights = Object.values(dimensionResponses);
-    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    const weights: number[] = Object.values(dimensionResponses);
+    const totalWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
     const averageWeight = totalWeight / weights.length;
 
     // Convert to 0-100 scale

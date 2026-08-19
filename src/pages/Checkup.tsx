@@ -13,6 +13,9 @@ import FileAnalyzer, {
 import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGenerator';
 import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
 import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
+import { saveCheckupToFirestore, waitForCheckupAnalysis, subscribeToCheckupAnalysis } from '../lib/checkupService';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../lib/firebase';
 import {
   HeartPulse,
   HelpCircle,
@@ -358,6 +361,8 @@ const OUTCOMES: OutcomeItem[] = [
 export const Checkup = () => {
   console.log('🔴 CHECKUP COMPONENT LOADED - This is the latest version');
   const { activeSchool } = useAppStore();
+  const [user] = useAuthState(auth);
+  const schoolId = activeSchool?.id || 'default-school';
   
   // Layout stages:
   // 0: Select Symptoms (Challenge Menu)
@@ -408,6 +413,11 @@ export const Checkup = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isDeepScanning, setIsDeepScanning] = useState<boolean>(false);
   const [isAnalyzingFile, setIsAnalyzingFile] = useState<boolean>(false);
+
+  // Firestore State for Cloud Function integration
+  const [isSubmittingToFirestore, setIsSubmittingToFirestore] = useState<boolean>(false);
+  const [checkupId, setCheckupId] = useState<string | null>(null);
+  const [firestoreCheckupData, setFirestoreCheckupData] = useState<any>(null);
 
   // Active Root Cause node
   const [activeRootNode, setActiveRootNode] = useState<string>('workload');
@@ -497,6 +507,34 @@ export const Checkup = () => {
     setAnswers({});
     setValidationError(null);
   }, []);
+
+  // Real-time analysis subscription (optional)
+  useEffect(() => {
+    if (!checkupId || !schoolId) return;
+
+    console.log('📡 Subscribing to real-time analysis updates for checkup:', checkupId);
+
+    // Subscribe to analysis updates
+    const unsubscribe = subscribeToCheckupAnalysis(
+      schoolId,
+      checkupId,
+      (analysis) => {
+        if (analysis) {
+          console.log('✓ Analysis updated from Firestore:', analysis);
+          setFirestoreCheckupData(analysis);
+          if (analysis.dishaScore) {
+            setDISHAScore(analysis.dishaScore);
+          }
+        }
+      }
+    );
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('🧹 Unsubscribing from analysis updates');
+      unsubscribe();
+    };
+  }, [checkupId, schoolId]);
 
   // Download Sample CSV helper
   const downloadSampleCSV = (fileType: 'ledger' | 'dimensions' | 'feedback') => {
@@ -797,6 +835,128 @@ HOW TO USE IN DISHA:
   const simulateRegisterPhoto = () => {
     setUploadedFileName('attendance_register_snapshot.jpg');
     setUploadedFile(new File([], 'attendance_register_snapshot.jpg'));
+  };
+
+  // FIRESTORE SAVE & CLOUD FUNCTION HANDLER
+  const handleSaveCheckupToFirestore = async () => {
+    if (!user || !schoolId) {
+      alert('Authentication required. Please log in.');
+      return;
+    }
+
+    if (!uploadedFile) {
+      setValidationError(
+        '⚠️ REQUIRED: Upload supporting data document first. Upload operational data (attendance, fee collection, staff records, etc.) to enable data-driven First Opinion analysis.'
+      );
+      return;
+    }
+
+    const required = getRequiredQuestions();
+    const missing = required.filter(q => !answers[q.id] || answers[q.id].trim() === '');
+    if (missing.length > 0) {
+      setValidationError(
+        `Action Required: You must answer all ${missing.length} remaining compulsory screening question${missing.length > 1 ? 's' : ''}.`
+      );
+      return;
+    }
+
+    try {
+      setIsSubmittingToFirestore(true);
+      setValidationError(null);
+      console.log('⏳ Saving checkup to Firestore...');
+
+      // Collect survey answers from selected challenges
+      const surveyInput: Record<string, any> = {};
+      selectedChallenges.forEach(cid => {
+        const cObj = challenges.find(c => c.id === cid);
+        if (cObj) {
+          cObj.questions.forEach(q => {
+            surveyInput[q.id] = answers[q.id] || '';
+          });
+        }
+      });
+
+      // Use extracted metrics if available, otherwise use defaults
+      const checkupOperationalMetrics = extractedMetrics?.metricsFound || operationalMetrics;
+
+      console.log('📊 Collected Survey Input:', surveyInput);
+      console.log('📊 Operational Metrics:', checkupOperationalMetrics);
+
+      // Save to Firestore
+      const savedCheckupId = await saveCheckupToFirestore(schoolId, {
+        surveyInput: surveyInput,
+        operationalMetricsUploaded: checkupOperationalMetrics,
+        createdBy: user.uid,
+        schoolId: schoolId,
+        selectedChallenges: selectedChallenges,
+        board: board,
+        cityTier: cityTier,
+        feeBand: feeBand,
+        uploadedFileName: uploadedFileName
+      });
+
+      setCheckupId(savedCheckupId);
+      console.log('✓ Checkup saved to Firestore:', savedCheckupId);
+      console.log('⏳ Waiting for Cloud Function analysis (up to 30 seconds)...');
+
+      // Wait for analysis (up to 30 seconds)
+      const analysis = await waitForCheckupAnalysis(schoolId, savedCheckupId);
+
+      if (analysis) {
+        console.log('✓ Analysis complete:', analysis);
+        setFirestoreCheckupData(analysis);
+        // Update DISHA score with Firestore results if available
+        if (analysis.dishaScore) {
+          setDISHAScore(analysis.dishaScore);
+        }
+      } else {
+        console.warn('⚠️ Analysis still processing, running local calculation...');
+        // If cloud function times out, run local diagnostic calculation
+        runLocalDiagnosticCalculation();
+      }
+
+      // Navigate to results step
+      setTimeout(() => {
+        setIsSubmittingToFirestore(false);
+        setStep(2);
+      }, 800);
+
+    } catch (error) {
+      console.error('Error saving checkup:', error);
+      setValidationError('Failed to save checkup. Please try again.');
+    } finally {
+      // Reset submit state after a delay
+      setTimeout(() => setIsSubmittingToFirestore(false), 2000);
+    }
+  };
+
+  // Helper function to run diagnostic calculation locally
+  const runLocalDiagnosticCalculation = () => {
+    const required = getRequiredQuestions();
+    const answersArray = required.map(q => {
+      const selectedOptionValue = answers[q.id];
+      const selectedOption = q.options?.find(opt => opt.value === selectedOptionValue);
+      const weight = selectedOption?.weight || 5;
+      return { questionId: q.id, weight };
+    });
+
+    const maxPossible = required.length * 10;
+    const score = DISHAScoreCalculator.calculateCompleteScore(
+      answersArray,
+      maxPossible,
+      operationalMetrics
+    );
+
+    setDISHAScore(score);
+
+    const diagnosis = DiagnosisGenerator.generateDiagnosis(
+      extractedMetrics,
+      selectedChallenges[0],
+      answers
+    );
+    setDiagnosisResult(diagnosis);
+
+    console.log('✓ Local diagnostic calculation complete');
   };
 
   // DIAGNOSTIC ENGING CALCULATION
@@ -1851,8 +2011,8 @@ HOW TO USE IN DISHA:
               </button>
 
               <button
-                onClick={runFirstOpinionDiagnostic}
-                disabled={isProcessing || !uploadedFile}
+                onClick={handleSaveCheckupToFirestore}
+                disabled={isSubmittingToFirestore || isProcessing || !uploadedFile}
                 className={`font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm ${
                   !uploadedFile
                     ? 'bg-gray-400 text-gray-600 cursor-not-allowed opacity-60'
@@ -1860,7 +2020,12 @@ HOW TO USE IN DISHA:
                 }`}
                 title={!uploadedFile ? '⚠️ Please upload a data file first' : ''}
               >
-                {isProcessing ? (
+                {isSubmittingToFirestore ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Saving to Database...
+                  </>
+                ) : isProcessing ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Running Intake Scan...
