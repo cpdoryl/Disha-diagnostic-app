@@ -123,11 +123,11 @@ jobs:
             --debug
         timeout-minutes: 15
 
-      - name: Deploy Firestore Rules
+      - name: Deploy Firestore Rules & Indexes
         run: |
-          echo "🚀 Deploying Firestore Rules..."
+          echo "🚀 Deploying Firestore Rules & Indexes..."
           firebase deploy \
-            --only firestore:rules \
+            --only firestore:rules,firestore:indexes \
             --project disha-diagnostics \
             --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
             --debug
@@ -149,7 +149,7 @@ jobs:
           echo ""
           echo "📋 Deployment Summary:"
           echo "  ✓ Cloud Functions deployed (5 functions)"
-          echo "  ✓ Firestore security rules updated"
+          echo "  ✓ Firestore security rules & indexes updated"
           echo "  ✓ React app deployed to Firebase Hosting"
           echo "  ✓ Cache headers configured"
           echo ""
