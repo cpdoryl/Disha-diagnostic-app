@@ -123,6 +123,16 @@ service cloud.firestore {
       }
     }
 
+    // ====== TOP-LEVEL ASSESSMENTS COLLECTION (14D Multi-User Assessment) ======
+    // This is a separate, flat `assessments/{assessmentId}` collection (with
+    // subcollections like responses, costRates, objectiveData, simulationScenario),
+    // distinct from the nested schools/{schoolId}/assessments subcollection above.
+    // It backs the 14D Multi-User Assessment / Events feature, where respondents
+    // submit without authentication, so access stays open like it was before.
+    match /assessments/{document=**} {
+      allow read, write: if true;
+    }
+
     // ====== GLOBAL COLLECTIONS ======
 
     match /dimensionsCatalog/{dimensionId} {
