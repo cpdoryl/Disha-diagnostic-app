@@ -72,6 +72,11 @@ jobs:
         run: cd functions && npm install --legacy-peer-deps && cd ..
         timeout-minutes: 10
 
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          version: latest
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -86,6 +91,16 @@ jobs:
           fi
           echo "✅ Build artifacts ready for deployment"
           ls -lh build/
+
+      - name: Delete old analyzeCheckup function (if exists)
+        run: |
+          echo "🗑️  Attempting to delete old analyzeCheckup function..."
+          echo "${{ secrets.FIREBASE_CI_TOKEN }}" > /tmp/gcloud-key.json
+          gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
+          gcloud config set project disha-diagnostics
+          gcloud functions delete analyzeCheckup --region us-central1 --quiet 2>/dev/null || echo "✓ Function not found or already deleted"
+          rm /tmp/gcloud-key.json
+        continue-on-error: true
 
       - name: Deploy Cloud Functions
         run: |
