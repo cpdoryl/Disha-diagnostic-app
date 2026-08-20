@@ -187,14 +187,16 @@ exports.getDeploymentStatus = functions.https.onCall(async (data, context) => {
     }
 });
 // ===== STAGE 1: CHECKUP ANALYZER FUNCTION =====
-exports.analyzeCheckup = functions
-    .firestore
-    .document('schools/{schoolId}/checkups/{checkupId}')
-    .onCreate(async (snap, context) => {
+// Callable function - call with: checkupId, schoolId, checkupData
+exports.analyzeCheckup = functions.https.onCall(async (data, context) => {
     try {
-        const checkupId = context.params.checkupId;
-        const schoolId = context.params.schoolId;
-        const checkupData = snap.data();
+        // Validate required parameters
+        if (!data.checkupId || !data.schoolId || !data.checkupData) {
+            throw new Error('Missing required parameters: checkupId, schoolId, checkupData');
+        }
+        const checkupId = data.checkupId;
+        const schoolId = data.schoolId;
+        const checkupData = data.checkupData;
         if (!checkupData.surveyInput || !checkupData.operationalMetricsUploaded) {
             throw new Error('Invalid checkup data: missing survey or metrics');
         }
