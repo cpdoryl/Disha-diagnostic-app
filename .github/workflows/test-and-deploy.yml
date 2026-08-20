@@ -124,6 +124,7 @@ jobs:
         timeout-minutes: 15
 
       - name: Deploy Firestore Rules & Indexes
+        if: ${{ !cancelled() }}
         run: |
           echo "🚀 Deploying Firestore Rules & Indexes..."
           firebase deploy \
@@ -134,6 +135,7 @@ jobs:
         timeout-minutes: 10
 
       - name: Deploy to Firebase Hosting
+        if: ${{ !cancelled() }}
         run: |
           echo "🚀 Deploying to Firebase Hosting..."
           firebase deploy \
