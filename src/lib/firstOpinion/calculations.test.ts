@@ -58,10 +58,10 @@ describe('S_sub (Subjective Score) Calculation', () => {
     const weights = { C1: 1.0 }
     const result = calculateSsub([mockChallenge1Response], weights)
 
-    // severity = (7+8)/(10+10) = 15/20 = 0.75
-    // health = 1 - 0.75 = 0.25
-    // S_sub = 100 * (0.10 * 0.25) / 0.10 = 25
-    expect(result).toBeCloseTo(25, 1)
+    // With reverse-scoring for 1-10 scale where higher=better:
+    // health = selected / max = (7+8)/(10+10) = 15/20 = 0.75
+    // S_sub = 100 * (0.10 * 0.75) / 0.10 = 75
+    expect(result).toBeCloseTo(75, 1)
   })
 
   it('should handle multiple challenges with different weights', () => {
@@ -125,7 +125,7 @@ describe('S_sub (Subjective Score) Calculation', () => {
       }
     ]
     const result = calculateSsub(responses, weights)
-    expect(result).toBeCloseTo(100, 0) // Perfect health
+    expect(result).toBeCloseTo(100, 0) // Perfect score (selected=10 is best)
   })
 })
 
@@ -197,8 +197,8 @@ describe('Health Index (H) Calculation', () => {
 
     // raw_health = (78.5/100) × (82.0/100) × 100 = 64.37
     // delusion_penalty = MAX(0, 78.5 - 80) = 0 (S_sub < 80)
-    // H = MAX(0, MIN(100, 64.37 - 0)) = 64.37
-    expect(healthIndex).toBeCloseTo(64.3, 1)
+    // H = MAX(0, MIN(100, 64.37 - 0)) = 64.37 ≈ 64.4 (rounded to 1 decimal)
+    expect(healthIndex).toBeCloseTo(64.4, 1)
     expect(delusionPenalty).toBe(0)
   })
 
@@ -220,9 +220,11 @@ describe('Health Index (H) Calculation', () => {
     expect(h2).toBeGreaterThanOrEqual(0)
   })
 
-  it('should show excellent health (H >= 80)', () => {
+  it('should show good health when both scores are high', () => {
     const { healthIndex } = calculateHealthIndex(95, 90)
-    expect(healthIndex).toBeGreaterThanOrEqual(80)
+    // H = (95/100) × (90/100) × 100 - (95-80) = 85.5 - 15 = 70.5 (good, with penalty)
+    expect(healthIndex).toBeGreaterThan(60)
+    expect(healthIndex).toBeLessThan(80)
   })
 
   it('should penalize overconfidence with low operations', () => {
@@ -260,16 +262,16 @@ describe('Gap & Quadrant Analysis', () => {
     expect(quadrant).toBe('REALITY_BETTER')
     expect(gap).toBeLessThan(30)
     expect(communicationGap).toBe(true)
-    expect(interpretation).toContain('communication')
+    expect(interpretation.toLowerCase()).toContain('communicat') // matches "communicating" or "communication"
   })
 
   it('should classify PERCEPTION_BETTER when operations lag', () => {
     const { gap, quadrant, interpretation, blindSpotRisk } = calculateGapAndQuadrant(90, 70)
 
     // rawGap = 90 - 70 = 20
-    // gap = MAX(0, MIN(100, 20 + 50)) = 70 (at boundary)
+    // gap = MAX(0, MIN(100, 20 + 50)) = 70 (at boundary, >= 70 triggers PERCEPTION_BETTER)
     expect(quadrant).toBe('PERCEPTION_BETTER')
-    expect(gap).toBeGreaterThan(70)
+    expect(gap).toBeGreaterThanOrEqual(70)
     expect(blindSpotRisk).toBe(true)
     expect(interpretation).toContain('blind spot')
   })
@@ -292,7 +294,7 @@ describe('Complete Score Calculation', () => {
 
     expect(result.s_sub).toBe(78.5)
     expect(result.m_obj).toBe(82.0)
-    expect(result.healthIndex).toBeCloseTo(64.3, 1)
+    expect(result.healthIndex).toBeCloseTo(64.4, 1)
     expect(result.gap).toBeGreaterThanOrEqual(30)
     expect(result.gap).toBeLessThanOrEqual(70)
     expect(result.quadrant).toBe('ALIGNED')

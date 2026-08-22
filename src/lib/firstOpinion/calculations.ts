@@ -125,11 +125,13 @@ export function calculateSsub(
 
     if (totalMax === 0) continue
 
-    // severity_i = totalSelected / totalMax (0=perfect, 1=critical)
-    const severity = totalSelected / totalMax
+    // Reverse-score: on a 1-10 scale where 10=best, convert to 0-10 where 10=best
+    // severity_i = (maxOption - selectedOption) / maxOption (0=perfect, 1=critical)
+    const reversedScore = totalMax - totalSelected
+    const severity = reversedScore / totalMax
 
-    // health_i = 1 - severity (0=critical, 1=perfect)
-    const health = 1 - severity
+    // health_i = 1 - severity = selectedOption / maxOption (0=critical, 1=perfect)
+    const health = totalSelected / totalMax
 
     challengeScores[challengeId] = {
       health,
@@ -359,8 +361,8 @@ export function calculateGapAndQuadrant(
       'School operations are strong, but perception lags behind reality. Focus on communicating achievements and building visibility.'
     communicationGap = true
     blindSpotRisk = false
-  } else if (gap > 70) {
-    // Perception Better Than Reality
+  } else if (gap >= 70) {
+    // Perception Better Than Reality (fixed boundary: >= not >)
     quadrant = 'PERCEPTION_BETTER'
     interpretation =
       'Leadership perceives excellent performance, but operational data suggests deterioration. Risk of blind spot. Validate with hard data.'
