@@ -159,11 +159,21 @@ jobs:
             --debug
         timeout-minutes: 10
 
-      - name: Deploy to Firebase Hosting
+      - name: Deploy to Firebase Hosting (Default Site)
         run: |
-          echo "🚀 Deploying to Firebase Hosting..."
+          echo "🚀 Deploying to Firebase Hosting (Default)..."
           firebase deploy \
-            --only hosting \
+            --only hosting:disha-diagnostics-web \
+            --project disha-diagnostics \
+            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
+            --debug
+        timeout-minutes: 15
+
+      - name: Deploy to Firebase Hosting (Custom Domain)
+        run: |
+          echo "🚀 Deploying to Firebase Hosting (Custom Domain)..."
+          firebase deploy \
+            --only hosting:disha-ryl-custom \
             --project disha-diagnostics \
             --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
             --debug
@@ -176,11 +186,15 @@ jobs:
           echo "📋 Deployment Summary:"
           echo "  ✓ Cloud Functions deployed (5 functions)"
           echo "  ✓ Firestore security rules updated"
-          echo "  ✓ React app deployed to Firebase Hosting"
-          echo "  ✓ Cache headers configured"
+          echo "  ✓ React app deployed to Firebase Hosting (2 sites)"
+          echo "  ✓ Cache headers configured for all sites"
           echo ""
           echo "🌐 Live URLs:"
-          echo "  ✓ https://disha-diagnostics.web.app/"
-          echo "  ✓ https://disha.rylneuroacademy.com/"
+          echo "  ✓ https://disha-diagnostics.web.app/ (Firebase Default)"
+          echo "  ✓ https://disha.rylneuroacademy.com/ (Custom Domain)"
           echo ""
-          echo "⏱️  Changes live within 2-3 minutes"
+          echo "📊 Deployment Targets:"
+          echo "  ✓ disha-diagnostics-web: Firebase default site"
+          echo "  ✓ disha-ryl-custom: Custom RYL domain"
+          echo ""
+          echo "⏱️  Changes live within 2-3 minutes to both sites"
