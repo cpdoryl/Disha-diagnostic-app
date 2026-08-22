@@ -92,6 +92,12 @@ jobs:
           echo "✅ Build artifacts ready for deployment"
           ls -lh build/
 
+      - name: Wait for any previous deployments to complete
+        run: |
+          echo "⏳ Waiting for any previous deployments to complete..."
+          sleep 30
+          echo "✅ Wait complete, proceeding with deployment"
+
       - name: Delete old analyzeCheckup function (if exists)
         run: |
           echo "🗑️  Attempting to delete old analyzeCheckup function via REST API..."
@@ -113,15 +119,35 @@ jobs:
           rm /tmp/gcloud-key.json 2>/dev/null || true
         continue-on-error: true
 
-      - name: Deploy Cloud Functions
+      - name: Deploy Cloud Functions (with retries)
         run: |
-          echo "🚀 Deploying Cloud Functions..."
-          firebase deploy \
-            --only functions \
-            --project disha-diagnostics \
-            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
-            --debug
-        timeout-minutes: 15
+          echo "🚀 Deploying Cloud Functions (with retry logic)..."
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Deployment attempt $RETRY_COUNT of $MAX_RETRIES"
+
+            if firebase deploy \
+              --only functions \
+              --project disha-diagnostics \
+              --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
+              --debug
+            then
+              echo "✅ Cloud Functions deployed successfully"
+              exit 0
+            else
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "⏳ Deployment failed, waiting 60 seconds before retry..."
+                sleep 60
+              else
+                echo "❌ Deployment failed after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
+        timeout-minutes: 30
 
       - name: Deploy Firestore Rules
         run: |
