@@ -8,7 +8,8 @@ import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
 import { recalculateAndPersistCycleScores } from './recalculate'
 
-const db = admin.firestore()
+// Lazy initialization: get db inside the function, not at module load time
+const getDb = () => admin.firestore()
 
 /**
  * Scheduled Cloud Function: Recalculate scores for all active cycles
@@ -34,7 +35,7 @@ export const batchRecalculateAllCycles = functions
 
       // Query all active assessment cycles across all schools
       // Uses collectionGroup query (requires index)
-      const q = db
+      const q = getDb()
         .collectionGroup('assessmentCycles')
         .where('status', '==', 'ACTIVE')
 
@@ -61,7 +62,7 @@ export const batchRecalculateAllCycles = functions
           )
 
           // Recalculate this cycle
-          await recalculateAndPersistCycleScores(db, schoolId, cycleId)
+          await recalculateAndPersistCycleScores(getDb(), schoolId, cycleId)
 
           succeeded++
         } catch (error) {
@@ -146,7 +147,7 @@ export const recalculateCycleScores = functions
       console.log(`[RecalcOnDemand] Recalculating ${schoolId}/${cycleId} (requested by ${context.auth.uid})`)
 
       // Recalculate
-      await recalculateAndPersistCycleScores(db, schoolId, cycleId)
+      await recalculateAndPersistCycleScores(getDb(), schoolId, cycleId)
 
       console.log(`[RecalcOnDemand] Complete for ${schoolId}/${cycleId}`)
 

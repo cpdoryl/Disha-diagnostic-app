@@ -32,7 +32,8 @@ exports.onMultiplierWrite = exports.onChallengeResponseWrite = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const recalculate_1 = require("./recalculate");
-const db = admin.firestore();
+// Lazy initialization: get db inside the function, not at module load time
+const getDb = () => admin.firestore();
 /**
  * Trigger: Challenge response submitted or updated
  * Path: /schools/{schoolId}/assessmentCycles/{cycleId}/challengeResponses/{responseId}
@@ -56,12 +57,12 @@ exports.onChallengeResponseWrite = functions
         if (!after) {
             console.log(`[Trigger:ChallengeResponse] Document deleted: ${schoolId}/${cycleId}/${responseId}`);
             // Soft-delete or true delete: still recalculate to update respondent counts
-            await (0, recalculate_1.recalculateAndPersistCycleScores)(db, schoolId, cycleId);
+            await (0, recalculate_1.recalculateAndPersistCycleScores)(getDb(), schoolId, cycleId);
             return;
         }
         console.log(`[Trigger:ChallengeResponse] New/updated response: ${responseId}`);
         // Recalculate scores for this cycle
-        await (0, recalculate_1.recalculateAndPersistCycleScores)(db, schoolId, cycleId);
+        await (0, recalculate_1.recalculateAndPersistCycleScores)(getDb(), schoolId, cycleId);
         console.log(`[Trigger:ChallengeResponse] Complete for ${schoolId}/${cycleId}`);
     }
     catch (error) {
@@ -91,12 +92,12 @@ exports.onMultiplierWrite = functions
         if (!after) {
             console.log(`[Trigger:Multiplier] Document deleted: ${schoolId}/${cycleId}/${multiplierId}`);
             // Multiplier deleted: recalculate (M_obj will drop)
-            await (0, recalculate_1.recalculateAndPersistCycleScores)(db, schoolId, cycleId);
+            await (0, recalculate_1.recalculateAndPersistCycleScores)(getDb(), schoolId, cycleId);
             return;
         }
         console.log(`[Trigger:Multiplier] Updated: ${multiplierId} = ${after.value} (${after.validationStatus})`);
         // Recalculate scores for this cycle
-        await (0, recalculate_1.recalculateAndPersistCycleScores)(db, schoolId, cycleId);
+        await (0, recalculate_1.recalculateAndPersistCycleScores)(getDb(), schoolId, cycleId);
         console.log(`[Trigger:Multiplier] Complete for ${schoolId}/${cycleId}`);
     }
     catch (error) {

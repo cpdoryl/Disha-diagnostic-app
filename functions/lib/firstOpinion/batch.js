@@ -32,7 +32,8 @@ exports.recalculateCycleScores = exports.batchRecalculateAllCycles = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const recalculate_1 = require("./recalculate");
-const db = admin.firestore();
+// Lazy initialization: get db inside the function, not at module load time
+const getDb = () => admin.firestore();
 /**
  * Scheduled Cloud Function: Recalculate scores for all active cycles
  * Runs every 6 hours to catch up any missed calculations
@@ -56,7 +57,7 @@ exports.batchRecalculateAllCycles = functions
         console.log('[Batch] Starting cycle recalculation for all active assessments');
         // Query all active assessment cycles across all schools
         // Uses collectionGroup query (requires index)
-        const q = db
+        const q = getDb()
             .collectionGroup('assessmentCycles')
             .where('status', '==', 'ACTIVE');
         const cyclesSnapshot = await q.get();
@@ -75,7 +76,7 @@ exports.batchRecalculateAllCycles = functions
             try {
                 console.log(`[Batch] Processing cycle ${processed}/${cyclesSnapshot.size}: ${schoolId}/${cycleId}`);
                 // Recalculate this cycle
-                await (0, recalculate_1.recalculateAndPersistCycleScores)(db, schoolId, cycleId);
+                await (0, recalculate_1.recalculateAndPersistCycleScores)(getDb(), schoolId, cycleId);
                 succeeded++;
             }
             catch (error) {
@@ -139,7 +140,7 @@ exports.recalculateCycleScores = functions
         }
         console.log(`[RecalcOnDemand] Recalculating ${schoolId}/${cycleId} (requested by ${context.auth.uid})`);
         // Recalculate
-        await (0, recalculate_1.recalculateAndPersistCycleScores)(db, schoolId, cycleId);
+        await (0, recalculate_1.recalculateAndPersistCycleScores)(getDb(), schoolId, cycleId);
         console.log(`[RecalcOnDemand] Complete for ${schoolId}/${cycleId}`);
         return {
             success: true,

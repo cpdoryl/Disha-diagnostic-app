@@ -8,7 +8,8 @@ import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
 import { recalculateAndPersistCycleScores } from './recalculate'
 
-const db = admin.firestore()
+// Lazy initialization: get db inside the function, not at module load time
+const getDb = () => admin.firestore()
 
 /**
  * Trigger: Challenge response submitted or updated
@@ -37,14 +38,14 @@ export const onChallengeResponseWrite = functions
           `[Trigger:ChallengeResponse] Document deleted: ${schoolId}/${cycleId}/${responseId}`
         )
         // Soft-delete or true delete: still recalculate to update respondent counts
-        await recalculateAndPersistCycleScores(db, schoolId, cycleId)
+        await recalculateAndPersistCycleScores(getDb(), schoolId, cycleId)
         return
       }
 
       console.log(`[Trigger:ChallengeResponse] New/updated response: ${responseId}`)
 
       // Recalculate scores for this cycle
-      await recalculateAndPersistCycleScores(db, schoolId, cycleId)
+      await recalculateAndPersistCycleScores(getDb(), schoolId, cycleId)
 
       console.log(`[Trigger:ChallengeResponse] Complete for ${schoolId}/${cycleId}`)
     } catch (error) {
@@ -77,7 +78,7 @@ export const onMultiplierWrite = functions
       if (!after) {
         console.log(`[Trigger:Multiplier] Document deleted: ${schoolId}/${cycleId}/${multiplierId}`)
         // Multiplier deleted: recalculate (M_obj will drop)
-        await recalculateAndPersistCycleScores(db, schoolId, cycleId)
+        await recalculateAndPersistCycleScores(getDb(), schoolId, cycleId)
         return
       }
 
@@ -86,7 +87,7 @@ export const onMultiplierWrite = functions
       )
 
       // Recalculate scores for this cycle
-      await recalculateAndPersistCycleScores(db, schoolId, cycleId)
+      await recalculateAndPersistCycleScores(getDb(), schoolId, cycleId)
 
       console.log(`[Trigger:Multiplier] Complete for ${schoolId}/${cycleId}`)
     } catch (error) {

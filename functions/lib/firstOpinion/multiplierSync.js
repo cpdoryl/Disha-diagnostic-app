@@ -30,7 +30,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncMultipliers = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
-const db = admin.firestore();
+// Lazy initialization: get db inside the function, not at module load time
+const getDb = () => admin.firestore();
 /**
  * Known multiplier IDs and names
  * Must match the 8 defined in seed data
@@ -136,7 +137,7 @@ exports.syncMultipliers = functions
             };
         }
         // ===== WRITE MULTIPLIERS =====
-        const cycleRef = db
+        const cycleRef = getDb()
             .collection('schools')
             .doc(schoolId)
             .collection('assessmentCycles')
@@ -172,7 +173,7 @@ exports.syncMultipliers = functions
             }
         }
         // Audit log
-        await db.collection('schools').doc(schoolId).collection('auditLogs').add({
+        await getDb().collection('schools').doc(schoolId).collection('auditLogs').add({
             event: 'MULTIPLIERS_SYNCED',
             cycleId,
             syncedCount: synced,

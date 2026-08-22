@@ -6,7 +6,8 @@
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
 
-const db = admin.firestore()
+// Lazy initialization: get db inside the function, not at module load time
+const getDb = () => admin.firestore()
 
 /**
  * Known multiplier IDs and names
@@ -152,7 +153,7 @@ export const syncMultipliers = functions
       }
 
       // ===== WRITE MULTIPLIERS =====
-      const cycleRef = db
+      const cycleRef = getDb()
         .collection('schools')
         .doc(schoolId)
         .collection('assessmentCycles')
@@ -198,7 +199,7 @@ export const syncMultipliers = functions
       }
 
       // Audit log
-      await db.collection('schools').doc(schoolId).collection('auditLogs').add({
+      await getDb().collection('schools').doc(schoolId).collection('auditLogs').add({
         event: 'MULTIPLIERS_SYNCED',
         cycleId,
         syncedCount: synced,
