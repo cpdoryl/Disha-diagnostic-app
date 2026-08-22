@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncMultipliers = exports.onMultiplierWrite = exports.onChallengeResponseWrite = exports.runSimulation = exports.generate14DReport = exports.analyzeCheckup = exports.getDeploymentStatus = exports.initializeDISHADatabase = void 0;
+exports.recalculateCycleScores = exports.batchRecalculateAllCycles = exports.syncMultipliers = exports.onMultiplierWrite = exports.onChallengeResponseWrite = exports.runSimulation = exports.generate14DReport = exports.analyzeCheckup = exports.getDeploymentStatus = exports.initializeDISHADatabase = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
@@ -450,4 +450,7 @@ Object.defineProperty(exports, "onChallengeResponseWrite", { enumerable: true, g
 Object.defineProperty(exports, "onMultiplierWrite", { enumerable: true, get: function () { return triggers_1.onMultiplierWrite; } });
 var multiplierSync_1 = require("./firstOpinion/multiplierSync");
 Object.defineProperty(exports, "syncMultipliers", { enumerable: true, get: function () { return multiplierSync_1.syncMultipliers; } });
+var batch_1 = require("./firstOpinion/batch");
+Object.defineProperty(exports, "batchRecalculateAllCycles", { enumerable: true, get: function () { return batch_1.batchRecalculateAllCycles; } });
+Object.defineProperty(exports, "recalculateCycleScores", { enumerable: true, get: function () { return batch_1.recalculateCycleScores; } });
 //# sourceMappingURL=index.js.map

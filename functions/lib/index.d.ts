@@ -6,3 +6,4 @@ export declare const generate14DReport: functions.HttpsFunction & functions.Runn
 export declare const runSimulation: functions.HttpsFunction & functions.Runnable<any>;
 export { onChallengeResponseWrite, onMultiplierWrite } from "./firstOpinion/triggers";
 export { syncMultipliers } from './firstOpinion/multiplierSync';
+export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
