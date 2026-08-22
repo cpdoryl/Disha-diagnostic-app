@@ -491,6 +491,7 @@ export const runSimulation = functions.https.onCall(
 );
 
 // ====== DISHA First Opinion Engine v3 - Phase 2 Functions ======
-export { onChallengeResponseWrite, onMultiplierWrite } from "./firstOpinion/triggers";
-export { syncMultipliers } from './firstOpinion/multiplierSync';
-export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
+// TODO: Phase 2 functions temporarily disabled for deployment debugging
+// export { onChallengeResponseWrite, onMultiplierWrite } from "./firstOpinion/triggers";
+// export { syncMultipliers } from './firstOpinion/multiplierSync';
+// export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
