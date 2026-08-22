@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onMultiplierWrite = exports.onChallengeResponseWrite = exports.runSimulation = exports.generate14DReport = exports.analyzeCheckup = exports.getDeploymentStatus = exports.initializeDISHADatabase = void 0;
+exports.syncMultipliers = exports.onMultiplierWrite = exports.onChallengeResponseWrite = exports.runSimulation = exports.generate14DReport = exports.analyzeCheckup = exports.getDeploymentStatus = exports.initializeDISHADatabase = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
@@ -448,4 +448,6 @@ exports.runSimulation = functions.https.onCall(async (data, context) => {
 var triggers_1 = require("./firstOpinion/triggers");
 Object.defineProperty(exports, "onChallengeResponseWrite", { enumerable: true, get: function () { return triggers_1.onChallengeResponseWrite; } });
 Object.defineProperty(exports, "onMultiplierWrite", { enumerable: true, get: function () { return triggers_1.onMultiplierWrite; } });
+var multiplierSync_1 = require("./firstOpinion/multiplierSync");
+Object.defineProperty(exports, "syncMultipliers", { enumerable: true, get: function () { return multiplierSync_1.syncMultipliers; } });
 //# sourceMappingURL=index.js.map
