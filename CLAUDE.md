@@ -212,11 +212,14 @@ disha-diagnostic-engine/
 - [x] Configurable expected respondents per school
 - [x] Assessment deployment dashboard
 
-### ✅ Phase 2: Real-Time Response Tracking
+### ✅ Phase 2: Real-Time Response Tracking (14-Dimension Assessment)
 - [x] Firestore real-time listeners
 - [x] Auto-update dashboard without page refresh
 - [x] Respondent count tracking
 - [x] Per-stakeholder response aggregation
+
+**Note:** This Phase 2 refers to the 14-Dimension multi-stakeholder assessment system.
+For the First Opinion Engine v3 (separate system), Phase 2 is "API & Calculation Layer" — see `DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md` for details.
 
 ### ✅ Phase 3: Identification & Verification
 - [x] Email capture for Teachers, Parents, Admin
