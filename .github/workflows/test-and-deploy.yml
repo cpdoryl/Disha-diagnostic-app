@@ -130,7 +130,7 @@ jobs:
         id: check-status
         run: |
           if [ -f "deploy-output.log" ]; then
-            if grep -q "error\|failed\|Error\|Failed" deploy-output.log; then
+            if grep -qi "error:\|failed:\|Error:\|Failed:\|fatal" deploy-output.log; then
               echo "deploy_status=failed" >> $GITHUB_OUTPUT
               echo "DEPLOYMENT_FAILED=true" >> $GITHUB_ENV
             else

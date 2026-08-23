@@ -18,13 +18,13 @@ echo ""
 
 # Fetch detailed logs
 echo "📥 Fetching GitHub Actions logs..."
-LOGS=$(curl -s -H "Authorization: token $API_TOKEN" \
+LOGS=$(curl -s -L -H "Authorization: token $API_TOKEN" \
   "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID/logs" \
-  2>/dev/null | gunzip 2>/dev/null || echo "")
+  2>/dev/null | tar -xz -O 2>/dev/null | head -5000 || echo "")
 
 if [ -z "$LOGS" ]; then
-  echo "❌ Could not fetch logs"
-  exit 1
+  echo "⚠️  Could not fetch detailed logs, continuing with basic error detection..."
+  LOGS=""
 fi
 
 echo "📊 Analyzing error patterns..."
