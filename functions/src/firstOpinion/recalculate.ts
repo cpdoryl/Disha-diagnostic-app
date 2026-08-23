@@ -150,7 +150,7 @@ export async function recalculateAndPersistCycleScores(
       respondentsByRole[r.role] = (respondentsByRole[r.role] || 0) + 1
     })
 
-    // Persist to cycle doc
+    // Persist to cycle doc - db parameter passed in
     const cycleRef = db
       .collection('schools')
       .doc(schoolId)
