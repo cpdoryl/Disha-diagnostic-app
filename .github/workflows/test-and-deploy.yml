@@ -104,7 +104,6 @@ jobs:
           gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
           gcloud config set project disha-diagnostics
           
-          # Force delete each function
           gcloud functions delete onChallengeResponseWrite --region us-central1 --quiet 2>/dev/null || true
           gcloud functions delete onMultiplierWrite --region us-central1 --quiet 2>/dev/null || true
           gcloud functions delete syncMultipliers --region us-central1 --quiet 2>/dev/null || true
@@ -115,39 +114,78 @@ jobs:
           rm /tmp/gcloud-key.json 2>/dev/null || true
         continue-on-error: true
 
-      - name: Deploy to Firebase (all resources)
+      - name: Deploy to Firebase (attempt 1)
+        id: deploy-attempt-1
         run: |
-          echo "🚀 Deploying all Firebase resources (Functions + Hosting + Rules)..."
-          MAX_RETRIES=3
-          RETRY_COUNT=0
+          echo "🚀 Deployment attempt 1 of 3..."
+          firebase deploy \
+            --project disha-diagnostics \
+            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
+            --force \
+            --debug 2>&1 | tee deploy-output.log
+          echo "deploy_status=success" >> $GITHUB_OUTPUT
+        continue-on-error: true
 
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "Deployment attempt $RETRY_COUNT of $MAX_RETRIES"
-
-            if firebase deploy \
-              --project disha-diagnostics \
-              --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
-              --force \
-              --debug
-            then
-              echo "✅ Firebase deployment succeeded!"
-              exit 0
+      - name: Check deployment status
+        id: check-status
+        run: |
+          if [ -f "deploy-output.log" ]; then
+            if grep -q "error\|failed\|Error\|Failed" deploy-output.log; then
+              echo "deploy_status=failed" >> $GITHUB_OUTPUT
+              echo "DEPLOYMENT_FAILED=true" >> $GITHUB_ENV
             else
-              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-                echo "⏳ Deployment failed, waiting 60 seconds before retry..."
-                sleep 60
-              else
-                echo "❌ Deployment failed after $MAX_RETRIES attempts"
-                exit 1
-              fi
+              echo "deploy_status=success" >> $GITHUB_OUTPUT
             fi
-          done
-        timeout-minutes: 30
+          fi
+
+      - name: Auto-diagnose and fix errors (if deployment failed)
+        if: env.DEPLOYMENT_FAILED == 'true'
+        run: |
+          echo "🔧 AUTO-FIX: Analyzing deployment failure..."
+          
+          # Run auto-fix analysis
+          bash .github/auto-fix.sh "${{ github.run_id }}" "${{ secrets.GH_API_TOKEN }}" '${{ secrets.GCP_SA_KEY }}'
+          
+          echo ""
+          echo "✅ Auto-fix analysis complete"
+          echo "⏳ Retrying deployment with fixes..."
+
+      - name: Retry deployment (attempt 2)
+        if: env.DEPLOYMENT_FAILED == 'true'
+        run: |
+          echo "🚀 Deployment attempt 2 of 3..."
+          sleep 30
+          firebase deploy \
+            --project disha-diagnostics \
+            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
+            --force \
+            --debug 2>&1 | tee deploy-output-2.log
+        continue-on-error: true
+
+      - name: Check retry status
+        if: env.DEPLOYMENT_FAILED == 'true'
+        run: |
+          if grep -q "error\|failed\|Error\|Failed" deploy-output-2.log; then
+            echo "DEPLOYMENT_STILL_FAILED=true" >> $GITHUB_ENV
+          else
+            echo "DEPLOYMENT_STILL_FAILED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Final retry deployment (attempt 3)
+        if: env.DEPLOYMENT_STILL_FAILED == 'true'
+        run: |
+          echo "🚀 Deployment attempt 3 of 3 (final)..."
+          sleep 30
+          firebase deploy \
+            --project disha-diagnostics \
+            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
+            --force \
+            --debug 2>&1 | tee deploy-output-3.log
 
       - name: Deployment Summary
+        if: always()
         run: |
-          echo "✅ Full deployment completed!"
+          echo "✅ Full deployment pipeline completed!"
           echo ""
           echo "📋 Deployment Summary:"
           echo "  ✓ Cloud Functions deployed (triggers + callables)"
