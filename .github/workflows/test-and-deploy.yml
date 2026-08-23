@@ -96,6 +96,25 @@ jobs:
           echo "✅ Build artifacts ready for deployment"
           ls -lh build/
 
+      - name: Force delete old Phase 2 functions via gcloud
+        run: |
+          echo "🗑️  Force deleting old Phase 2 functions..."
+          GCP_SA_KEY='${{ secrets.GCP_SA_KEY }}'
+          echo "$GCP_SA_KEY" > /tmp/gcloud-key.json
+          gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
+          gcloud config set project disha-diagnostics
+          
+          # Force delete each function
+          gcloud functions delete onChallengeResponseWrite --region us-central1 --quiet 2>/dev/null || true
+          gcloud functions delete onMultiplierWrite --region us-central1 --quiet 2>/dev/null || true
+          gcloud functions delete syncMultipliers --region us-central1 --quiet 2>/dev/null || true
+          gcloud functions delete batchRecalculateAllCycles --region us-central1 --quiet 2>/dev/null || true
+          gcloud functions delete recalculateCycleScores --region us-central1 --quiet 2>/dev/null || true
+          
+          echo "✅ Old functions cleaned up"
+          rm /tmp/gcloud-key.json 2>/dev/null || true
+        continue-on-error: true
+
       - name: Deploy to Firebase (all resources)
         run: |
           echo "🚀 Deploying all Firebase resources (Functions + Hosting + Rules)..."
