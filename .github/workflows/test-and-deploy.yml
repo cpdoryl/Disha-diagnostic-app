@@ -96,17 +96,6 @@ jobs:
           echo "✅ Build artifacts ready for deployment"
           ls -lh build/
 
-      - name: Delete old Phase 2 functions (if they exist)
-        run: |
-          echo "🗑️  Cleaning up old Phase 2 functions from previous deployments..."
-          firebase functions:delete batchRecalculateAllCycles --region us-central1 --quiet --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" 2>/dev/null || true
-          firebase functions:delete onChallengeResponseWrite --region us-central1 --quiet --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" 2>/dev/null || true
-          firebase functions:delete onMultiplierWrite --region us-central1 --quiet --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" 2>/dev/null || true
-          firebase functions:delete recalculateCycleScores --region us-central1 --quiet --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" 2>/dev/null || true
-          firebase functions:delete syncMultipliers --region us-central1 --quiet --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" 2>/dev/null || true
-          echo "✅ Cleanup complete (or functions didn't exist)"
-        continue-on-error: true
-
       - name: Deploy to Firebase (all resources)
         run: |
           echo "🚀 Deploying all Firebase resources (Functions + Hosting + Rules)..."
@@ -120,6 +109,7 @@ jobs:
             if firebase deploy \
               --project disha-diagnostics \
               --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
+              --force \
               --debug
             then
               echo "✅ Firebase deployment succeeded!"
