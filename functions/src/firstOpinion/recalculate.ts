@@ -7,6 +7,7 @@
 import * as admin from 'firebase-admin'
 import {
   calculateSsub,
+  calculateMobj,
   calculateAllScores,
   validateChallengeResponses,
   calculateChallengeSeverity,
@@ -119,10 +120,8 @@ export async function recalculateAndPersistCycleScores(
     console.log(`  S_sub: ${s_sub}`)
 
     // Calculate M_obj (objective score) from 8 multipliers
-    // Extract valid multipliers; if missing, M_obj = 50 (default midpoint)
-    const validMultipliers = multipliers.filter(m => m.validationStatus === 'VALID')
-    const m_obj = validMultipliers.length > 0 ? calculateSsub([], {}) : 50
-    // TODO: Replace with actual M_obj calculation once multiplier data structure is finalized
+    // Geometric mean of all valid multipliers; if missing, M_obj = 50 (default midpoint)
+    const m_obj = calculateMobj(multipliers)
     console.log(`  M_obj: ${m_obj}`)
 
     // Calculate Health Index, Gap, Quadrant
