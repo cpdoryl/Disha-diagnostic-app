@@ -150,7 +150,7 @@ jobs:
           echo "✅ Full deployment completed!"
           echo ""
           echo "📋 Deployment Summary:"
-          echo "  ✓ Cloud Functions deployed (5 functions)"
+          echo "  ✓ Cloud Functions deployed (3 functions)"
           echo "  ✓ Firestore security rules & indexes updated"
           echo "  ✓ React app deployed to Firebase Hosting"
           echo "  ✓ Cache headers configured"
