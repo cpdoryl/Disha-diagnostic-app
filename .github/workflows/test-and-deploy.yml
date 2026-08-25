@@ -102,7 +102,7 @@ jobs:
           gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
           gcloud config set project disha-diagnostics
 
-          # List of orphaned functions to delete
+          # List of orphaned functions to delete (NOT including analyzeCheckup, generate14DReport, runSimulation, initializeDISHADatabase, getDeploymentStatus)
           FUNCTIONS=(
             "analyzeDimensions"
             "analyzeTrends"
@@ -115,17 +115,23 @@ jobs:
             "submitBatchChallengeResponses"
             "submitChallengeResponse"
             "syncMultipliers"
-            "analyzeCheckup"
           )
 
           for func in "${FUNCTIONS[@]}"; do
             echo "Attempting to delete $func..."
             gcloud functions delete "$func" --region us-central1 --quiet 2>&1 || \
-            echo "✓ $func: Not found or already deleted"
+            echo "✓ $func: Not found or already deleted (continuing...)"
           done
 
           rm /tmp/gcloud-key.json 2>/dev/null || true
+          echo "✅ Orphaned function cleanup complete"
         continue-on-error: true
+
+      - name: Wait for orphaned functions to be deleted
+        run: |
+          echo "⏳ Waiting for Cloud Functions deletion to complete..."
+          sleep 5
+          echo "✅ Ready to deploy new functions"
 
       - name: Deploy Cloud Functions
         run: |
@@ -134,8 +140,8 @@ jobs:
             --only functions \
             --project disha-diagnostics \
             --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
-            --debug
-        timeout-minutes: 15
+            --force
+        timeout-minutes: 20
 
       - name: Deploy Firestore Rules & Indexes
         if: ${{ !cancelled() }}
