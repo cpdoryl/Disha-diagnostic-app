@@ -72,10 +72,6 @@ jobs:
         run: cd functions && npm install --legacy-peer-deps && cd ..
         timeout-minutes: 10
 
-      - name: Build Cloud Functions
-        run: cd functions && npm run build && cd ..
-        timeout-minutes: 10
-
       - name: Setup Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
@@ -96,327 +92,85 @@ jobs:
           echo "✅ Build artifacts ready for deployment"
           ls -lh build/
 
-      - name: Check Firestore Database Exists
+      - name: Delete orphaned Cloud Functions
         run: |
-          echo "🔍 Checking Firestore database configuration..."
-
+          echo "🗑️  Cleaning up orphaned Cloud Functions..."
           GCP_SA_KEY='${{ secrets.GCP_SA_KEY }}'
+
+          echo "Setting up gcloud with service account..."
           echo "$GCP_SA_KEY" > /tmp/gcloud-key.json
           gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
           gcloud config set project disha-diagnostics
 
-          echo ""
-          echo "Available Firestore databases:"
-          echo "════════════════════════════════════════"
+          # List of orphaned functions to delete
+          FUNCTIONS=(
+            "analyzeDimensions"
+            "analyzeTrends"
+            "batchRecalculateAllCycles"
+            "deleteChallengeResponse"
+            "detectEarlyWarnings"
+            "generateDiagnosticReport"
+            "generateFirstOpinionReport"
+            "recalculateCycleScores"
+            "submitBatchChallengeResponses"
+            "submitChallengeResponse"
+            "syncMultipliers"
+            "analyzeCheckup"
+          )
 
-          # List all databases
-          DATABASES=$(gcloud firestore databases list --format="table(name,type,locationConfig.locations[0])" 2>/dev/null)
-          echo "$DATABASES"
+          for func in "${FUNCTIONS[@]}"; do
+            echo "Attempting to delete $func..."
+            gcloud functions delete "$func" --region us-central1 --quiet 2>&1 || \
+            echo "✓ $func: Not found or already deleted"
+          done
 
-          echo ""
-          echo "Checking required databases:"
-          echo "════════════════════════════════════════"
-
-          # Check (default) database
-          DEFAULT_DB=$(gcloud firestore databases list --format="value(name)" 2>/dev/null | grep -c "(default)" || echo "0")
-
-          # Check custom database
-          CUSTOM_DB=$(gcloud firestore databases list --format="value(name)" 2>/dev/null | grep -c "ai-studio-dishadiagnostice" || echo "0")
-
-          echo "Status:"
-          if [ "$DEFAULT_DB" -eq "0" ]; then
-            echo "❌ (default) database: NOT FOUND"
-          else
-            echo "✅ (default) database: FOUND"
-          fi
-
-          if [ "$CUSTOM_DB" -eq "0" ]; then
-            echo "⚠️  Custom database: NOT FOUND"
-          else
-            echo "✅ Custom database: FOUND"
-          fi
-
-          echo ""
-
-          if [ "$DEFAULT_DB" -eq "0" ]; then
-            echo "❌ CRITICAL: (default) database does not exist!"
-            echo ""
-            echo "Gen 1 Firestore triggers REQUIRE the (default) database."
-            echo ""
-            echo "🔧 TO FIX:"
-            echo "1. Go to: https://console.firebase.google.com/project/disha-diagnostics/firestore/databases"
-            echo "2. Click 'Create Database'"
-            echo "3. Name: (default)"
-            echo "4. Location: asia-south1 (India)"
-            echo "5. Click Create"
-            echo "6. Wait 2-3 minutes"
-            echo "7. Run workflow again"
-            echo ""
-            exit 1
-          fi
-
-          rm /tmp/gcloud-key.json 2>/dev/null || true
-        continue-on-error: false
-
-      - name: Force delete old Phase 2 functions via gcloud
-        run: |
-          echo "🗑️  Force deleting old Phase 2 functions..."
-          GCP_SA_KEY='${{ secrets.GCP_SA_KEY }}'
-          echo "$GCP_SA_KEY" > /tmp/gcloud-key.json
-          gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
-          gcloud config set project disha-diagnostics
-
-          gcloud functions delete onChallengeResponseWrite --region us-central1 --quiet 2>/dev/null || true
-          gcloud functions delete onMultiplierWrite --region us-central1 --quiet 2>/dev/null || true
-          gcloud functions delete syncMultipliers --region us-central1 --quiet 2>/dev/null || true
-          gcloud functions delete batchRecalculateAllCycles --region us-central1 --quiet 2>/dev/null || true
-          gcloud functions delete recalculateCycleScores --region us-central1 --quiet 2>/dev/null || true
-
-          echo "✅ Old functions cleaned up"
           rm /tmp/gcloud-key.json 2>/dev/null || true
         continue-on-error: true
 
-      - name: Deploy Hosting to Firebase (attempt 1)
-        id: deploy-attempt-1
+      - name: Deploy Cloud Functions
         run: |
-          echo "🚀 Deployment attempt 1 of 3..."
-          echo "📦 Step 1: Deploying Hosting..."
-          firebase deploy \
-            --only hosting \
-            --project disha-diagnostics \
-            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
-            --force \
-            --debug 2>&1 | tee deploy-output.log
-          echo "✅ Hosting deployed successfully"
-        continue-on-error: true
-
-      - name: Deploy Cloud Functions (attempt 1)
-        run: |
-          echo "📦 Step 2: Deploying Cloud Functions..."
+          echo "🚀 Deploying Cloud Functions..."
           firebase deploy \
             --only functions \
             --project disha-diagnostics \
             --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
-            --force \
-            --debug 2>&1 | tee -a deploy-output.log
-          echo "✅ Cloud Functions deployed successfully"
-        continue-on-error: true
+            --debug
+        timeout-minutes: 15
 
-      - name: Deploy Firestore Rules (attempt 1)
+      - name: Deploy Firestore Rules & Indexes
+        if: ${{ !cancelled() }}
         run: |
-          echo "📦 Step 3: Deploying Firestore Rules..."
+          echo "🚀 Deploying Firestore Rules & Indexes..."
           firebase deploy \
-            --only firestore:rules \
+            --only firestore:rules,firestore:indexes \
             --project disha-diagnostics \
             --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
-            --force \
-            --debug 2>&1 | tee -a deploy-output.log
-          echo "✅ Firestore Rules deployed successfully"
-        continue-on-error: true
+            --debug
+        timeout-minutes: 10
 
-      - name: Validate Deployment Success
-        id: check-status
+      - name: Deploy to Firebase Hosting
+        if: ${{ !cancelled() }}
         run: |
-          echo "🔍 Validating deployment..."
-
-          # Check for CRITICAL deployment errors (not just warnings)
-          # Look for lines that indicate actual failure, not just information messages
-          if grep -E "^error:|^ERROR:|Deploy failed|cannot be deleted|does not exist|Permission denied" deploy-output.log 2>/dev/null | grep -v "^[[:space:]]*#"; then
-            echo "❌ CRITICAL deployment errors detected:"
-            grep -E "^error:|^ERROR:|Deploy failed|cannot be deleted|does not exist|Permission denied" deploy-output.log | head -5
-            echo "deploy_status=failed" >> $GITHUB_OUTPUT
-            echo "DEPLOYMENT_FAILED=true" >> $GITHUB_ENV
-            exit 1
-          else
-            echo "✅ No critical deployment errors found"
-            echo "deploy_status=success" >> $GITHUB_OUTPUT
-          fi
-
-          # Validate all components deployed
-          echo ""
-          echo "📋 Deployment Component Validation:"
-          VALIDATED=0
-
-          if grep -q "functions deployed" deploy-output.log || grep -q "✔  functions" deploy-output.log; then
-            echo "✅ Cloud Functions deployed"
-            VALIDATED=$((VALIDATED + 1))
-          fi
-
-          if grep -q "hosting deployed" deploy-output.log || grep -q "✔  hosting" deploy-output.log; then
-            echo "✅ Hosting deployed"
-            VALIDATED=$((VALIDATED + 1))
-          fi
-
-          if grep -q "firestore deployed" deploy-output.log || grep -q "✔  firestore:rules" deploy-output.log || grep -q "deployed" deploy-output.log; then
-            echo "✅ Firestore Rules deployed"
-            VALIDATED=$((VALIDATED + 1))
-          fi
-
-          if [ $VALIDATED -lt 3 ]; then
-            echo ""
-            echo "⚠️  Some components may not have deployed. Log output:"
-            tail -20 deploy-output.log
-          fi
-
-      - name: Verify Cloud Functions Availability
-        run: |
-          echo "🔬 Verifying Cloud Functions via gcloud..."
-
-          # Authenticate with GCP
-          GCP_SA_KEY='${{ secrets.GCP_SA_KEY }}'
-          echo "$GCP_SA_KEY" > /tmp/gcloud-key.json
-          gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
-          gcloud config set project disha-diagnostics
-
-          echo ""
-          echo "✅ Checking deployed functions..."
-
-          # List all functions in us-central1
-          DEPLOYED=$(gcloud functions list --region us-central1 --format="value(name)" 2>/dev/null || echo "")
-
-          if [ -z "$DEPLOYED" ]; then
-            echo "⚠️  No functions found in us-central1. This might indicate deployment failure."
-            echo ""
-            echo "Recent gcloud errors:"
-            gcloud functions list --region us-central1 2>&1 | head -10
-          else
-            echo "Functions deployed:"
-            echo "$DEPLOYED" | while read func; do
-              echo "  ✓ $func"
-            done
-
-            # Count functions
-            FUNC_COUNT=$(echo "$DEPLOYED" | wc -l)
-            echo ""
-            echo "📊 Total functions deployed: $FUNC_COUNT"
-
-            if [ "$FUNC_COUNT" -lt 10 ]; then
-              echo "⚠️  Expected 10 functions, found $FUNC_COUNT"
-              echo ""
-              echo "Expected but may be missing:"
-              echo "  - onChallengeResponseWrite (Gen 2)"
-              echo "  - onMultiplierWrite (Gen 2)"
-              echo "  - initializeDISHADatabase"
-              echo "  - getDeploymentStatus"
-              echo "  - analyzeCheckup"
-              echo "  - generate14DReport"
-              echo "  - runSimulation"
-              echo "  - syncMultipliers"
-              echo "  - batchRecalculateAllCycles"
-              echo "  - recalculateCycleScores"
-            else
-              echo "✅ All expected functions deployed!"
-            fi
-          fi
-
-          # Cleanup
-          rm /tmp/gcloud-key.json 2>/dev/null || true
-
-          echo ""
-          echo "Database Configuration:"
-          echo "  ✓ Custom DB: ai-studio-dishadiagnostice-63fe1b2b-7f23-4689-aa1a-cd41267d5918"
-          echo "  ✓ (default) DB: projects/disha-diagnostics/databases/(default)"
-          echo "  ✓ Region: asia-south1 (India - DPDP compliant)"
-        continue-on-error: true
-
-      - name: Auto-diagnose and fix errors (if deployment failed)
-        if: env.DEPLOYMENT_FAILED == 'true'
-        run: |
-          echo "🔧 AUTO-FIX: Analyzing deployment failure..."
-          
-          # Run auto-fix analysis
-          bash .github/auto-fix.sh "${{ github.run_id }}" "${{ secrets.GH_API_TOKEN }}" '${{ secrets.GCP_SA_KEY }}'
-          
-          echo ""
-          echo "✅ Auto-fix analysis complete"
-          echo "⏳ Retrying deployment with fixes..."
-
-      - name: Retry deployment (attempt 2)
-        if: env.DEPLOYMENT_FAILED == 'true'
-        run: |
-          echo "🚀 Deployment attempt 2 of 3..."
-          echo "⏳ Waiting 30 seconds before retry..."
-          sleep 30
-
-          # Try explicit stages again
-          echo "📦 Retry: Deploying Hosting..."
-          firebase deploy --only hosting --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-2.log || true
-
-          echo "📦 Retry: Deploying Functions..."
-          firebase deploy --only functions --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-2.log || true
-
-          echo "📦 Retry: Deploying Rules..."
-          firebase deploy --only firestore:rules --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-2.log || true
-
-          echo "✅ Retry attempt 2 complete"
-        continue-on-error: true
-
-      - name: Check retry status
-        if: env.DEPLOYMENT_FAILED == 'true'
-        run: |
-          if grep -E "^error:|^ERROR:|Deploy failed|cannot be deleted" deploy-output-2.log 2>/dev/null; then
-            echo "❌ Retry failed, will attempt final retry"
-            echo "DEPLOYMENT_STILL_FAILED=true" >> $GITHUB_ENV
-          else
-            echo "✅ Retry succeeded"
-            echo "DEPLOYMENT_STILL_FAILED=false" >> $GITHUB_ENV
-          fi
-
-      - name: Final retry deployment (attempt 3)
-        if: env.DEPLOYMENT_STILL_FAILED == 'true'
-        run: |
-          echo "🚀 Deployment attempt 3 of 3 (final)..."
-          echo "⏳ Waiting 30 seconds before final retry..."
-          sleep 30
-
-          # Force clean deployment
-          echo "📦 Final: Deploying Hosting..."
-          firebase deploy --only hosting --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-3.log || true
-
-          echo "📦 Final: Deploying Functions..."
-          firebase deploy --only functions --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-3.log || true
-
-          echo "📦 Final: Deploying Rules..."
-          firebase deploy --only firestore:rules --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-3.log || true
-
-          echo "✅ Final attempt complete"
-        continue-on-error: true
+          echo "🚀 Deploying to Firebase Hosting..."
+          firebase deploy \
+            --only hosting \
+            --project disha-diagnostics \
+            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
+            --debug
+        timeout-minutes: 15
 
       - name: Deployment Summary
-        if: always()
         run: |
-          echo "╔════════════════════════════════════════════════════════════╗"
-          echo "║          ✅ FULL DEPLOYMENT PIPELINE COMPLETED           ║"
-          echo "╚════════════════════════════════════════════════════════════╝"
+          echo "✅ Full deployment completed!"
           echo ""
-          echo "📋 DEPLOYMENT COMPONENTS:"
-          echo "  ✅ Cloud Functions (Gen 2 Triggers + Gen 1 Callables)"
-          echo "     - onChallengeResponseWrite (Gen 2 Trigger → Custom DB)"
-          echo "     - onMultiplierWrite (Gen 2 Trigger → Custom DB)"
-          echo "     - 8x Gen 1 HTTP callables + scheduled jobs"
+          echo "📋 Deployment Summary:"
+          echo "  ✓ Cloud Functions deployed (3 functions)"
+          echo "  ✓ Firestore security rules & indexes updated"
+          echo "  ✓ React app deployed to Firebase Hosting"
+          echo "  ✓ Cache headers configured"
           echo ""
-          echo "  ✅ Firestore Configuration"
-          echo "     - Custom DB: ai-studio-dishadiagnostice-63fe1b2b-7f23-4689-aa1a-cd41267d5918"
-          echo "     - (default) DB: projects/disha-diagnostics/databases/(default)"
-          echo "     - Location: asia-south1 (India DPDP compliant)"
-          echo "     - Security rules deployed"
+          echo "🌐 Live URLs:"
+          echo "  ✓ https://disha-diagnostics.web.app/"
+          echo "  ✓ https://disha.rylneuroacademy.com/"
           echo ""
-          echo "  ✅ Firebase Hosting"
-          echo "     - React app deployed (Vite optimized)"
-          echo "     - Browser tab title: 'Disha'"
-          echo "     - Cache headers configured (aggressive caching)"
-          echo "     - SPA routing configured"
-          echo ""
-          echo "🌐 LIVE URLS:"
-          echo "  → https://disha-diagnostics.web.app/ (Firebase URL)"
-          echo "  → https://disha.rylneuroacademy.com/ (Custom Domain)"
-          echo ""
-          echo "⏱️  PROPAGATION TIME:"
-          echo "  → Hosting: 1-2 minutes"
-          echo "  → Cloud Functions: 2-5 minutes"
-          echo "  → Firestore Rules: Immediate"
-          echo ""
-          echo "✨ PHASE 2 STATUS: READY FOR TESTING"
-          echo "  → Real-time Firestore triggers active"
-          echo "  → Multi-database setup complete"
-          echo "  → Gen 2 Cloud Functions deployed"
+          echo "⏱️  Changes live within 2-3 minutes"

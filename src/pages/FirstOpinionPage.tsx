@@ -359,8 +359,8 @@ const OUTCOMES: OutcomeItem[] = [
   }
 ];
 
-export const Checkup = () => {
-  console.log('🔴 CHECKUP COMPONENT LOADED - This is the latest version');
+export const FirstOpinionPage = () => {
+  console.log('🔴 FIRST OPINION ENGINE LOADED - This is the latest version');
   const { activeSchool } = useAppStore();
   const [user] = useAuthState(auth);
   const schoolId = activeSchool?.id || 'default-school';
@@ -1551,8 +1551,8 @@ HOW TO USE IN DISHA:
             <HeartPulse className="w-5 h-5 text-blue-500" />
             <span>Disha Diagnostic Suite &bull; Board Approved</span>
           </div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Adaptive School Health Checkup</h2>
-          <p className="text-gray-500 mt-1 font-medium">An annual school diagnostic checkup, run in simple language by an app instead of an auditor.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900">School First Opinion Engine</h2>
+          <p className="text-gray-500 mt-1 font-medium">An annual school diagnostic first opinion, run in simple language by an app instead of an auditor.</p>
         </div>
         <div className="flex items-center gap-2 bg-indigo-50 px-3.5 py-1.5 rounded-full border border-indigo-100 text-xs font-bold text-indigo-700 w-fit">
           <Clock className="w-4 h-4 text-indigo-500" />
@@ -1695,7 +1695,7 @@ HOW TO USE IN DISHA:
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3 text-xs text-gray-500">
-              <h5 className="font-bold text-gray-800 uppercase tracking-widest text-[10px]">Active Checkup Target</h5>
+              <h5 className="font-bold text-gray-800 uppercase tracking-widest text-[10px]">Active First Opinion Target</h5>
               <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 font-medium">
                 <p className="font-bold text-gray-900">{activeSchool?.name || 'Vasant Vihar Public School'}</p>
                 <p className="text-gray-500 mt-0.5">Mumbai Branch &bull; Primary & Secondary</p>
@@ -2209,7 +2209,7 @@ HOW TO USE IN DISHA:
               <span className="bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-indigo-500">
                 Stage 2: 14-Dimension EWISR Framework
               </span>
-              <h3 className="text-2xl md:text-3xl font-black text-white">Unlock the Complete 14-Dimension Checkup</h3>
+              <h3 className="text-2xl md:text-3xl font-black text-white">Unlock the Complete 14-Dimension Assessment</h3>
               <p className="text-xs md:text-sm text-slate-300 leading-relaxed font-medium">
                 Want to run the complete diagnostic? This will deploy all 14 parameters of the EWISR Framework. Enter your competitive benchmark names below, then click to access the live multilateral deployment dashboard where school leaders, teaching staff, parents, and students can provide verified inputs.
               </p>
@@ -2324,11 +2324,11 @@ HOW TO USE IN DISHA:
                 >
                   Print Report
                 </button>
-                <button 
+                <button
                   onClick={() => setStep(0)}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-colors"
                 >
-                  Start New Checkup
+                  Start New Assessment
                 </button>
               </div>
             </div>

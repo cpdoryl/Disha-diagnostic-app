@@ -1,9 +1,8 @@
 import React from 'react';
 import { useAppStore } from '../store';
-import { Target, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight, HeartPulse, Sparkles, ArrowRight, Building2, MapPin, Award } from 'lucide-react';
+import { Target, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight, HeartPulse, Sparkles, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { SchoolDataHub } from '../components/SchoolDataHub';
 
 const mockTrendData = [
   { name: 'Jan', score: 72 },
@@ -122,56 +121,14 @@ export const Dashboard = () => {
           </p>
         </div>
         <button
-          onClick={() => setCurrentView('CHECKUP')}
+          onClick={() => setCurrentView('FIRST_OPINION')}
           className="relative z-10 bg-blue-600 hover:bg-blue-700 text-white font-black px-6 py-3.5 rounded-xl text-sm transition-all shadow-[0_4px_15px_rgba(37,99,235,0.3)] shrink-0 flex items-center gap-2 hover:translate-x-0.5"
         >
-          Start Checkup Wizard
+          Start First Opinion
           <ArrowRight className="w-4.5 h-4.5 text-white" />
         </button>
       </div>
 
-      {/* EXCLUSIVE SCHOOL DATABASE & STAKEHOLDER RETRIEVAL HUB */}
-      <SchoolDataHub activeSchool={activeSchool} />
-
-      {/* School Operations Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer hover:border-blue-500 hover:shadow transition-all" onClick={() => setCurrentView('STUDENTS')}>
-          <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Enrolled Students</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">{useAppStore.getState().students.length}</p>
-          </div>
-          <div className="bg-blue-50 text-blue-600 p-2.5 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer hover:border-blue-500 hover:shadow transition-all" onClick={() => setCurrentView('STAFF')}>
-          <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Active Faculty</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">{useAppStore.getState().staff.length}</p>
-          </div>
-          <div className="bg-emerald-50 text-emerald-600 p-2.5 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer hover:border-blue-500 hover:shadow transition-all" onClick={() => setCurrentView('ATTENDANCE')}>
-          <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Average Attendance</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">91%</p>
-          </div>
-          <div className="bg-indigo-50 text-indigo-600 p-2.5 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer hover:border-blue-500 hover:shadow transition-all" onClick={() => setCurrentView('COMMUNICATIONS')}>
-          <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Active Broadcasts</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">{useAppStore.getState().communications.length}</p>
-          </div>
-          <div className="bg-amber-50 text-amber-600 p-2.5 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
-          </div>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
