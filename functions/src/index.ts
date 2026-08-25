@@ -492,6 +492,10 @@ export const runSimulation = functions.https.onCall(
 
 // ====== DISHA First Opinion Engine v3 - Phase 2 Functions ======
 // Real-time calculation pipeline for First Opinion Engine
-export { onChallengeResponseWrite, onMultiplierWrite } from "./firstOpinion/triggers";
+//
+// NOTE: Gen 2 Firestore triggers exported directly from triggers.ts
+// (not from index.ts to avoid Gen 1 conversion)
+// See: functions/src/firstOpinion/triggers.ts
+//
 export { syncMultipliers } from './firstOpinion/multiplierSync';
 export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
