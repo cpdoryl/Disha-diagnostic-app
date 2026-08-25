@@ -204,6 +204,28 @@ disha-diagnostic-engine/
 
 ---
 
+## 📚 Reference Documentation
+
+### First Opinion Engine v3 (Authoritative Source)
+**Single source of truth for all First Opinion Engine v3 development:**
+
+- **`DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md`** — Master methodology with all 11 refinements
+  - Complete 15-challenge question bank (5 domains)
+  - 8 objective multipliers with control levers
+  - Worked calculation examples
+  - Early warning flags and predictive analytics
+  - Data sourcing requirements for every metric
+  
+- **`DISHA_FIRST_OPINION_ENGINE_V3_COMPLETION_REPORT.md`** — Implementation status
+  - All 4 phases complete (Calculations, APIs, Reports, Predictions)
+  - Cloud Functions deployed (Gen 2)
+  - Real-time React dashboard
+  - Live URL: https://disha-diagnostics.web.app/
+
+**⚠️ Old Versions Archived:** See `/_ARCHIVED/FirstOpinionEngineOldVersions/` — v1-v2 docs kept for historical reference only. Do NOT use for new development.
+
+---
+
 ## Key Features Implemented
 
 ### ✅ Phase 1: Multi-User Assessment
@@ -378,6 +400,10 @@ For issues or questions:
 
 ## Last Updated
 - Created: August 11, 2026
-- Phase 1-3 features implemented
+- Updated: August 25, 2026
+- **Phase 1-3 features implemented** (14-Dimension Assessment)
+- **First Opinion Engine v3 complete** (All 4 phases)
+- **Old versions archived** (v1-v2 moved to /_ARCHIVED/)
 - Remote/Local development workflow established
 - Auto-deployment configured
+- Live: https://disha-diagnostics.web.app/
