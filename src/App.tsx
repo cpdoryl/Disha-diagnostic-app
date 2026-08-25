@@ -5,12 +5,10 @@ import { useAppStore } from './store';
 import { CompareStage } from './pages/CompareStage';
 import { SimulateStage } from './pages/SimulateStage';
 import { SynthesizeStage } from './pages/SynthesizeStage';
-import { Monitoring } from './pages/Monitoring';
-import { Communications } from './pages/Communications';
 import { Login } from './pages/Login';
 import { LandingPage } from './pages/LandingPage';
 import { Admin } from './pages/Admin';
-import { Checkup } from './pages/Checkup';
+import { FirstOpinionPage } from './pages/FirstOpinionPage';
 import { MultiUserAssessmentPage } from './pages/MultiUserAssessment';
 import { StakeholderSurvey } from './pages/StakeholderSurvey';
 import { auth, db } from './lib/firebase';
@@ -109,18 +107,14 @@ export default function App() {
     switch (currentView) {
       case 'DASHBOARD':
         return <Dashboard />;
-      case 'CHECKUP':
-        return <Checkup />;
+      case 'FIRST_OPINION':
+        return <FirstOpinionPage />;
       case 'COMPARE':
         return <CompareStage />;
       case 'SIMULATE':
         return <SimulateStage />;
       case 'SYNTHESIZE':
         return <SynthesizeStage />;
-      case 'MONITORING':
-        return <Monitoring />;
-      case 'COMMUNICATIONS':
-        return <Communications />;
       case 'ADMIN':
         return <Admin />;
       case '14D_ASSESSMENT':

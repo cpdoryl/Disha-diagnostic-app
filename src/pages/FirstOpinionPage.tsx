@@ -359,8 +359,8 @@ const OUTCOMES: OutcomeItem[] = [
   }
 ];
 
-export const Checkup = () => {
-  console.log('🔴 CHECKUP COMPONENT LOADED - This is the latest version');
+export const FirstOpinionPage = () => {
+  console.log('🔴 FIRST OPINION ENGINE LOADED - This is the latest version');
   const { activeSchool } = useAppStore();
   const [user] = useAuthState(auth);
   const schoolId = activeSchool?.id || 'default-school';
