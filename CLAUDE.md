@@ -206,6 +206,25 @@ disha-diagnostic-engine/
 
 ## 📚 Reference Documentation
 
+### 14-Dimension Diagnostic Framework v2 (Authoritative Source)
+**Single source of truth for all 14D diagnostic implementation and deployment:**
+
+- **`DISHA_14D_DIAGNOSTIC_FRAMEWORK_V2_REFERENCE.md`** — Master methodology document
+  - Complete 14 dimensions with operational control processes
+  - 60+ metrics with exact calculation formulas
+  - 1:1 metric-to-perception matching (90+ perception questions)
+  - Raw data sources & fallback procedures for every metric
+  - Root-cause paired follow-up questions
+  - 5 analytical & predictive use case categories (25+ scenarios)
+  - Visual analytics examples (8 chart types with illustrative data)
+  - Deployment checklist and implementation guidance
+  
+- **`School diagnostic 14 dimension framework version 2.pdf`** — Source document
+  - Comprehensive reference (24-page PDF)
+  - Used for all implementation and deployment guidance
+
+**⚠️ Old Versions Archived:** See `/_ARCHIVED/14DimensionalDiagnosticOldVersions/` — v1 docs kept for historical reference only. Do NOT use for new development.
+
 ### First Opinion Engine v3 (Authoritative Source)
 **Single source of truth for all First Opinion Engine v3 development:**
 
@@ -240,8 +259,8 @@ disha-diagnostic-engine/
 - [x] Respondent count tracking
 - [x] Per-stakeholder response aggregation
 
-**Note:** This Phase 2 refers to the 14-Dimension multi-stakeholder assessment system.
-For the First Opinion Engine v3 (separate system), Phase 2 is "API & Calculation Layer" — see `DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md` for details.
+**Note:** This Phase 2 refers to the 14-Dimension multi-stakeholder assessment system (DISHA_14D_DIAGNOSTIC_FRAMEWORK_V2_REFERENCE.md).
+The First Opinion Engine v3 is a separate system with its own 4 phases (Calculations, APIs, Reports, Predictions) — see `DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md` for details.
 
 ### ✅ Phase 3: Identification & Verification
 - [x] Email capture for Teachers, Parents, Admin
@@ -401,9 +420,11 @@ For issues or questions:
 ## Last Updated
 - Created: August 11, 2026
 - Updated: August 25, 2026
-- **Phase 1-3 features implemented** (14-Dimension Assessment)
-- **First Opinion Engine v3 complete** (All 4 phases)
-- **Old versions archived** (v1-v2 moved to /_ARCHIVED/)
+- **14D Diagnostic Framework v2 consolidated** (single authoritative reference)
+- **14D v1 docs archived** (moved to /_ARCHIVED/14DimensionalDiagnosticOldVersions/)
+- **First Opinion Engine v3 complete** (All 4 phases, separate system)
+- **First Opinion v1-v2 archived** (moved to /_ARCHIVED/FirstOpinionEngineOldVersions/)
+- Phase 1-3 features implemented (14-Dimension Assessment)
 - Remote/Local development workflow established
 - Auto-deployment configured
 - Live: https://disha-diagnostics.web.app/
