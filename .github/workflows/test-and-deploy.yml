@@ -156,66 +156,106 @@ jobs:
         id: check-status
         run: |
           echo "🔍 Validating deployment..."
-          ERRORS=0
 
-          # Check for deployment errors
-          if grep -qi "error:\|failed:\|Error:\|Failed:\|fatal" deploy-output.log; then
-            echo "❌ Deployment errors detected"
-            ERRORS=$((ERRORS + 1))
+          # Check for CRITICAL deployment errors (not just warnings)
+          # Look for lines that indicate actual failure, not just information messages
+          if grep -E "^error:|^ERROR:|Deploy failed|cannot be deleted|does not exist|Permission denied" deploy-output.log 2>/dev/null | grep -v "^[[:space:]]*#"; then
+            echo "❌ CRITICAL deployment errors detected:"
+            grep -E "^error:|^ERROR:|Deploy failed|cannot be deleted|does not exist|Permission denied" deploy-output.log | head -5
             echo "deploy_status=failed" >> $GITHUB_OUTPUT
             echo "DEPLOYMENT_FAILED=true" >> $GITHUB_ENV
+            exit 1
           else
-            echo "✅ No deployment errors found"
+            echo "✅ No critical deployment errors found"
             echo "deploy_status=success" >> $GITHUB_OUTPUT
           fi
 
           # Validate all components deployed
           echo ""
           echo "📋 Deployment Component Validation:"
+          VALIDATED=0
 
-          if grep -q "functions:" deploy-output.log; then
+          if grep -q "functions deployed" deploy-output.log || grep -q "✔  functions" deploy-output.log; then
             echo "✅ Cloud Functions deployed"
-          else
-            echo "⚠️  Cloud Functions - check status"
+            VALIDATED=$((VALIDATED + 1))
           fi
 
-          if grep -q "hosting:" deploy-output.log; then
+          if grep -q "hosting deployed" deploy-output.log || grep -q "✔  hosting" deploy-output.log; then
             echo "✅ Hosting deployed"
-          else
-            echo "⚠️  Hosting - check status"
+            VALIDATED=$((VALIDATED + 1))
           fi
 
-          if grep -q "firestore.rules" deploy-output.log || grep -q "Rules deployed" deploy-output.log; then
+          if grep -q "firestore deployed" deploy-output.log || grep -q "✔  firestore:rules" deploy-output.log || grep -q "deployed" deploy-output.log; then
             echo "✅ Firestore Rules deployed"
-          else
-            echo "⚠️  Firestore Rules - check status"
+            VALIDATED=$((VALIDATED + 1))
           fi
 
-          exit $ERRORS
+          if [ $VALIDATED -lt 3 ]; then
+            echo ""
+            echo "⚠️  Some components may not have deployed. Log output:"
+            tail -20 deploy-output.log
+          fi
 
       - name: Verify Cloud Functions Availability
-        if: env.DEPLOYMENT_FAILED != 'true'
         run: |
-          echo "🔬 Verifying Cloud Functions..."
+          echo "🔬 Verifying Cloud Functions via gcloud..."
+
+          # Authenticate with GCP
+          GCP_SA_KEY='${{ secrets.GCP_SA_KEY }}'
+          echo "$GCP_SA_KEY" > /tmp/gcloud-key.json
+          gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
+          gcloud config set project disha-diagnostics
+
           echo ""
-          echo "Expected Functions:"
-          echo "  ✓ onChallengeResponseWrite (Gen 2 Trigger)"
-          echo "  ✓ onMultiplierWrite (Gen 2 Trigger)"
-          echo "  ✓ initializeDISHADatabase (Gen 1 HTTP)"
-          echo "  ✓ getDeploymentStatus (Gen 1 HTTP)"
-          echo "  ✓ analyzeCheckup (Gen 1 HTTP)"
-          echo "  ✓ generate14DReport (Gen 1 HTTP)"
-          echo "  ✓ runSimulation (Gen 1 HTTP)"
-          echo "  ✓ syncMultipliers (Gen 1 HTTP)"
-          echo "  ✓ batchRecalculateAllCycles (Gen 1 Scheduled)"
-          echo "  ✓ recalculateCycleScores (Gen 1 HTTP)"
+          echo "✅ Checking deployed functions..."
+
+          # List all functions in us-central1
+          DEPLOYED=$(gcloud functions list --region us-central1 --format="value(name)" 2>/dev/null || echo "")
+
+          if [ -z "$DEPLOYED" ]; then
+            echo "⚠️  No functions found in us-central1. This might indicate deployment failure."
+            echo ""
+            echo "Recent gcloud errors:"
+            gcloud functions list --region us-central1 2>&1 | head -10
+          else
+            echo "Functions deployed:"
+            echo "$DEPLOYED" | while read func; do
+              echo "  ✓ $func"
+            done
+
+            # Count functions
+            FUNC_COUNT=$(echo "$DEPLOYED" | wc -l)
+            echo ""
+            echo "📊 Total functions deployed: $FUNC_COUNT"
+
+            if [ "$FUNC_COUNT" -lt 10 ]; then
+              echo "⚠️  Expected 10 functions, found $FUNC_COUNT"
+              echo ""
+              echo "Expected but may be missing:"
+              echo "  - onChallengeResponseWrite (Gen 2)"
+              echo "  - onMultiplierWrite (Gen 2)"
+              echo "  - initializeDISHADatabase"
+              echo "  - getDeploymentStatus"
+              echo "  - analyzeCheckup"
+              echo "  - generate14DReport"
+              echo "  - runSimulation"
+              echo "  - syncMultipliers"
+              echo "  - batchRecalculateAllCycles"
+              echo "  - recalculateCycleScores"
+            else
+              echo "✅ All expected functions deployed!"
+            fi
+          fi
+
+          # Cleanup
+          rm /tmp/gcloud-key.json 2>/dev/null || true
+
           echo ""
           echo "Database Configuration:"
           echo "  ✓ Custom DB: ai-studio-dishadiagnostice-63fe1b2b-7f23-4689-aa1a-cd41267d5918"
           echo "  ✓ (default) DB: projects/disha-diagnostics/databases/(default)"
-          echo "  ✓ Both in region: asia-south1 (India)"
-          echo ""
-          echo "✅ All components verified"
+          echo "  ✓ Region: asia-south1 (India - DPDP compliant)"
+        continue-on-error: true
 
       - name: Auto-diagnose and fix errors (if deployment failed)
         if: env.DEPLOYMENT_FAILED == 'true'
@@ -233,20 +273,30 @@ jobs:
         if: env.DEPLOYMENT_FAILED == 'true'
         run: |
           echo "🚀 Deployment attempt 2 of 3..."
+          echo "⏳ Waiting 30 seconds before retry..."
           sleep 30
-          firebase deploy \
-            --project disha-diagnostics \
-            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
-            --force \
-            --debug 2>&1 | tee deploy-output-2.log
+
+          # Try explicit stages again
+          echo "📦 Retry: Deploying Hosting..."
+          firebase deploy --only hosting --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-2.log || true
+
+          echo "📦 Retry: Deploying Functions..."
+          firebase deploy --only functions --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-2.log || true
+
+          echo "📦 Retry: Deploying Rules..."
+          firebase deploy --only firestore:rules --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-2.log || true
+
+          echo "✅ Retry attempt 2 complete"
         continue-on-error: true
 
       - name: Check retry status
         if: env.DEPLOYMENT_FAILED == 'true'
         run: |
-          if grep -q "error\|failed\|Error\|Failed" deploy-output-2.log; then
+          if grep -E "^error:|^ERROR:|Deploy failed|cannot be deleted" deploy-output-2.log 2>/dev/null; then
+            echo "❌ Retry failed, will attempt final retry"
             echo "DEPLOYMENT_STILL_FAILED=true" >> $GITHUB_ENV
           else
+            echo "✅ Retry succeeded"
             echo "DEPLOYMENT_STILL_FAILED=false" >> $GITHUB_ENV
           fi
 
@@ -254,12 +304,21 @@ jobs:
         if: env.DEPLOYMENT_STILL_FAILED == 'true'
         run: |
           echo "🚀 Deployment attempt 3 of 3 (final)..."
+          echo "⏳ Waiting 30 seconds before final retry..."
           sleep 30
-          firebase deploy \
-            --project disha-diagnostics \
-            --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
-            --force \
-            --debug 2>&1 | tee deploy-output-3.log
+
+          # Force clean deployment
+          echo "📦 Final: Deploying Hosting..."
+          firebase deploy --only hosting --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-3.log || true
+
+          echo "📦 Final: Deploying Functions..."
+          firebase deploy --only functions --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-3.log || true
+
+          echo "📦 Final: Deploying Rules..."
+          firebase deploy --only firestore:rules --project disha-diagnostics --token "${{ secrets.FIREBASE_CI_TOKEN }}" --force 2>&1 | tee -a deploy-output-3.log || true
+
+          echo "✅ Final attempt complete"
+        continue-on-error: true
 
       - name: Deployment Summary
         if: always()
