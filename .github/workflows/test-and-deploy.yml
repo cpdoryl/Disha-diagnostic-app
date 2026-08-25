@@ -96,6 +96,52 @@ jobs:
           echo "✅ Build artifacts ready for deployment"
           ls -lh build/
 
+      - name: Check Firestore Database Exists
+        run: |
+          echo "🔍 Checking Firestore database configuration..."
+
+          GCP_SA_KEY='${{ secrets.GCP_SA_KEY }}'
+          echo "$GCP_SA_KEY" > /tmp/gcloud-key.json
+          gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
+          gcloud config set project disha-diagnostics
+
+          echo ""
+          echo "Checking required databases:"
+
+          # Check (default) database
+          DEFAULT_DB=$(gcloud firestore databases list --format="value(name)" 2>/dev/null | grep -c "(default)" || echo "0")
+
+          # Check custom database
+          CUSTOM_DB=$(gcloud firestore databases list --format="value(name)" 2>/dev/null | grep -c "ai-studio-dishadiagnostice" || echo "0")
+
+          if [ "$DEFAULT_DB" -eq "0" ]; then
+            echo "❌ CRITICAL: (default) database does not exist!"
+            echo ""
+            echo "Gen 1 Firestore triggers REQUIRE the (default) database."
+            echo ""
+            echo "🔧 TO FIX:"
+            echo "1. Go to: https://console.firebase.google.com/project/disha-diagnostics/firestore/databases"
+            echo "2. Click 'Create Database'"
+            echo "3. Name: (default)"
+            echo "4. Location: asia-south1 (India)"
+            echo "5. Click Create"
+            echo "6. Wait 2-3 minutes"
+            echo "7. Run workflow again"
+            echo ""
+            exit 1
+          else
+            echo "✅ (default) database exists"
+          fi
+
+          if [ "$CUSTOM_DB" -eq "0" ]; then
+            echo "⚠️  Custom database not found (may be created later)"
+          else
+            echo "✅ Custom database exists"
+          fi
+
+          rm /tmp/gcloud-key.json 2>/dev/null || true
+        continue-on-error: false
+
       - name: Force delete old Phase 2 functions via gcloud
         run: |
           echo "🗑️  Force deleting old Phase 2 functions..."
@@ -103,13 +149,13 @@ jobs:
           echo "$GCP_SA_KEY" > /tmp/gcloud-key.json
           gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
           gcloud config set project disha-diagnostics
-          
+
           gcloud functions delete onChallengeResponseWrite --region us-central1 --quiet 2>/dev/null || true
           gcloud functions delete onMultiplierWrite --region us-central1 --quiet 2>/dev/null || true
           gcloud functions delete syncMultipliers --region us-central1 --quiet 2>/dev/null || true
           gcloud functions delete batchRecalculateAllCycles --region us-central1 --quiet 2>/dev/null || true
           gcloud functions delete recalculateCycleScores --region us-central1 --quiet 2>/dev/null || true
-          
+
           echo "✅ Old functions cleaned up"
           rm /tmp/gcloud-key.json 2>/dev/null || true
         continue-on-error: true
