@@ -106,13 +106,37 @@ jobs:
           gcloud config set project disha-diagnostics
 
           echo ""
+          echo "Available Firestore databases:"
+          echo "════════════════════════════════════════"
+
+          # List all databases
+          DATABASES=$(gcloud firestore databases list --format="table(name,type,locationConfig.locations[0])" 2>/dev/null)
+          echo "$DATABASES"
+
+          echo ""
           echo "Checking required databases:"
+          echo "════════════════════════════════════════"
 
           # Check (default) database
           DEFAULT_DB=$(gcloud firestore databases list --format="value(name)" 2>/dev/null | grep -c "(default)" || echo "0")
 
           # Check custom database
           CUSTOM_DB=$(gcloud firestore databases list --format="value(name)" 2>/dev/null | grep -c "ai-studio-dishadiagnostice" || echo "0")
+
+          echo "Status:"
+          if [ "$DEFAULT_DB" -eq "0" ]; then
+            echo "❌ (default) database: NOT FOUND"
+          else
+            echo "✅ (default) database: FOUND"
+          fi
+
+          if [ "$CUSTOM_DB" -eq "0" ]; then
+            echo "⚠️  Custom database: NOT FOUND"
+          else
+            echo "✅ Custom database: FOUND"
+          fi
+
+          echo ""
 
           if [ "$DEFAULT_DB" -eq "0" ]; then
             echo "❌ CRITICAL: (default) database does not exist!"
@@ -129,14 +153,6 @@ jobs:
             echo "7. Run workflow again"
             echo ""
             exit 1
-          else
-            echo "✅ (default) database exists"
-          fi
-
-          if [ "$CUSTOM_DB" -eq "0" ]; then
-            echo "⚠️  Custom database not found (may be created later)"
-          else
-            echo "✅ Custom database exists"
           fi
 
           rm /tmp/gcloud-key.json 2>/dev/null || true
