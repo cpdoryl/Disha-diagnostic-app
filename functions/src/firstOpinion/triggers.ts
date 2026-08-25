@@ -1,39 +1,40 @@
 /**
- * DISHA First Opinion Engine - Firestore Triggers
+ * DISHA First Opinion Engine - Firestore Triggers (Gen 2)
  * Real-time score recalculation pipeline
- * Gen-1 Cloud Functions API (onWrite pattern)
+ * Gen 2 Cloud Functions API with multi-database support
  */
 
-import * as functions from 'firebase-functions'
+import { onDocumentWritten } from 'firebase-functions/v2/firestore'
 import * as admin from 'firebase-admin'
 import { recalculateAndPersistCycleScores } from './recalculate'
 
-// Lazy initialization: get db inside the function, not at module load time
-const getDb = () => admin.firestore()
+// Custom database ID
+const DB_ID = 'ai-studio-dishadiagnostice-63fe1b2b-7f23-4689-aa1a-cd41267d5918'
+
+function getDb() {
+  return admin.firestore()
+}
 
 /**
  * Trigger: Challenge response submitted or updated
  * Path: /schools/{schoolId}/assessmentCycles/{cycleId}/challengeResponses/{responseId}
  *
- * When a respondent submits a challenge response:
- * 1. Trigger fires
- * 2. Fetch all non-deleted responses + multipliers for the cycle
- * 3. Recalculate S_sub, M_obj, Health Index, Gap/Quadrant
- * 4. Persist results to cycle doc + computed/latest subcollection
- * 5. Dashboard(s) subscribed to cycle.scores see updates within seconds
+ * Gen 2 with explicit database specification!
  */
-export const onChallengeResponseWrite = functions
-  .region('us-central1')
-  .firestore.document('schools/{schoolId}/assessmentCycles/{cycleId}/challengeResponses/{responseId}')
-  .onWrite(async (change, context) => {
-    const { schoolId, cycleId, responseId } = context.params
+export const onChallengeResponseWrite = onDocumentWritten(
+  {
+    document: 'schools/{schoolId}/assessmentCycles/{cycleId}/challengeResponses/{responseId}',
+    database: DB_ID, // ← KEY FIX: Explicitly specify custom database!
+    region: 'us-central1'
+  },
+  async (event) => {
+    const { schoolId, cycleId, responseId } = event.params
 
     try {
-      const after = change.after.data()
+      const afterData = event.data?.after.data()
 
       // Guard: only recalculate if this is a non-deleted response write
-      // (Soft-delete sets deleted=true but we still recalculate to update counts)
-      if (!after) {
+      if (!afterData) {
         console.log(
           `[Trigger:ChallengeResponse] Document deleted: ${schoolId}/${cycleId}/${responseId}`
         )
@@ -52,30 +53,28 @@ export const onChallengeResponseWrite = functions
       console.error(`[Trigger:ChallengeResponse] Error for ${schoolId}/${cycleId}:`, error)
       throw error // Rethrow so Firebase knows the trigger failed
     }
-  })
+  }
+)
 
 /**
  * Trigger: Multiplier synced from external system or admin input
  * Path: /schools/{schoolId}/assessmentCycles/{cycleId}/multipliers/{multiplierId}
  *
- * When a multiplier value is updated (e.g., STR synced from HR, Fee Realization from Finance):
- * 1. Trigger fires
- * 2. Fetch all non-deleted responses + ALL multipliers for the cycle
- * 3. Recalculate M_obj (geometric mean of 8 multipliers)
- * 4. Recalculate Health Index, Gap/Quadrant
- * 5. Persist to cycle doc + computed/latest
- * 6. Dashboard sees updated Health Index, quadrant, driver analysis
+ * Gen 2 with explicit database specification!
  */
-export const onMultiplierWrite = functions
-  .region('us-central1')
-  .firestore.document('schools/{schoolId}/assessmentCycles/{cycleId}/multipliers/{multiplierId}')
-  .onWrite(async (change, context) => {
-    const { schoolId, cycleId, multiplierId } = context.params
+export const onMultiplierWrite = onDocumentWritten(
+  {
+    document: 'schools/{schoolId}/assessmentCycles/{cycleId}/multipliers/{multiplierId}',
+    database: DB_ID, // ← KEY FIX: Explicitly specify custom database!
+    region: 'us-central1'
+  },
+  async (event) => {
+    const { schoolId, cycleId, multiplierId } = event.params
 
     try {
-      const after = change.after.data()
+      const afterData = event.data?.after.data()
 
-      if (!after) {
+      if (!afterData) {
         console.log(`[Trigger:Multiplier] Document deleted: ${schoolId}/${cycleId}/${multiplierId}`)
         // Multiplier deleted: recalculate (M_obj will drop)
         await recalculateAndPersistCycleScores(getDb(), schoolId, cycleId)
@@ -83,7 +82,7 @@ export const onMultiplierWrite = functions
       }
 
       console.log(
-        `[Trigger:Multiplier] Updated: ${multiplierId} = ${after.value} (${after.validationStatus})`
+        `[Trigger:Multiplier] Updated: ${multiplierId} = ${afterData.value} (${afterData.validationStatus})`
       )
 
       // Recalculate scores for this cycle
@@ -94,7 +93,8 @@ export const onMultiplierWrite = functions
       console.error(`[Trigger:Multiplier] Error for ${schoolId}/${cycleId}:`, error)
       throw error
     }
-  })
+  }
+)
 
 /**
  * Export trigger functions for deployment
