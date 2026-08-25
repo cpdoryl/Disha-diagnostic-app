@@ -499,3 +499,9 @@ export const runSimulation = functions.https.onCall(
 //
 export { syncMultipliers } from './firstOpinion/multiplierSync';
 export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
+
+// ====== DISHA Phase 4 - Analysis & Reporting Functions ======
+// Diagnostic reports, dimension analysis, and trend tracking
+export { generateDiagnosticReport } from './analysis/generateReport';
+export { analyzeDimensions } from './analysis/dimensionAnalysis';
+export { analyzeTrends } from './analysis/trendAnalysis';

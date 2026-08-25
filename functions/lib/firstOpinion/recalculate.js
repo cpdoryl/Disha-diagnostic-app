@@ -109,10 +109,8 @@ async function recalculateAndPersistCycleScores(db, schoolId, cycleId, dataFetch
         const s_sub = (0, calculations_1.calculateSsub)(responses, weights);
         console.log(`  S_sub: ${s_sub}`);
         // Calculate M_obj (objective score) from 8 multipliers
-        // Extract valid multipliers; if missing, M_obj = 50 (default midpoint)
-        const validMultipliers = multipliers.filter(m => m.validationStatus === 'VALID');
-        const m_obj = validMultipliers.length > 0 ? (0, calculations_1.calculateSsub)([], {}) : 50;
-        // TODO: Replace with actual M_obj calculation once multiplier data structure is finalized
+        // Geometric mean of all valid multipliers; if missing, M_obj = 50 (default midpoint)
+        const m_obj = (0, calculations_1.calculateMobj)(multipliers);
         console.log(`  M_obj: ${m_obj}`);
         // Calculate Health Index, Gap, Quadrant
         const allScores = (0, calculations_1.calculateAllScores)(s_sub, m_obj);
@@ -135,7 +133,7 @@ async function recalculateAndPersistCycleScores(db, schoolId, cycleId, dataFetch
         responses.forEach(r => {
             respondentsByRole[r.role] = (respondentsByRole[r.role] || 0) + 1;
         });
-        // Persist to cycle doc
+        // Persist to cycle doc - db parameter passed in
         const cycleRef = db
             .collection('schools')
             .doc(schoolId)

@@ -1,39 +1,43 @@
 /**
- * DISHA First Opinion Engine - Firestore Triggers
+ * DISHA First Opinion Engine - Firestore Triggers (Gen 2)
  * Real-time score recalculation pipeline
- * Gen-1 Cloud Functions API (onWrite pattern)
+ * Gen 2 Cloud Functions API with multi-database support
  */
-import * as functions from 'firebase-functions';
 /**
  * Trigger: Challenge response submitted or updated
  * Path: /schools/{schoolId}/assessmentCycles/{cycleId}/challengeResponses/{responseId}
  *
- * When a respondent submits a challenge response:
- * 1. Trigger fires
- * 2. Fetch all non-deleted responses + multipliers for the cycle
- * 3. Recalculate S_sub, M_obj, Health Index, Gap/Quadrant
- * 4. Persist results to cycle doc + computed/latest subcollection
- * 5. Dashboard(s) subscribed to cycle.scores see updates within seconds
+ * Gen 2 with explicit database specification!
  */
-export declare const onChallengeResponseWrite: functions.CloudFunction<functions.Change<functions.firestore.DocumentSnapshot>>;
+export declare const onChallengeResponseWrite: import("firebase-functions/v2/core").CloudFunction<import("firebase-functions/v2/firestore").FirestoreEvent<import("firebase-functions/v2/firestore").Change<import("firebase-functions/v2/firestore").DocumentSnapshot> | undefined, {
+    schoolId: string;
+    cycleId: string;
+    responseId: string;
+}>>;
 /**
  * Trigger: Multiplier synced from external system or admin input
  * Path: /schools/{schoolId}/assessmentCycles/{cycleId}/multipliers/{multiplierId}
  *
- * When a multiplier value is updated (e.g., STR synced from HR, Fee Realization from Finance):
- * 1. Trigger fires
- * 2. Fetch all non-deleted responses + ALL multipliers for the cycle
- * 3. Recalculate M_obj (geometric mean of 8 multipliers)
- * 4. Recalculate Health Index, Gap/Quadrant
- * 5. Persist to cycle doc + computed/latest
- * 6. Dashboard sees updated Health Index, quadrant, driver analysis
+ * Gen 2 with explicit database specification!
  */
-export declare const onMultiplierWrite: functions.CloudFunction<functions.Change<functions.firestore.DocumentSnapshot>>;
+export declare const onMultiplierWrite: import("firebase-functions/v2/core").CloudFunction<import("firebase-functions/v2/firestore").FirestoreEvent<import("firebase-functions/v2/firestore").Change<import("firebase-functions/v2/firestore").DocumentSnapshot> | undefined, {
+    schoolId: string;
+    cycleId: string;
+    multiplierId: string;
+}>>;
 /**
  * Export trigger functions for deployment
  */
 declare const _default: {
-    onChallengeResponseWrite: functions.CloudFunction<functions.Change<functions.firestore.DocumentSnapshot>>;
-    onMultiplierWrite: functions.CloudFunction<functions.Change<functions.firestore.DocumentSnapshot>>;
+    onChallengeResponseWrite: import("firebase-functions/v2/core").CloudFunction<import("firebase-functions/v2/firestore").FirestoreEvent<import("firebase-functions/v2/firestore").Change<import("firebase-functions/v2/firestore").DocumentSnapshot> | undefined, {
+        schoolId: string;
+        cycleId: string;
+        responseId: string;
+    }>>;
+    onMultiplierWrite: import("firebase-functions/v2/core").CloudFunction<import("firebase-functions/v2/firestore").FirestoreEvent<import("firebase-functions/v2/firestore").Change<import("firebase-functions/v2/firestore").DocumentSnapshot> | undefined, {
+        schoolId: string;
+        cycleId: string;
+        multiplierId: string;
+    }>>;
 };
 export default _default;
