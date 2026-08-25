@@ -1,9 +1,5 @@
 /**
  * DISHA First Opinion Engine - Core Calculation Engines
- * GENERATED: Verbatim copy from src/lib/firstOpinion/calculations.ts
- * DO NOT EDIT DIRECTLY - Sync via drift-guard test in root Vitest suite
- * Last synced: 2026-08-22
- *
  * Phase 1: Core Engines & Data Model
  *
  * Four calculation engines:
@@ -67,9 +63,12 @@ export interface CalculationResult {
     m_obj: number;
     healthIndex: number;
     gap: number;
+    rawGap: number;
     quadrant: 'REALITY_BETTER' | 'ALIGNED' | 'PERCEPTION_BETTER';
     interpretation: string;
     delusionPenalty: number;
+    communicationGap: boolean;
+    blindSpotRisk: boolean;
 }
 /**
  * CALCULATION ENGINE 1: S_sub (Subjective Score)

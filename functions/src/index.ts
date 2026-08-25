@@ -490,8 +490,13 @@ export const runSimulation = functions.https.onCall(
   }
 );
 
+// ====== DISHA First Opinion Engine v3 - Phase 1 ======
+// Core calculation engines (S_sub, M_obj, Health Index, Gap/Quadrant)
+// Implemented in: src/lib/firstOpinion/calculations.ts
+// Tests: src/lib/firstOpinion/calculations.test.ts
+
 // ====== DISHA First Opinion Engine v3 - Phase 2 Functions ======
-// Real-time calculation pipeline for First Opinion Engine
+// API & Calculation Layer: Challenge responses, multiplier sync, real-time recalculation
 //
 // NOTE: Gen 2 Firestore triggers exported directly from triggers.ts
 // (not from index.ts to avoid Gen 1 conversion)
@@ -500,8 +505,19 @@ export const runSimulation = functions.https.onCall(
 export { syncMultipliers } from './firstOpinion/multiplierSync';
 export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
 
-// ====== DISHA Phase 4 - Analysis & Reporting Functions ======
-// Diagnostic reports, dimension analysis, and trend tracking
+// Phase 2: Challenge Response Submission APIs
+export { submitChallengeResponse, submitBatchChallengeResponses, deleteChallengeResponse } from './firstOpinion/submitChallengeResponse';
+
+// ====== DISHA First Opinion Engine v3 - Phase 3 ======
+// Reporting & Visualization: First Opinion Report generation
+export { generateFirstOpinionReport } from './firstOpinion/generateFirstOpinionReport';
+
+// ====== DISHA First Opinion Engine v3 - Phase 4 ======
+// Predictive & Trend Analysis: Early warning flags, trajectory prediction
+export { detectEarlyWarnings } from './firstOpinion/detectEarlyWarnings';
+
+// ====== DISHA Phase 4 - 14-Dimension Analysis & Reporting Functions ======
+// Diagnostic reports, dimension analysis, and trend tracking (separate from First Opinion)
 export { generateDiagnosticReport } from './analysis/generateReport';
 export { analyzeDimensions } from './analysis/dimensionAnalysis';
 export { analyzeTrends } from './analysis/trendAnalysis';

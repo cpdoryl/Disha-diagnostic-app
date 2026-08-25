@@ -1,10 +1,6 @@
 "use strict";
 /**
  * DISHA First Opinion Engine - Core Calculation Engines
- * GENERATED: Verbatim copy from src/lib/firstOpinion/calculations.ts
- * DO NOT EDIT DIRECTLY - Sync via drift-guard test in root Vitest suite
- * Last synced: 2026-08-22
- *
  * Phase 1: Core Engines & Data Model
  *
  * Four calculation engines:
@@ -297,15 +293,18 @@ exports.calculateGapAndQuadrant = calculateGapAndQuadrant;
  */
 function calculateAllScores(s_sub, m_obj) {
     const { healthIndex, delusionPenalty } = calculateHealthIndex(s_sub, m_obj);
-    const { gap, quadrant, interpretation } = calculateGapAndQuadrant(s_sub, m_obj);
+    const { gap, rawGap, quadrant, interpretation, communicationGap, blindSpotRisk } = calculateGapAndQuadrant(s_sub, m_obj);
     return {
         s_sub: Math.round(s_sub * 10) / 10,
         m_obj: Math.round(m_obj * 10) / 10,
         healthIndex,
         gap,
+        rawGap,
         quadrant,
         interpretation,
-        delusionPenalty
+        delusionPenalty,
+        communicationGap,
+        blindSpotRisk
     };
 }
 exports.calculateAllScores = calculateAllScores;
