@@ -18,6 +18,9 @@ import * as functions from 'firebase-functions';
  * - Per-cycle: try/catch so one failure doesn't block others
  * - Log successes and failures separately
  * - No retry: Firebase automatically retries job if function fails entirely
+ *
+ * NOTE: Scheduled functions can timeout if query takes too long.
+ * If cyclesSnapshot is empty (no data yet), we gracefully return without error.
  */
 export declare const batchRecalculateAllCycles: functions.CloudFunction<unknown>;
 /**

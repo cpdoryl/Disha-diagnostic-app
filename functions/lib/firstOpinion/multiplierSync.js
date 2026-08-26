@@ -72,7 +72,7 @@ const MULTIPLIER_RANGES = {
  * 5. Triggers fire → recalculate scores
  */
 exports.syncMultipliers = functions
-    .region('us-central1')
+    .region('asia-south1')
     .https.onCall(async (data, context) => {
     try {
         // ===== AUTH GATE =====

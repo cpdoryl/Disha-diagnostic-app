@@ -217,7 +217,7 @@ export const calculateMetric4a = (data: {
 };
 
 export const calculateMetric4b = (data: {
-  bullying Incidents: {
+  bullyingIncidents: {
     reportedDate: Date;
     resolvedDate?: Date;
   }[];

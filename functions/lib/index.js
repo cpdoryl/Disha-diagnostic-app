@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.recalculateCycleScores = exports.batchRecalculateAllCycles = exports.syncMultipliers = exports.onMultiplierWrite = exports.onChallengeResponseWrite = exports.runSimulation = exports.generate14DReport = exports.analyzeCheckup = exports.getDeploymentStatus = exports.initializeDISHADatabase = void 0;
+exports.analyzeTrends = exports.analyzeDimensions = exports.generateDiagnosticReport = exports.generateRecommendations = exports.isBlindSpot = exports.runGapAnalysis = exports.calculateMetrics = exports.detectEarlyWarnings = exports.generateFirstOpinionReport = exports.deleteChallengeResponse = exports.submitBatchChallengeResponses = exports.submitChallengeResponse = exports.runSimulation = exports.generate14DReport = exports.analyzeCheckup = exports.getDeploymentStatus = exports.initializeDISHADatabase = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
@@ -444,13 +444,53 @@ exports.runSimulation = functions.https.onCall(async (data, context) => {
         throw error;
     }
 });
+// ====== DISHA First Opinion Engine v3 - Phase 1 ======
+// Core calculation engines (S_sub, M_obj, Health Index, Gap/Quadrant)
+// Implemented in: src/lib/firstOpinion/calculations.ts
+// Tests: src/lib/firstOpinion/calculations.test.ts
 // ====== DISHA First Opinion Engine v3 - Phase 2 Functions ======
-var triggers_1 = require("./firstOpinion/triggers");
-Object.defineProperty(exports, "onChallengeResponseWrite", { enumerable: true, get: function () { return triggers_1.onChallengeResponseWrite; } });
-Object.defineProperty(exports, "onMultiplierWrite", { enumerable: true, get: function () { return triggers_1.onMultiplierWrite; } });
-var multiplierSync_1 = require("./firstOpinion/multiplierSync");
-Object.defineProperty(exports, "syncMultipliers", { enumerable: true, get: function () { return multiplierSync_1.syncMultipliers; } });
-var batch_1 = require("./firstOpinion/batch");
-Object.defineProperty(exports, "batchRecalculateAllCycles", { enumerable: true, get: function () { return batch_1.batchRecalculateAllCycles; } });
-Object.defineProperty(exports, "recalculateCycleScores", { enumerable: true, get: function () { return batch_1.recalculateCycleScores; } });
+// API & Calculation Layer: Challenge responses, multiplier sync, real-time recalculation
+//
+// NOTE: Gen 2 Firestore triggers exported directly from triggers.ts
+// (not from index.ts to avoid Gen 1 conversion)
+// See: functions/src/firstOpinion/triggers.ts
+//
+// CRITICAL FIX: Temporarily disabling these exports to prevent Firebase CLI
+// from trying to create them in us-central1 (wrong region).
+// These will be deployed via manual gcloud CLI commands to ensure asia-south1 region.
+// See: .github/workflows/test-and-deploy.yml for manual deployment step
+//
+// TODO: Re-enable after Firebase CLI fixes region handling
+// export { syncMultipliers } from './firstOpinion/multiplierSync';
+// export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
+// Phase 2: Challenge Response Submission APIs
+var submitChallengeResponse_1 = require("./firstOpinion/submitChallengeResponse");
+Object.defineProperty(exports, "submitChallengeResponse", { enumerable: true, get: function () { return submitChallengeResponse_1.submitChallengeResponse; } });
+Object.defineProperty(exports, "submitBatchChallengeResponses", { enumerable: true, get: function () { return submitChallengeResponse_1.submitBatchChallengeResponses; } });
+Object.defineProperty(exports, "deleteChallengeResponse", { enumerable: true, get: function () { return submitChallengeResponse_1.deleteChallengeResponse; } });
+// ====== DISHA First Opinion Engine v3 - Phase 3 ======
+// Reporting & Visualization: First Opinion Report generation
+var generateFirstOpinionReport_1 = require("./firstOpinion/generateFirstOpinionReport");
+Object.defineProperty(exports, "generateFirstOpinionReport", { enumerable: true, get: function () { return generateFirstOpinionReport_1.generateFirstOpinionReport; } });
+// ====== DISHA First Opinion Engine v3 - Phase 4 ======
+// Predictive & Trend Analysis: Early warning flags, trajectory prediction
+var detectEarlyWarnings_1 = require("./firstOpinion/detectEarlyWarnings");
+Object.defineProperty(exports, "detectEarlyWarnings", { enumerable: true, get: function () { return detectEarlyWarnings_1.detectEarlyWarnings; } });
+// ====== DISHA Phase 3 - 14-Dimension Cloud Functions ======
+// Metric calculation, gap analysis, and recommendations engine
+var calculateMetrics_1 = require("./14d/calculateMetrics");
+Object.defineProperty(exports, "calculateMetrics", { enumerable: true, get: function () { return calculateMetrics_1.calculateMetrics; } });
+var gapAnalysis_1 = require("./14d/gapAnalysis");
+Object.defineProperty(exports, "runGapAnalysis", { enumerable: true, get: function () { return gapAnalysis_1.runGapAnalysis; } });
+Object.defineProperty(exports, "isBlindSpot", { enumerable: true, get: function () { return gapAnalysis_1.isBlindSpot; } });
+var recommendations_1 = require("./14d/recommendations");
+Object.defineProperty(exports, "generateRecommendations", { enumerable: true, get: function () { return recommendations_1.generateRecommendations; } });
+// ====== DISHA Phase 4 - 14-Dimension Analysis & Reporting Functions ======
+// Diagnostic reports, dimension analysis, and trend tracking (separate from First Opinion)
+var generateReport_1 = require("./analysis/generateReport");
+Object.defineProperty(exports, "generateDiagnosticReport", { enumerable: true, get: function () { return generateReport_1.generateDiagnosticReport; } });
+var dimensionAnalysis_1 = require("./analysis/dimensionAnalysis");
+Object.defineProperty(exports, "analyzeDimensions", { enumerable: true, get: function () { return dimensionAnalysis_1.analyzeDimensions; } });
+var trendAnalysis_1 = require("./analysis/trendAnalysis");
+Object.defineProperty(exports, "analyzeTrends", { enumerable: true, get: function () { return trendAnalysis_1.analyzeTrends; } });
 //# sourceMappingURL=index.js.map

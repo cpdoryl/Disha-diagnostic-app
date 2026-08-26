@@ -32,8 +32,7 @@ const getDb = () => admin.firestore()
 export const batchRecalculateAllCycles = functions
   .region('asia-south1')
   .pubsub.schedule('every 6 hours')
-  .timeoutSeconds(540)
-  .onRun(async (context) => {
+  .onRun(async (context: any) => {
     try {
       console.log('[Batch] Starting cycle recalculation for all active assessments')
 

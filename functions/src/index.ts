@@ -527,8 +527,8 @@ export { detectEarlyWarnings } from './firstOpinion/detectEarlyWarnings';
 
 // ====== DISHA Phase 3 - 14-Dimension Cloud Functions ======
 // Metric calculation, gap analysis, and recommendations engine
-export { calculateMetrics, isBlindSpot } from './14d/calculateMetrics';
-export { runGapAnalysis } from './14d/gapAnalysis';
+export { calculateMetrics } from './14d/calculateMetrics';
+export { runGapAnalysis, isBlindSpot } from './14d/gapAnalysis';
 export { generateRecommendations } from './14d/recommendations';
 
 // ====== DISHA Phase 4 - 14-Dimension Analysis & Reporting Functions ======

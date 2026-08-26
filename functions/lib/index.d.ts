@@ -4,6 +4,12 @@ export declare const getDeploymentStatus: functions.HttpsFunction & functions.Ru
 export declare const analyzeCheckup: functions.HttpsFunction & functions.Runnable<any>;
 export declare const generate14DReport: functions.HttpsFunction & functions.Runnable<any>;
 export declare const runSimulation: functions.HttpsFunction & functions.Runnable<any>;
-export { onChallengeResponseWrite, onMultiplierWrite } from "./firstOpinion/triggers";
-export { syncMultipliers } from './firstOpinion/multiplierSync';
-export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
+export { submitChallengeResponse, submitBatchChallengeResponses, deleteChallengeResponse } from './firstOpinion/submitChallengeResponse';
+export { generateFirstOpinionReport } from './firstOpinion/generateFirstOpinionReport';
+export { detectEarlyWarnings } from './firstOpinion/detectEarlyWarnings';
+export { calculateMetrics } from './14d/calculateMetrics';
+export { runGapAnalysis, isBlindSpot } from './14d/gapAnalysis';
+export { generateRecommendations } from './14d/recommendations';
+export { generateDiagnosticReport } from './analysis/generateReport';
+export { analyzeDimensions } from './analysis/dimensionAnalysis';
+export { analyzeTrends } from './analysis/trendAnalysis';

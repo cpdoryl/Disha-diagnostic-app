@@ -46,7 +46,7 @@ function getDb() {
 exports.onChallengeResponseWrite = (0, firestore_1.onDocumentWritten)({
     document: 'schools/{schoolId}/assessmentCycles/{cycleId}/challengeResponses/{responseId}',
     database: DB_ID,
-    region: 'us-central1'
+    region: 'asia-south1'
 }, async (event) => {
     const { schoolId, cycleId, responseId } = event.params;
     try {
@@ -77,7 +77,7 @@ exports.onChallengeResponseWrite = (0, firestore_1.onDocumentWritten)({
 exports.onMultiplierWrite = (0, firestore_1.onDocumentWritten)({
     document: 'schools/{schoolId}/assessmentCycles/{cycleId}/multipliers/{multiplierId}',
     database: DB_ID,
-    region: 'us-central1'
+    region: 'asia-south1'
 }, async (event) => {
     const { schoolId, cycleId, multiplierId } = event.params;
     try {
