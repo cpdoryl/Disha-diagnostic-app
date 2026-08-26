@@ -9,8 +9,9 @@ import ChallengeResponseForm from '../components/FirstOpinion/ChallengeResponse/
 import FirstOpinionResultsDashboard from '../components/FirstOpinion/Dashboard/FirstOpinionResultsDashboard'
 import TrendAnalysis from '../components/FirstOpinion/Reports/TrendAnalysis'
 import MultiplierSync from '../components/FirstOpinion/Admin/MultiplierSync'
+import EarlyWarningDashboard from '../components/FirstOpinion/EarlyWarning/EarlyWarningDashboard'
 
-type PageView = 'assessment' | 'dashboard' | 'trends' | 'admin'
+type PageView = 'assessment' | 'dashboard' | 'trends' | 'warnings' | 'admin'
 
 interface FirstOpinionEngineProps {
   userRole?: 'TEACHER' | 'PARENT' | 'STUDENT' | 'ADMIN' | 'OTHER'
@@ -66,7 +67,7 @@ export const FirstOpinionEngine: React.FC<FirstOpinionEngineProps> = ({
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex gap-8">
-            {['assessment', 'dashboard', 'trends', 'admin'].map((view) => (
+            {['assessment', 'dashboard', 'trends', 'warnings', 'admin'].map((view) => (
               <button
                 key={view}
                 onClick={() => setCurrentView(view as PageView)}
@@ -79,6 +80,7 @@ export const FirstOpinionEngine: React.FC<FirstOpinionEngineProps> = ({
                 {view === 'assessment' && '📝 Assessment'}
                 {view === 'dashboard' && '📊 Results'}
                 {view === 'trends' && '📈 Trends'}
+                {view === 'warnings' && '🔔 Early Warnings'}
                 {view === 'admin' && '⚙️ Admin'}
               </button>
             ))}
@@ -185,6 +187,22 @@ export const FirstOpinionEngine: React.FC<FirstOpinionEngineProps> = ({
         {/* Trends View */}
         {currentView === 'trends' && (
           <TrendAnalysis schoolId={schoolId} />
+        )}
+
+        {/* Early Warnings View */}
+        {currentView === 'warnings' && (
+          <div className="space-y-6">
+            <EarlyWarningDashboard
+              schoolId={schoolId}
+              cycleId={cycleId}
+              healthIndex={75}
+              gap={5}
+              s_sub={75}
+              m_obj={75}
+              respondentCount={25}
+              quadrant="ALIGNED"
+            />
+          </div>
         )}
 
         {/* Admin View */}
