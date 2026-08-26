@@ -21,6 +21,9 @@ import {
   Area,
   Line,
 } from 'recharts'
+import { DetailedAnalysisView } from '../Reports/DetailedAnalysisView'
+import { RecommendationsEngine } from '../Reports/RecommendationsEngine'
+import { generateHTMLReport, downloadReport, printReport } from '../../../lib/firstOpinion/reportGenerator'
 
 interface DashboardMetrics {
   s_sub: number
@@ -66,6 +69,8 @@ export const FirstOpinionResultsDashboard: React.FC<FirstOpinionResultsDashboard
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeView, setActiveView] = useState<'default' | 'analysis' | 'recommendations' | null>(null)
+  const [generatingReport, setGeneratingReport] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -246,24 +251,120 @@ export const FirstOpinionResultsDashboard: React.FC<FirstOpinionResultsDashboard
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Next Steps</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+          <button
+            onClick={() => setActiveView('analysis')}
+            className="p-4 border border-blue-200 rounded-lg bg-blue-50 hover:bg-blue-100 cursor-pointer transition"
+          >
             <p className="font-semibold text-blue-900 mb-2">📊 Review Detailed Analysis</p>
             <p className="text-sm text-blue-800">Explore dimension-wise breakdown and challenge drivers</p>
-          </div>
-          <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+          </button>
+          <button
+            onClick={() => setActiveView('recommendations')}
+            className="p-4 border border-green-200 rounded-lg bg-green-50 hover:bg-green-100 cursor-pointer transition"
+          >
             <p className="font-semibold text-green-900 mb-2">📈 View Recommendations</p>
             <p className="text-sm text-green-800">Get AI-powered improvement recommendations</p>
-          </div>
-          <div className="p-4 border border-purple-200 rounded-lg bg-purple-50">
-            <p className="font-semibold text-purple-900 mb-2">📉 Historical Trends</p>
-            <p className="text-sm text-purple-800">Compare with previous cycles and track progress</p>
-          </div>
-          <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
-            <p className="font-semibold text-orange-900 mb-2">📄 Generate Report</p>
-            <p className="text-sm text-orange-800">Export comprehensive diagnostic report as PDF</p>
-          </div>
+          </button>
+          <button
+            onClick={() => {
+              setGeneratingReport(true)
+              try {
+                const reportData = {
+                  schoolName: schoolId,
+                  cycleId,
+                  scores: metrics,
+                  timestamp: new Date(),
+                }
+                const html = generateHTMLReport(reportData as any)
+                downloadReport(html)
+              } catch (err) {
+                console.error('Error generating report:', err)
+                alert('Failed to generate report')
+              } finally {
+                setGeneratingReport(false)
+              }
+            }}
+            disabled={generatingReport}
+            className="p-4 border border-orange-200 rounded-lg bg-orange-50 hover:bg-orange-100 cursor-pointer transition disabled:opacity-50"
+          >
+            <p className="font-semibold text-orange-900 mb-2">📄 {generatingReport ? 'Generating...' : 'Generate Report'}</p>
+            <p className="text-sm text-orange-800">Export comprehensive diagnostic report</p>
+          </button>
+          <button
+            onClick={() => {
+              try {
+                const reportData = {
+                  schoolName: schoolId,
+                  cycleId,
+                  scores: metrics,
+                  timestamp: new Date(),
+                }
+                const html = generateHTMLReport(reportData as any)
+                printReport(html)
+              } catch (err) {
+                console.error('Error printing report:', err)
+                alert('Failed to print report')
+              }
+            }}
+            className="p-4 border border-purple-200 rounded-lg bg-purple-50 hover:bg-purple-100 cursor-pointer transition"
+          >
+            <p className="font-semibold text-purple-900 mb-2">🖨️ Print Report</p>
+            <p className="text-sm text-purple-800">Print comprehensive diagnostic report</p>
+          </button>
         </div>
       </div>
+
+      {/* Modal Overlays */}
+      {activeView === 'analysis' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Detailed Challenge Analysis</h2>
+              <button
+                onClick={() => setActiveView(null)}
+                className="text-2xl text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <DetailedAnalysisView
+                schoolId={schoolId}
+                cycleId={cycleId}
+                s_sub={metrics.s_sub}
+                m_obj={metrics.m_obj}
+                gap={metrics.gap}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeView === 'recommendations' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Strategic Recommendations</h2>
+              <button
+                onClick={() => setActiveView(null)}
+                className="text-2xl text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <RecommendationsEngine
+                s_sub={metrics.s_sub}
+                m_obj={metrics.m_obj}
+                healthIndex={metrics.healthIndex}
+                gap={metrics.gap}
+                quadrant={metrics.quadrant}
+                respondentCount={metrics.respondentCount}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
