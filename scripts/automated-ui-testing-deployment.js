@@ -13,9 +13,13 @@
  * - GitHub CLI access
  */
 
-const fs = require('fs');
-const path = require('path');
-const axios = require('axios');
+import fs from 'fs';
+import path from 'path';
+import axios from 'axios';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class UITestingDeploymentFramework {
   constructor() {
@@ -468,11 +472,11 @@ async function main() {
 }
 
 // Run if this is the main module
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(error => {
     console.error('Fatal error:', error);
     process.exit(1);
   });
 }
 
-module.exports = UITestingDeploymentFramework;
+export default UITestingDeploymentFramework;
