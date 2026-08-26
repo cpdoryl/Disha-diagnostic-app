@@ -6,13 +6,17 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    environment: 'happy-dom',
+    include: ['src/**/__tests__/**/*.test.ts', 'src/**/*.test.ts', 'src/**/*.test.tsx'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/lib/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'node_modules/']
+      include: ['src/lib/**/*.ts', 'src/components/**/*.tsx'],
+      exclude: ['src/**/__tests__/**', 'src/**/*.test.ts', 'src/**/*.test.tsx', 'node_modules/'],
+      lines: 75,
+      functions: 75,
+      branches: 70,
+      statements: 75,
     }
   },
   resolve: {
