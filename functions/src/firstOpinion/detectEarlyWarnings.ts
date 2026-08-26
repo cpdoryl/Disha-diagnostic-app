@@ -1,276 +1,115 @@
 /**
- * DISHA First Opinion Engine - Phase 4
- * Early Warning Flag Detection
- *
- * Detects 4 predictive warning signs from multi-cycle data:
- * 1. Diverging Trend: S_sub ↑ while M_obj ↓
- * 2. Multiplier Freefall: Single multiplier drops >15 pts
- * 3. Compounding Weight: Highest-weighted challenge also worst score
- * 4. False Recovery: H improves but only from S_sub, M_obj flat/worse
+ * First Opinion Engine v3 - detectEarlyWarnings Cloud Function
+ * On-demand early warning detection and analysis
  */
 
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
 
-interface EarlyWarningFlag {
-  flag: string
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
-  detected: boolean
-  cycles: number
-  message: string
-  actionItems: string[]
-  recommendation: string
+interface DetectEarlyWarningsRequest {
+  schoolId: string
+  cycleId: string
 }
 
-interface TrendAnalysis {
-  cycles: number
-  timespan: string
-  flags: EarlyWarningFlag[]
-  overall_risk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-  trajectory: string
-  forecast: {
-    predictedHealthIndex: number
-    confidence: string
+interface DetectEarlyWarningsResponse {
+  success: boolean
+  warning: {
+    level: string
+    score: number
+    interpretation: string
+    timestamp: string
   }
+  error?: string
 }
 
 export const detectEarlyWarnings = functions.https.onCall(
-  async (data: { schoolId: string; limit?: number }, context: any) => {
-    const db = admin.firestore()
-
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'Authentication required')
-    }
-
+  async (data: DetectEarlyWarningsRequest, context): Promise<DetectEarlyWarningsResponse> => {
     try {
-      const { schoolId, limit = 10 } = data
+      if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Authentication required')
+      }
 
-      console.log(`[FirstOpinion] Detecting early warnings for ${schoolId}`)
+      const userDoc = await admin.firestore().collection('users').doc(context.auth.uid).get()
+      const isAdmin = userDoc.data()?.role === 'admin'
+      if (!isAdmin) {
+        throw new functions.https.HttpsError('permission-denied', 'Admin access required')
+      }
 
-      // Fetch recent cycles with scores
-      const cyclesSnap = await db
+      const { schoolId, cycleId } = data
+
+      if (!schoolId || !cycleId) {
+        throw new functions.https.HttpsError('invalid-argument', 'schoolId and cycleId required')
+      }
+
+      const cycleRef = admin
+        .firestore()
         .collection('schools')
         .doc(schoolId)
         .collection('assessmentCycles')
-        .orderBy('updatedAt', 'desc')
-        .limit(limit)
-        .get()
+        .doc(cycleId)
 
-      const cycles: Array<{
-        id: string
-        s_sub: number
-        m_obj: number
-        healthIndex: number
-        updatedAt: admin.firestore.Timestamp
-      }> = []
-
-      for (const doc of cyclesSnap.docs) {
-        const data = doc.data()
-        cycles.push({
-          id: doc.id,
-          s_sub: data.scores?.s_sub || 0,
-          m_obj: data.scores?.m_obj || 0,
-          healthIndex: data.scores?.healthIndex || 0,
-          updatedAt: data.updatedAt || admin.firestore.Timestamp.now()
-        })
+      const cycleDoc = await cycleRef.get()
+      if (!cycleDoc.exists) {
+        throw new functions.https.HttpsError('not-found', 'Assessment cycle not found')
       }
 
-      cycles.reverse() // Chronological order
+      const cycleData = cycleDoc.data()!
+      const scores = cycleData.scores || {}
+      const healthIndex = scores.healthIndex || 0
+      const gap = scores.gap || 0
 
-      const flags: EarlyWarningFlag[] = []
+      let level: string
+      let score: number
+      let interpretation: string
 
-      if (cycles.length < 2) {
-        console.log(`[FirstOpinion] Insufficient cycles for trend analysis`)
-        return {
-          success: true,
-          flags: [],
-          message: 'Insufficient cycles for trend analysis (need 2+)'
-        }
+      if (healthIndex < 40) {
+        level = 'CRITICAL'
+        score = 90
+        interpretation = `Critical: Health index ${healthIndex.toFixed(1)} requires immediate intervention`
+      } else if (healthIndex < 50) {
+        level = 'RED'
+        score = 70
+        interpretation = `Red: Health index ${healthIndex.toFixed(1)} indicates serious challenges`
+      } else if (healthIndex < 65) {
+        level = 'YELLOW'
+        score = 50
+        interpretation = `Yellow: Health index ${healthIndex.toFixed(1)} requires monitoring`
+      } else {
+        level = 'GREEN'
+        score = 20
+        interpretation = `Green: Health index ${healthIndex.toFixed(1)} shows strong performance`
       }
 
-      // FLAG 1: Diverging Trend (S_sub ↑ while M_obj ↓)
-      if (cycles.length >= 2) {
-        const prev = cycles[cycles.length - 2]
-        const curr = cycles[cycles.length - 1]
+      if (gap > 25) score += 15
+      score = Math.min(100, score)
 
-        const s_sub_change = curr.s_sub - prev.s_sub
-        const m_obj_change = curr.m_obj - prev.m_obj
-
-        if (s_sub_change > 5 && m_obj_change < -5) {
-          flags.push({
-            flag: 'DIVERGING_TREND',
-            severity: 'CRITICAL',
-            detected: true,
-            cycles: 2,
-            message: `Dangerous divergence detected: Perception improving (+${s_sub_change.toFixed(1)}) while operations deteriorating (${m_obj_change.toFixed(1)})`,
-            actionItems: [
-              'Investigate root cause of operational decline',
-              'Reality-check leadership perception',
-              'Increase monitoring frequency',
-              'Activate contingency plans'
-            ],
-            recommendation:
-              'This is a "Delusional Comfort" pattern. Leadership feels better while operations worsen. Highest priority risk.'
-          })
-        }
-      }
-
-      // FLAG 2: Multiplier Freefall (single multiplier drops >15 pts)
-      if (cycles.length >= 2) {
-        // Fetch multiplier data for recent cycles
-        const prev_cycle = cycles[cycles.length - 2]
-        const curr_cycle = cycles[cycles.length - 1]
-
-        const prevMultipliers = await db
-          .collection('schools')
-          .doc(schoolId)
-          .collection('assessmentCycles')
-          .doc(prev_cycle.id)
-          .collection('multipliers')
-          .get()
-
-        const currMultipliers = await db
-          .collection('schools')
-          .doc(schoolId)
-          .collection('assessmentCycles')
-          .doc(curr_cycle.id)
-          .collection('multipliers')
-          .get()
-
-        const prevMap = new Map<string, number>()
-        const currMap = new Map<string, number>()
-
-        prevMultipliers.docs.forEach(doc => {
-          prevMap.set(doc.id, (doc.data().value || 0) * 100)
-        })
-
-        currMultipliers.docs.forEach(doc => {
-          currMap.set(doc.id, (doc.data().value || 0) * 100)
-        })
-
-        for (const [name, currValue] of currMap.entries()) {
-          const prevValue = prevMap.get(name) || currValue
-          const change = currValue - prevValue
-
-          if (change < -15) {
-            flags.push({
-              flag: 'MULTIPLIER_FREEFALL',
-              severity: 'HIGH',
-              detected: true,
-              cycles: 2,
-              message: `Critical decline in ${name}: ${prevValue.toFixed(1)} → ${currValue.toFixed(1)} (${change.toFixed(1)} point drop)`,
-              actionItems: [
-                `Immediate investigation of ${name} metrics`,
-                'Identify triggering events',
-                'Review related processes',
-                'Create recovery action plan'
-              ],
-              recommendation: `Priority action needed on ${name}. Decline of ${Math.abs(change).toFixed(1)} points in one cycle is unsustainable.`
-            })
-          }
-        }
-      }
-
-      // FLAG 3: Compounding Weight (highest-weighted challenge also worst score)
-      // Note: Would need challenge-level data, placeholder for Phase 4+ enhancement
-      if (cycles.length >= 2) {
-        // This flag requires detailed challenge data which would be added in implementation
-        // Placeholder for now
-      }
-
-      // FLAG 4: False Recovery (H improves but only from S_sub)
-      if (cycles.length >= 2) {
-        const prev = cycles[cycles.length - 2]
-        const curr = cycles[cycles.length - 1]
-
-        const health_change = curr.healthIndex - prev.healthIndex
-        const s_sub_change = curr.s_sub - prev.s_sub
-        const m_obj_change = curr.m_obj - prev.m_obj
-
-        // Health improved, but M_obj flat or worse, and only S_sub improved
-        if (health_change > 5 && s_sub_change > 0 && m_obj_change <= 0) {
-          flags.push({
-            flag: 'FALSE_RECOVERY',
-            severity: 'MEDIUM',
-            detected: true,
-            cycles: 2,
-            message: `Health improved (+${health_change.toFixed(1)}) but only from perception (+${s_sub_change.toFixed(1)}), operations unchanged/worse (${m_obj_change.toFixed(1)})`,
-            actionItems: [
-              'Validate perception improvement is justified',
-              'Address operations stagnation',
-              'Increase focus on objective metrics',
-              'Regular reality checks'
-            ],
-            recommendation:
-              'Improvement is not sustainable if only perception changes. Fix underlying operations.'
-          })
-        }
-      }
-
-      // Calculate overall risk level
-      const criticalCount = flags.filter(f => f.severity === 'CRITICAL').length
-      const highCount = flags.filter(f => f.severity === 'HIGH').length
-
-      let overall_risk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW'
-      if (criticalCount > 0) overall_risk = 'CRITICAL'
-      else if (highCount >= 2) overall_risk = 'HIGH'
-      else if (highCount === 1 || flags.length > 2) overall_risk = 'MEDIUM'
-
-      // Calculate trajectory
-      const getTrajectory = (cycles: any[]): string => {
-        if (cycles.length < 2) return 'INSUFFICIENT_DATA'
-        const first = cycles[0].healthIndex
-        const last = cycles[cycles.length - 1].healthIndex
-        const diff = last - first
-
-        if (diff > 10) return 'STRONG_IMPROVEMENT'
-        if (diff > 0) return 'GRADUAL_IMPROVEMENT'
-        if (diff > -10) return 'STABLE_WITH_SLIGHT_DECLINE'
-        return 'SIGNIFICANT_DECLINE'
-      }
-
-      // Calculate forecast
-      const forecast = () => {
-        if (cycles.length < 2) return { predictedHealthIndex: 50, confidence: 'LOW' }
-
-        const lastThree = cycles.slice(-3).map(c => c.healthIndex)
-        const trend = lastThree.length >= 2 ? (lastThree[lastThree.length - 1] - lastThree[0]) / (lastThree.length - 1) : 0
-        const predicted = lastThree[lastThree.length - 1] + trend
-
-        return {
-          predictedHealthIndex: Math.max(0, Math.min(100, Math.round(predicted * 10) / 10)),
-          confidence: 'MEDIUM'
-        }
-      }
-
-      const analysis: TrendAnalysis = {
-        cycles: cycles.length,
-        timespan: `${cycles[0].id} to ${cycles[cycles.length - 1].id}`,
-        flags,
-        overall_risk,
-        trajectory: getTrajectory(cycles),
-        forecast: forecast()
-      }
-
-      // Save analysis
-      await db
-        .collection('schools')
-        .doc(schoolId)
-        .collection('firstOpinionAnalysis')
-        .doc('earlyWarnings')
-        .set(analysis)
-
-      console.log(`[FirstOpinion] Early warning analysis complete: ${flags.length} flags detected`)
+      await cycleRef.collection('warnings').doc('latest').set(
+        {
+          level,
+          score,
+          interpretation,
+          createdAt: admin.firestore.Timestamp.now(),
+        },
+        { merge: true }
+      )
 
       return {
         success: true,
-        analysis
+        warning: {
+          level,
+          score: Math.round(score * 10) / 10,
+          interpretation,
+          timestamp: new Date().toISOString(),
+        },
       }
-    } catch (error) {
-      console.error('[FirstOpinion] Early warning detection error:', error)
-      throw new functions.https.HttpsError('internal', 'Early warning detection failed')
+    } catch (error: any) {
+      console.error('detectEarlyWarnings error:', error)
+      if (error instanceof functions.https.HttpsError) {
+        throw error
+      }
+      throw new functions.https.HttpsError('internal', 'Error: ' + error.message)
     }
   }
 )
 
-export default { detectEarlyWarnings }
+export default detectEarlyWarnings

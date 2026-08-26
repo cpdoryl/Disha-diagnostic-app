@@ -539,6 +539,9 @@ export { calculateMetrics } from './14d/calculateMetrics';
 export { runGapAnalysis, isBlindSpot } from './14d/gapAnalysis';
 export { generateRecommendations } from './14d/recommendations';
 
+// Phase 4: Firestore Triggers (automatic on cycle score updates)
+export { onCycleCompletion } from './firstOpinion/onCycleCompletion';
+
 // ====== DISHA Phase 4 - 14-Dimension Analysis & Reporting Functions ======
 // Diagnostic reports, dimension analysis, and trend tracking (separate from First Opinion)
 export { generateDiagnosticReport } from './analysis/generateReport';
