@@ -19,6 +19,19 @@ interface DimensionScore {
   gapSeverity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
+interface CalculationResultData {
+  assessmentId: string;
+  schoolId: string;
+  dimensionScores: DimensionScore[];
+  overallRealityScore: number;
+  overallPerceptionScore: number;
+  overallGap: number;
+  respondentCount: number;
+  responseCount: number;
+  metricsCovered: number;
+  analysisReady: boolean;
+}
+
 interface GapAnalysis {
   dimensionId: number;
   dimensionName: string;
@@ -58,8 +71,7 @@ export const runGapAnalysis = functions
   .region('us-central1')
   .https.onCall(
     async (
-      data: { schoolId: string; assessmentId: string },
-      context
+      data: { schoolId: string; assessmentId: string }
     ): Promise<GapAnalysisResult> => {
       try {
         const { schoolId, assessmentId } = data;
@@ -80,8 +92,8 @@ export const runGapAnalysis = functions
           throw new Error('Calculated scores not found. Run calculateMetrics first.');
         }
 
-        const scores = scoresDoc.data() as any;
-        const dimensionScores = scores.dimensionScores as DimensionScore[];
+        const scores = scoresDoc.data() as CalculationResultData;
+        const dimensionScores = scores.dimensionScores;
 
         // Analyze each gap
         const allGaps: GapAnalysis[] = [];

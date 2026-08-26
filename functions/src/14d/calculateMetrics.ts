@@ -10,8 +10,6 @@ import {
   aggregateRealityScore,
   aggregatePerceptionScore,
   calculateGap,
-  calculateTrend,
-  METRIC_CALCULATORS,
 } from '../lib/metricCalculations';
 
 const db = admin.firestore();
@@ -21,6 +19,7 @@ interface MetricResponse {
   assessmentId: string;
   schoolId: string;
   stakeholderType: string;
+  respondentId: string;
   dimension: number;
   metricId: string;
   metricType: 'reality' | 'perception';
@@ -77,7 +76,8 @@ export const calculateMetrics = functions
         return;
       }
 
-      const { schoolId, assessmentId } = change.after.ref.parent.parent!.id;
+      const schoolId = change.after.ref.parent.parent!.id;
+      const assessmentId = change.after.ref.id;
 
       console.log(`🔄 Calculating metrics for assessment ${assessmentId}...`);
 
@@ -129,15 +129,15 @@ export const calculateMetrics = functions
         const dimensionResponses = responsesByDimension.get(dimensionId) || [];
         if (dimensionResponses.length === 0) continue;
 
-        // Get reality metrics for this dimension
+        // Get reality metrics for this dimension (raw values, not pre-aggregated)
         const realityMetrics = Array.from(realityByMetric.entries())
           .filter(([key]) => key.startsWith(`${dimensionId}_`))
-          .map(([, values]) => aggregateRealityScore(values));
+          .flatMap(([, values]) => values);
 
-        // Get perception ratings for this dimension
+        // Get perception ratings for this dimension (raw values, not pre-aggregated)
         const perceptionMetrics = Array.from(perceptionByMetric.entries())
           .filter(([key]) => key.startsWith(`${dimensionId}_`))
-          .map(([, values]) => aggregatePerceptionScore(values));
+          .flatMap(([, values]) => values);
 
         const realityScore = aggregateRealityScore(realityMetrics);
         const perceptionScore = aggregatePerceptionScore(perceptionMetrics);

@@ -9,6 +9,15 @@ import * as admin from 'firebase-admin';
 
 const db = admin.firestore();
 
+interface GapAnalysisData {
+  topPriorities: Array<{
+    dimensionId: number;
+    dimensionName: string;
+    gap: number;
+    severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  }>;
+}
+
 interface Recommendation {
   id: string;
   dimensionId: number;
@@ -58,8 +67,7 @@ export const generateRecommendations = functions
   .region('us-central1')
   .https.onCall(
     async (
-      data: { schoolId: string; assessmentId: string; gapAnalysis: any },
-      context
+      data: { schoolId: string; assessmentId: string; gapAnalysis: GapAnalysisData }
     ): Promise<RecommendationResult> => {
       try {
         const { schoolId, assessmentId, gapAnalysis } = data;
