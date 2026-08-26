@@ -293,18 +293,15 @@ exports.calculateGapAndQuadrant = calculateGapAndQuadrant;
  */
 function calculateAllScores(s_sub, m_obj) {
     const { healthIndex, delusionPenalty } = calculateHealthIndex(s_sub, m_obj);
-    const { gap, rawGap, quadrant, interpretation, communicationGap, blindSpotRisk } = calculateGapAndQuadrant(s_sub, m_obj);
+    const { gap, quadrant, interpretation } = calculateGapAndQuadrant(s_sub, m_obj);
     return {
         s_sub: Math.round(s_sub * 10) / 10,
         m_obj: Math.round(m_obj * 10) / 10,
         healthIndex,
         gap,
-        rawGap,
         quadrant,
         interpretation,
-        delusionPenalty,
-        communicationGap,
-        blindSpotRisk
+        delusionPenalty
     };
 }
 exports.calculateAllScores = calculateAllScores;

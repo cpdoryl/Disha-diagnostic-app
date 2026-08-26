@@ -517,6 +517,14 @@ export const runSimulation = functions.https.onCall(
 // Phase 2: Challenge Response Submission APIs
 export { submitChallengeResponse, submitBatchChallengeResponses, deleteChallengeResponse } from './firstOpinion/submitChallengeResponse';
 
+// Phase 2: Multiplier Sync & Recalculation Orchestration
+export { syncMultipliers } from './firstOpinion/multiplierSync';
+export { recalculateCycleScores } from './firstOpinion/recalculateOnDemand';
+export { batchRecalculateAllCycles } from './firstOpinion/batch';
+
+// Phase 2: Firestore Triggers (Gen 1 style - automatic on response/multiplier changes)
+export { onChallengeResponseWrite, onMultiplierWrite } from './firstOpinion/triggers';
+
 // ====== DISHA First Opinion Engine v3 - Phase 3 ======
 // Reporting & Visualization: First Opinion Report generation
 export { generateFirstOpinionReport } from './firstOpinion/generateFirstOpinionReport';

@@ -63,12 +63,12 @@ export interface CalculationResult {
     m_obj: number;
     healthIndex: number;
     gap: number;
-    rawGap: number;
+    rawGap?: number;
+    communicationGap?: number;
+    blindSpotRisk?: 'HIGH' | 'LOW';
     quadrant: 'REALITY_BETTER' | 'ALIGNED' | 'PERCEPTION_BETTER';
     interpretation: string;
     delusionPenalty: number;
-    communicationGap: boolean;
-    blindSpotRisk: boolean;
 }
 /**
  * CALCULATION ENGINE 1: S_sub (Subjective Score)

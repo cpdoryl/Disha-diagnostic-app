@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzeTrends = exports.analyzeDimensions = exports.generateDiagnosticReport = exports.generateRecommendations = exports.isBlindSpot = exports.runGapAnalysis = exports.calculateMetrics = exports.detectEarlyWarnings = exports.generateFirstOpinionReport = exports.deleteChallengeResponse = exports.submitBatchChallengeResponses = exports.submitChallengeResponse = exports.runSimulation = exports.generate14DReport = exports.analyzeCheckup = exports.getDeploymentStatus = exports.initializeDISHADatabase = void 0;
+exports.analyzeTrends = exports.analyzeDimensions = exports.generateDiagnosticReport = exports.generateRecommendations = exports.isBlindSpot = exports.runGapAnalysis = exports.calculateMetrics = exports.detectEarlyWarnings = exports.generateFirstOpinionReport = exports.onMultiplierWrite = exports.onChallengeResponseWrite = exports.batchRecalculateAllCycles = exports.recalculateCycleScores = exports.syncMultipliers = exports.deleteChallengeResponse = exports.submitBatchChallengeResponses = exports.submitChallengeResponse = exports.runSimulation = exports.generate14DReport = exports.analyzeCheckup = exports.getDeploymentStatus = exports.initializeDISHADatabase = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
@@ -468,6 +468,17 @@ var submitChallengeResponse_1 = require("./firstOpinion/submitChallengeResponse"
 Object.defineProperty(exports, "submitChallengeResponse", { enumerable: true, get: function () { return submitChallengeResponse_1.submitChallengeResponse; } });
 Object.defineProperty(exports, "submitBatchChallengeResponses", { enumerable: true, get: function () { return submitChallengeResponse_1.submitBatchChallengeResponses; } });
 Object.defineProperty(exports, "deleteChallengeResponse", { enumerable: true, get: function () { return submitChallengeResponse_1.deleteChallengeResponse; } });
+// Phase 2: Multiplier Sync & Recalculation Orchestration
+var multiplierSync_1 = require("./firstOpinion/multiplierSync");
+Object.defineProperty(exports, "syncMultipliers", { enumerable: true, get: function () { return multiplierSync_1.syncMultipliers; } });
+var recalculateOnDemand_1 = require("./firstOpinion/recalculateOnDemand");
+Object.defineProperty(exports, "recalculateCycleScores", { enumerable: true, get: function () { return recalculateOnDemand_1.recalculateCycleScores; } });
+var batch_1 = require("./firstOpinion/batch");
+Object.defineProperty(exports, "batchRecalculateAllCycles", { enumerable: true, get: function () { return batch_1.batchRecalculateAllCycles; } });
+// Phase 2: Firestore Triggers (Gen 1 style - automatic on response/multiplier changes)
+var triggers_1 = require("./firstOpinion/triggers");
+Object.defineProperty(exports, "onChallengeResponseWrite", { enumerable: true, get: function () { return triggers_1.onChallengeResponseWrite; } });
+Object.defineProperty(exports, "onMultiplierWrite", { enumerable: true, get: function () { return triggers_1.onMultiplierWrite; } });
 // ====== DISHA First Opinion Engine v3 - Phase 3 ======
 // Reporting & Visualization: First Opinion Report generation
 var generateFirstOpinionReport_1 = require("./firstOpinion/generateFirstOpinionReport");

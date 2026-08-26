@@ -5,6 +5,10 @@ export declare const analyzeCheckup: functions.HttpsFunction & functions.Runnabl
 export declare const generate14DReport: functions.HttpsFunction & functions.Runnable<any>;
 export declare const runSimulation: functions.HttpsFunction & functions.Runnable<any>;
 export { submitChallengeResponse, submitBatchChallengeResponses, deleteChallengeResponse } from './firstOpinion/submitChallengeResponse';
+export { syncMultipliers } from './firstOpinion/multiplierSync';
+export { recalculateCycleScores } from './firstOpinion/recalculateOnDemand';
+export { batchRecalculateAllCycles } from './firstOpinion/batch';
+export { onChallengeResponseWrite, onMultiplierWrite } from './firstOpinion/triggers';
 export { generateFirstOpinionReport } from './firstOpinion/generateFirstOpinionReport';
 export { detectEarlyWarnings } from './firstOpinion/detectEarlyWarnings';
 export { calculateMetrics } from './14d/calculateMetrics';

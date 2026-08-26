@@ -67,12 +67,12 @@ export interface CalculationResult {
   m_obj: number // 0-100
   healthIndex: number // 0-100
   gap: number // 0-100
-  rawGap: number // Raw S_sub - M_obj before scaling
+  rawGap?: number // Raw gap before capping
+  communicationGap?: number // Absolute difference S_sub - M_obj
+  blindSpotRisk?: 'HIGH' | 'LOW' // Risk of false confidence
   quadrant: 'REALITY_BETTER' | 'ALIGNED' | 'PERCEPTION_BETTER'
   interpretation: string
   delusionPenalty: number // 0 or (S_sub - 80)
-  communicationGap: boolean // REALITY_BETTER quadrant
-  blindSpotRisk: boolean // PERCEPTION_BETTER quadrant
 }
 
 /**
@@ -399,19 +399,16 @@ export function calculateAllScores(
   m_obj: number
 ): CalculationResult {
   const { healthIndex, delusionPenalty } = calculateHealthIndex(s_sub, m_obj)
-  const { gap, rawGap, quadrant, interpretation, communicationGap, blindSpotRisk } = calculateGapAndQuadrant(s_sub, m_obj)
+  const { gap, quadrant, interpretation } = calculateGapAndQuadrant(s_sub, m_obj)
 
   return {
     s_sub: Math.round(s_sub * 10) / 10,
     m_obj: Math.round(m_obj * 10) / 10,
     healthIndex,
     gap,
-    rawGap,
     quadrant,
     interpretation,
-    delusionPenalty,
-    communicationGap,
-    blindSpotRisk
+    delusionPenalty
   }
 }
 
