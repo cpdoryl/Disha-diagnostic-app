@@ -117,14 +117,24 @@ jobs:
             "syncMultipliers"
           )
 
+          # Clean up old us-central1 functions (legacy)
+          echo "Cleaning up us-central1 (legacy)..."
           for func in "${FUNCTIONS[@]}"; do
-            echo "Attempting to delete $func..."
+            echo "Attempting to delete $func from us-central1..."
             gcloud functions delete "$func" --region us-central1 --quiet 2>&1 || \
             echo "✓ $func: Not found or already deleted (continuing...)"
           done
 
+          # Clean up asia-south1 functions (new location) - critical for keeping deployment clean
+          echo "Cleaning up asia-south1 (current)..."
+          for func in "${FUNCTIONS[@]}"; do
+            echo "Attempting to delete $func from asia-south1..."
+            gcloud functions delete "$func" --region asia-south1 --quiet 2>&1 || \
+            echo "✓ $func: Not found or already deleted (continuing...)"
+          done
+
           rm /tmp/gcloud-key.json 2>/dev/null || true
-          echo "✅ Orphaned function cleanup complete"
+          echo "✅ Orphaned function cleanup complete (both regions)"
         continue-on-error: true
 
       - name: Wait for orphaned functions to be deleted
