@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { DataAuditDashboard } from '@/components/Phase5_DataInfrastructure/DataAuditDashboard';
 import { ResponseRateTracker } from '@/components/Phase5_DataInfrastructure/ResponseRateTracker';
+import { TrendAnalysis } from '@/components/Phase5_DataInfrastructure/TrendAnalysis';
 
 // ============================================================================
 // TYPES
@@ -135,19 +136,7 @@ export const Phase6Analytics: React.FC = () => {
                 declining dimensions.
               </p>
             </div>
-
-            {/* Placeholder Content */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-white rounded-lg shadow p-6 text-center">
-                  <div className="text-4xl mb-4 text-gray-300">📊</div>
-                  <p className="text-gray-600 font-semibold">Trend Component {i}</p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Coming in Week 3 of Phase 6 development
-                  </p>
-                </div>
-              ))}
-            </div>
+            <TrendAnalysis schoolId={schoolId} cycleId={cycleId} previousCycleId="cycle-2026-07" />
           </div>
         )}
 
