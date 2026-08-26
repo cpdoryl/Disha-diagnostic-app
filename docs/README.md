@@ -14,25 +14,46 @@ Welcome to the comprehensive documentation repository for the DISHA Diagnostic E
   - Coverage analysis (173 functional + 202 non-functional tests)
   - Performance metrics and SLAs
   - Production certification details
-  
-**Test Verification Files (executable test suites):**
-- `calculations-verification.js` - Core calculation engine validation (60 tests)
-- `integration-tests.js` - Real-time data sync testing (23 tests)
-- `reporting-verification.js` - Report generation validation (13 tests)
-- `early-warnings-verification.js` - Early warning system testing (18 tests)
-- `e2e-workflows-verification.js` - End-to-end workflow validation (7 tests)
-- `data-persistence-verification.js` - Data persistence testing (16 tests)
-- `edge-cases-verification.js` - Edge case handling (34 tests)
-- `performance-verification.js` - Performance benchmarking (10 tests)
-- `cross-browser-verification.js` - Multi-platform compatibility (10 tests)
-- `production-validation.js` - Production readiness checks (10 tests)
+
+- **[TESTING_INDEX.md](testing/TESTING_INDEX.md)** - Detailed testing index with folder guide
+
+**Testing Sub-Folders (Organized by Category):**
+
+- **test-verification-files/** - Core calculations and data persistence
+  - `calculations-verification.js` - Calculation engine validation (60 tests)
+  - `data-persistence-verification.js` - Data persistence testing (16 tests)
+
+- **test-reports/** - Reporting and analytics validation
+  - `reporting-verification.js` - Report generation validation (13 tests)
+
+- **test-cases/** - Edge case and boundary condition testing
+  - `edge-cases-verification.js` - Edge case handling (34 tests)
+
+- **performance-benchmarks/** - Performance and scalability testing
+  - `performance-verification.js` - Performance benchmarking (10 tests)
+
+- **compliance-testing/** - Standards and production readiness
+  - `early-warnings-verification.js` - Early warning system testing (18 tests)
+  - `cross-browser-verification.js` - Multi-platform compatibility (10 tests)
+  - `production-validation.js` - Production readiness checks (10 tests)
+
+- **integration-testing/** - End-to-end workflow testing
+  - `integration-tests.js` - Real-time data sync testing (23 tests)
+  - `e2e-workflows-verification.js` - End-to-end workflow validation (7 tests)
 
 **To run tests:**
 ```bash
-node docs/testing/calculations-verification.js
-node docs/testing/performance-verification.js
-# ... and so on for each test file
+# Run specific category
+node docs/testing/test-verification-files/calculations-verification.js
+node docs/testing/performance-benchmarks/performance-verification.js
+
+# Run all tests in a category
+cd docs/testing/compliance-testing/
+node cross-browser-verification.js
+node production-validation.js
 ```
+
+**See [TESTING_INDEX.md](testing/TESTING_INDEX.md) for complete testing guide.**
 
 ---
 
@@ -135,6 +156,23 @@ node docs/testing/performance-verification.js
 
 ---
 
+### 🗂️ [Miscellaneous Documentation](/docs/miscellaneous-documentation/)
+**Supplementary guides, design documentation, and reference materials**
+
+Supporting documentation that provides context, examples, and guidance:
+- `INDEX.md` - Complete index of all miscellaneous documents
+- 40 supplementary documents including:
+  - Setup and configuration guides
+  - Design and architecture documentation
+  - Assessment and survey materials
+  - Implementation plans and strategies
+  - Methodology and framework guides
+  - Project management and status documents
+
+**See [INDEX.md](miscellaneous-documentation/INDEX.md) for complete document listing.**
+
+---
+
 ### 📦 [Archived Documentation](/docs/archived-documentation/)
 **Historical, superseded, and status documents**
 
@@ -226,14 +264,15 @@ For specific topics:
 
 | Category | Documents | Purpose |
 |----------|-----------|---------|
-| Testing | 11 files | Verification & validation |
+| Testing (with sub-folders) | 11 files + 6 sub-folders | Verification & validation |
 | Product Building | 20 files | Architecture & implementation |
-| Phases | 15+ files | Phase-specific guidance |
-| Deployment | 20+ files | Setup & operations |
+| Phases | 36 files | Phase-specific guidance |
+| Deployment | 34 files | Setup & operations |
 | User Guides | 6 files | End-user documentation |
-| Reference | 5 files | Technical reference |
-| Archived | 50+ files | Historical documentation |
-| **TOTAL** | **130+** | **Complete documentation** |
+| Reference | 6 files | Technical reference |
+| Miscellaneous | 40 files | Supplementary guides & materials |
+| Archived | 57 files | Historical documentation |
+| **TOTAL** | **210+** | **Complete documentation suite** |
 
 ---
 
