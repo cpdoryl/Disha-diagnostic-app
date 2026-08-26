@@ -169,10 +169,11 @@ describe('DataAuditDashboard: Dimension Coverage Grid', () => {
 describe('DataAuditDashboard: Quality Metrics', () => {
   it('should calculate quality from completeness and verification', () => {
     const metrics = generateMockMetrics(1, 6);
-    const filled = Object.values(metrics).filter((m) => m.value !== null).length;
-    const verified = Object.values(metrics).filter((m) => m.isVerified).length;
+    const metricsArray = Object.values(metrics);
+    const filled = metricsArray.filter((m) => m.value !== null).length;
+    const verified = metricsArray.filter((m) => m.isVerified).length;
 
-    const completeness = (filled / metrics.length) * 100;
+    const completeness = metricsArray.length > 0 ? (filled / metricsArray.length) * 100 : 0;
     const verification = filled > 0 ? (verified / filled) * 100 : 0;
     const quality = Math.round(completeness * 0.5 + verification * 0.5);
 

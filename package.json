@@ -52,6 +52,7 @@
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "firebase-tools": "^15.27.0",
+    "happy-dom": "^20.11.6",
     "playwright": "^1.62.1",
     "postcss": "^8.4.32",
     "pptxgenjs": "^4.0.1",
