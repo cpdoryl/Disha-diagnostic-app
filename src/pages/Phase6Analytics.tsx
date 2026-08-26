@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { DataAuditDashboard } from '@/components/Phase5_DataInfrastructure/DataAuditDashboard';
 import { ResponseRateTracker } from '@/components/Phase5_DataInfrastructure/ResponseRateTracker';
 import { TrendAnalysis } from '@/components/Phase5_DataInfrastructure/TrendAnalysis';
+import { QualityMonitoring } from '@/components/Phase5_DataInfrastructure/QualityMonitoring';
 
 // ============================================================================
 // TYPES
@@ -150,32 +151,7 @@ export const Phase6Analytics: React.FC = () => {
                 data integrity throughout collection.
               </p>
             </div>
-
-            {/* Placeholder Content */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { label: 'Stale Metrics', count: 3, color: 'yellow' },
-                { label: 'Outliers Detected', count: 2, color: 'orange' },
-                { label: 'Unverified Data', count: 12, color: 'red' },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className={`bg-${item.color}-50 border border-${item.color}-200 rounded-lg p-4`}
-                >
-                  <p className={`text-${item.color}-800 font-semibold text-lg`}>{item.count}</p>
-                  <p className={`text-sm text-${item.color}-700`}>{item.label}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Coming Soon Message */}
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <div className="text-4xl mb-4">🔧</div>
-              <p className="text-gray-600 font-semibold">Quality Monitoring Dashboard</p>
-              <p className="text-sm text-gray-500 mt-2">
-                Advanced quality metrics and alerting system coming in Week 4 of Phase 6
-              </p>
-            </div>
+            <QualityMonitoring schoolId={schoolId} cycleId={cycleId} />
           </div>
         )}
       </div>
