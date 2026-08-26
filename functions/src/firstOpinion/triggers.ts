@@ -25,7 +25,7 @@ export const onChallengeResponseWrite = onDocumentWritten(
   {
     document: 'schools/{schoolId}/assessmentCycles/{cycleId}/challengeResponses/{responseId}',
     database: DB_ID, // ← KEY FIX: Explicitly specify custom database!
-    region: 'us-central1'
+    region: 'asia-south1'
   },
   async (event) => {
     const { schoolId, cycleId, responseId } = event.params
@@ -66,7 +66,7 @@ export const onMultiplierWrite = onDocumentWritten(
   {
     document: 'schools/{schoolId}/assessmentCycles/{cycleId}/multipliers/{multiplierId}',
     database: DB_ID, // ← KEY FIX: Explicitly specify custom database!
-    region: 'us-central1'
+    region: 'asia-south1'
   },
   async (event) => {
     const { schoolId, cycleId, multiplierId } = event.params

@@ -69,7 +69,7 @@ interface SyncResult {
  * 5. Triggers fire → recalculate scores
  */
 export const syncMultipliers = functions
-  .region('us-central1')
+  .region('asia-south1')
   .https.onCall(async (data: SyncMultipliersPayload, context) => {
     try {
       // ===== AUTH GATE =====
