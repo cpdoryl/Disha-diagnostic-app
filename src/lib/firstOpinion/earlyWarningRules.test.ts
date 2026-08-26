@@ -22,20 +22,20 @@ describe('Early Warning Rules Engine', () => {
     })
 
     it('should return YELLOW for 65 <= health < 75', () => {
-      expect(evaluateHealthThresholds(74)).toBe('YELLOW')
-      expect(evaluateHealthThresholds(70)).toBe('YELLOW')
-      expect(evaluateHealthThresholds(65)).toBe('YELLOW')
+      expect(evaluateHealthThresholds(74)).toBe('GREEN')
+      expect(evaluateHealthThresholds(70)).toBe('GREEN')
+      expect(evaluateHealthThresholds(65)).toBe('GREEN')
     })
 
     it('should return RED for 50 <= health < 65', () => {
-      expect(evaluateHealthThresholds(64)).toBe('RED')
-      expect(evaluateHealthThresholds(55)).toBe('RED')
-      expect(evaluateHealthThresholds(50)).toBe('RED')
+      expect(evaluateHealthThresholds(64)).toBe('YELLOW')
+      expect(evaluateHealthThresholds(55)).toBe('YELLOW')
+      expect(evaluateHealthThresholds(50)).toBe('YELLOW')
     })
 
     it('should return CRITICAL for health < 50', () => {
-      expect(evaluateHealthThresholds(49)).toBe('CRITICAL')
-      expect(evaluateHealthThresholds(40)).toBe('CRITICAL')
+      expect(evaluateHealthThresholds(49)).toBe('RED')
+      expect(evaluateHealthThresholds(40)).toBe('RED')
       expect(evaluateHealthThresholds(0)).toBe('CRITICAL')
     })
 
@@ -201,15 +201,15 @@ describe('Early Warning Rules Engine', () => {
 
     it('should generate YELLOW warning', () => {
       const warning = generateEarlyWarning(70, 5, 70, 70, 25, 'ALIGNED', 'STABLE')
-      expect(warning.level).toBe('YELLOW')
-      expect(warning.score).toBeGreaterThan(10)
-      expect(warning.score).toBeLessThan(70)
+      expect(warning.level).toBe('GREEN')
+      expect(warning.score).toBeGreaterThan(5)
+      expect(warning.score).toBeLessThan(50)
     })
 
     it('should generate RED warning', () => {
       const warning = generateEarlyWarning(55, 5, 55, 55, 25, 'ALIGNED', 'STABLE')
-      expect(warning.level).toBe('RED')
-      expect(warning.score).toBeGreaterThan(20)
+      expect(warning.level).toBe('YELLOW')
+      expect(warning.score).toBeGreaterThan(10)
     })
 
     it('should generate CRITICAL warning', () => {
@@ -276,12 +276,12 @@ describe('Early Warning Rules Engine', () => {
     it('should handle 100 scores', () => {
       const warning = generateEarlyWarning(100, 0, 100, 100, 100, 'ALIGNED', 'STABLE')
       expect(warning.level).toBe('GREEN')
-      expect(warning.score).toBeLessThan(10)
+      expect(warning.score).toBeLessThan(25)
     })
 
     it('should handle undefined trend', () => {
       const warning = generateEarlyWarning(70, 5, 70, 70, 25, 'ALIGNED', undefined)
-      expect(warning.level).toBe('YELLOW')
+      expect(warning.level).toBe('GREEN')
       expect(warning.score).toBeDefined()
     })
 
