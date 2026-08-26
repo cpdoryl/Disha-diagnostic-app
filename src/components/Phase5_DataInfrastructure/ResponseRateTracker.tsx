@@ -318,7 +318,7 @@ export const ResponseRateTracker: React.FC<ResponseRateTrackerProps> = ({
         <p className="font-semibold text-blue-800 mb-3">📋 Next Steps</p>
         <ul className="space-y-2 text-sm text-blue-700">
           {stats.overallResponseRate < 75 && (
-            <li>• Send reminder email to respondents with <25% completion</li>
+            <li>• Send reminder email to respondents with {'<'}25% completion</li>
           )}
           {stats.respondentStats.some((r) => r.responseRate < 50) && (
             <li>

@@ -408,7 +408,7 @@ export const RecommendationsEngine: React.FC<RecommendationsEngineProps> = (prop
           </div>
           <div className="p-3 bg-white rounded border border-purple-100">
             <p className="font-semibold text-sm text-gray-900">Perception-Reality Gap</p>
-            <p className="text-xs text-gray-600 mt-1">Current: {props.gap.toFixed(1)} → Target: <10</p>
+            <p className="text-xs text-gray-600 mt-1">Current: {props.gap.toFixed(1)} → Target: {'<'}10</p>
           </div>
           <div className="p-3 bg-white rounded border border-purple-100">
             <p className="font-semibold text-sm text-gray-900">Stakeholder Satisfaction</p>

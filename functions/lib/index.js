@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzeTrends = exports.analyzeDimensions = exports.generateDiagnosticReport = exports.generateRecommendations = exports.isBlindSpot = exports.runGapAnalysis = exports.calculateMetrics = exports.detectEarlyWarnings = exports.generateFirstOpinionReport = exports.onMultiplierWrite = exports.onChallengeResponseWrite = exports.batchRecalculateAllCycles = exports.recalculateCycleScores = exports.syncMultipliers = exports.deleteChallengeResponse = exports.submitBatchChallengeResponses = exports.submitChallengeResponse = exports.runSimulation = exports.generate14DReport = exports.analyzeCheckup = exports.getDeploymentStatus = exports.initializeDISHADatabase = void 0;
+exports.analyzeTrends = exports.analyzeDimensions = exports.generateDiagnosticReport = exports.onCycleCompletion = exports.generateRecommendations = exports.isBlindSpot = exports.runGapAnalysis = exports.calculateMetrics = exports.detectEarlyWarnings = exports.generateFirstOpinionReport = exports.onMultiplierWrite = exports.onChallengeResponseWrite = exports.batchRecalculateAllCycles = exports.recalculateCycleScores = exports.syncMultipliers = exports.deleteChallengeResponse = exports.submitBatchChallengeResponses = exports.submitChallengeResponse = exports.runSimulation = exports.generate14DReport = exports.analyzeCheckup = exports.getDeploymentStatus = exports.initializeDISHADatabase = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
@@ -496,6 +496,9 @@ Object.defineProperty(exports, "runGapAnalysis", { enumerable: true, get: functi
 Object.defineProperty(exports, "isBlindSpot", { enumerable: true, get: function () { return gapAnalysis_1.isBlindSpot; } });
 var recommendations_1 = require("./14d/recommendations");
 Object.defineProperty(exports, "generateRecommendations", { enumerable: true, get: function () { return recommendations_1.generateRecommendations; } });
+// Phase 4: Firestore Triggers (automatic on cycle score updates)
+var onCycleCompletion_1 = require("./firstOpinion/onCycleCompletion");
+Object.defineProperty(exports, "onCycleCompletion", { enumerable: true, get: function () { return onCycleCompletion_1.onCycleCompletion; } });
 // ====== DISHA Phase 4 - 14-Dimension Analysis & Reporting Functions ======
 // Diagnostic reports, dimension analysis, and trend tracking (separate from First Opinion)
 var generateReport_1 = require("./analysis/generateReport");

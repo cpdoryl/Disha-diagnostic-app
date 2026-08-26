@@ -14,6 +14,7 @@ export { detectEarlyWarnings } from './firstOpinion/detectEarlyWarnings';
 export { calculateMetrics } from './14d/calculateMetrics';
 export { runGapAnalysis, isBlindSpot } from './14d/gapAnalysis';
 export { generateRecommendations } from './14d/recommendations';
+export { onCycleCompletion } from './firstOpinion/onCycleCompletion';
 export { generateDiagnosticReport } from './analysis/generateReport';
 export { analyzeDimensions } from './analysis/dimensionAnalysis';
 export { analyzeTrends } from './analysis/trendAnalysis';

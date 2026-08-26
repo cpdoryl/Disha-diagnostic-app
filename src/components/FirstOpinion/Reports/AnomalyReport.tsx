@@ -90,7 +90,7 @@ export const AnomalyReport: React.FC<AnomalyReportProps> = ({ historicalCycles, 
         <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
           <p className="text-xs text-red-900 font-semibold mb-1">High Confidence</p>
           <p className="text-3xl font-bold text-red-600">{highConfidenceCount}</p>
-          <p className="text-xs text-red-700 mt-1">Confidence >= 80%</p>
+          <p className="text-xs text-red-700 mt-1">Confidence {'>'}= 80%</p>
         </div>
 
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
@@ -235,7 +235,7 @@ export const AnomalyReport: React.FC<AnomalyReportProps> = ({ historicalCycles, 
       <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
         <h3 className="font-semibold text-blue-900 mb-2">Recommendations</h3>
         <ul className="space-y-2 text-sm text-blue-800">
-          <li>• Review high-confidence anomalies (confidence >= 80%) first</li>
+          <li>• Review high-confidence anomalies (confidence {'>'}= 80%) first</li>
           <li>• Investigate outliers to determine if they represent data quality issues or genuine concerns</li>
           <li>• Follow up on consistency anomalies that suggest diverging trends</li>
           <li>• Pattern anomalies may indicate respondent disengagement — consider survey redesign or retake</li>
