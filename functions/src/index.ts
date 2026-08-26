@@ -505,12 +505,14 @@ export const runSimulation = functions.https.onCall(
 // (not from index.ts to avoid Gen 1 conversion)
 // See: functions/src/firstOpinion/triggers.ts
 //
-// IMPORTANT: These functions are defined in asia-south1 region in their source files.
-// Exporting them here should preserve their region setting, but Firebase CLI may override.
-// If deployment fails with region conflicts, comment these out and deploy via gcloud CLI directly.
+// CRITICAL FIX: Temporarily disabling these exports to prevent Firebase CLI
+// from trying to create them in us-central1 (wrong region).
+// These will be deployed via manual gcloud CLI commands to ensure asia-south1 region.
+// See: .github/workflows/test-and-deploy.yml for manual deployment step
 //
-export { syncMultipliers } from './firstOpinion/multiplierSync';
-export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
+// TODO: Re-enable after Firebase CLI fixes region handling
+// export { syncMultipliers } from './firstOpinion/multiplierSync';
+// export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
 
 // Phase 2: Challenge Response Submission APIs
 export { submitChallengeResponse, submitBatchChallengeResponses, deleteChallengeResponse } from './firstOpinion/submitChallengeResponse';
