@@ -1,0 +1,404 @@
+/**
+ * Phase 4 Dashboard Responsive Styles
+ * Ensures components look great on mobile, tablet, and desktop
+ */
+
+/* ============================================================================
+   MOBILE FIRST (Base - 320px and up)
+   ============================================================================ */
+
+.dashboard {
+  min-height: 100vh;
+  background-color: #f9fafb;
+  padding: 1rem;
+}
+
+.header {
+  background-color: white;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.headerContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.headerTitle {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.headerSubtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0.25rem 0 0 0;
+}
+
+.headerMetrics {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.main {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.section {
+  margin-bottom: 2rem;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 1rem;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.metricCard {
+  background-color: white;
+  border-left: 4px solid;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.metricCard:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.metricLabel {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.metricValue {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.metricTrend {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.metricTrendUp {
+  color: #dc2626;
+}
+
+.metricTrendDown {
+  color: #16a34a;
+}
+
+.heatMapContainer {
+  background-color: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.heatMapTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.heatMapTable th,
+.heatMapTable td {
+  padding: 0.75rem;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+}
+
+.heatMapTable th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.heatMapCell {
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.heatMapCell:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+.footer {
+  background-color: white;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 4rem;
+}
+
+.footerContent {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.footerSection h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.footerSection p,
+.footerSection a {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.footerSection a {
+  text-decoration: none;
+}
+
+.footerSection a:hover {
+  color: #2563eb;
+}
+
+.footerDivider {
+  border-top: 1px solid #e5e7eb;
+  margin: 2rem 0;
+  padding-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.footerDividerLinks {
+  display: flex;
+  gap: 1rem;
+  flex-direction: column;
+}
+
+.footerDividerLinks a {
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.footerDividerLinks a:hover {
+  color: #2563eb;
+}
+
+/* ============================================================================
+   TABLET (640px and up)
+   ============================================================================ */
+
+@media (min-width: 640px) {
+  .dashboard {
+    padding: 1.5rem;
+  }
+
+  .header {
+    padding: 2rem;
+  }
+
+  .headerContent {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .headerTitle {
+    font-size: 2.25rem;
+  }
+
+  .metricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .heatMapTable {
+    font-size: 0.875rem;
+  }
+
+  .heatMapTable th,
+  .heatMapTable td {
+    padding: 1rem;
+  }
+
+  .footerGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+  }
+
+  .footerDivider {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footerDividerLinks {
+    flex-direction: row;
+  }
+}
+
+/* ============================================================================
+   DESKTOP (1024px and up)
+   ============================================================================ */
+
+@media (min-width: 1024px) {
+  .dashboard {
+    padding: 2rem;
+  }
+
+  .header {
+    padding: 2.5rem;
+  }
+
+  .main {
+    padding: 0;
+  }
+
+  .headerTitle {
+    font-size: 2.5rem;
+  }
+
+  .metricsGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+
+  .metricCard {
+    padding: 2rem;
+  }
+
+  .metricValue {
+    font-size: 2.25rem;
+  }
+
+  .heatMapContainer {
+    padding: 2rem;
+  }
+
+  .heatMapTable {
+    font-size: 1rem;
+  }
+
+  .heatMapTable th,
+  .heatMapTable td {
+    padding: 1.25rem;
+  }
+
+  .footerGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ============================================================================
+   LARGE DESKTOP (1440px and up)
+   ============================================================================ */
+
+@media (min-width: 1440px) {
+  .dashboard {
+    padding: 3rem;
+  }
+
+  .main {
+    max-width: 90rem;
+  }
+
+  .metricsGrid {
+    gap: 2rem;
+  }
+
+  .headerTitle {
+    font-size: 3rem;
+  }
+}
+
+/* ============================================================================
+   LOADING ANIMATION
+   ============================================================================ */
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingSpinner {
+  animation: spin 1s linear infinite;
+}
+
+/* ============================================================================
+   ACCESSIBILITY
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+
+@media print {
+  .dashboard {
+    background-color: white;
+    padding: 0;
+  }
+
+  .header,
+  .footer {
+    border: none;
+    box-shadow: none;
+  }
+
+  .metricCard,
+  .heatMapContainer {
+    page-break-inside: avoid;
+  }
+}
