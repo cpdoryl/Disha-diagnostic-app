@@ -212,7 +212,7 @@ exports.generateFirstOpinionReport = functions.https.onCall(async (data, context
                 m_obj: scores.m_obj,
                 healthIndex: scores.healthIndex,
                 gap: scores.gap,
-                rawGap: scores.rawGap,
+                rawGap: scores.rawGap ?? scores.gap,
                 quadrant: scores.quadrant,
                 delusionPenalty: scores.delusionPenalty
             },
@@ -232,8 +232,8 @@ exports.generateFirstOpinionReport = functions.https.onCall(async (data, context
                 healthStatus: getHealthStatus(scores.healthIndex),
                 healthDescription: scores.interpretation,
                 quadrantInsight: scores.interpretation,
-                communicationGap: scores.communicationGap,
-                blindSpotRisk: scores.blindSpotRisk
+                communicationGap: (scores.communicationGap ?? 0) > 20,
+                blindSpotRisk: (scores.blindSpotRisk ?? 'LOW') === 'HIGH' // true if HIGH risk
             },
             recommendations
         };

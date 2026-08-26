@@ -276,7 +276,7 @@ export const generateFirstOpinionReport = functions.https.onCall(
           m_obj: scores.m_obj,
           healthIndex: scores.healthIndex,
           gap: scores.gap,
-          rawGap: scores.rawGap,
+          rawGap: scores.rawGap ?? scores.gap, // fallback to gap if rawGap undefined
           quadrant: scores.quadrant,
           delusionPenalty: scores.delusionPenalty
         },
@@ -300,8 +300,8 @@ export const generateFirstOpinionReport = functions.https.onCall(
           healthStatus: getHealthStatus(scores.healthIndex),
           healthDescription: scores.interpretation,
           quadrantInsight: scores.interpretation,
-          communicationGap: scores.communicationGap,
-          blindSpotRisk: scores.blindSpotRisk
+          communicationGap: (scores.communicationGap ?? 0) > 20, // true if gap > 20
+          blindSpotRisk: (scores.blindSpotRisk ?? 'LOW') === 'HIGH' // true if HIGH risk
         },
 
         recommendations
