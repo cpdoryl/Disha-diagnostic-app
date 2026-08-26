@@ -117,20 +117,24 @@ jobs:
             "syncMultipliers"
           )
 
-          # Clean up old us-central1 functions (legacy)
-          echo "Cleaning up us-central1 (legacy)..."
+          # CRITICAL: Clean up us-central1 functions FIRST (they may be causing conflicts)
+          echo "⚠️  PRIORITY: Removing us-central1 functions (these should not exist)..."
           for func in "${FUNCTIONS[@]}"; do
-            echo "Attempting to delete $func from us-central1..."
+            echo "Deleting $func from us-central1 (should not be there)..."
             gcloud functions delete "$func" --region us-central1 --quiet 2>&1 || \
-            echo "✓ $func: Not found or already deleted (continuing...)"
+            echo "✓ $func: Already gone from us-central1"
           done
 
-          # Clean up asia-south1 functions (new location) - critical for keeping deployment clean
-          echo "Cleaning up asia-south1 (current)..."
+          # Wait for deletions to complete
+          echo "⏳ Waiting for us-central1 deletions to complete..."
+          sleep 10
+
+          # Clean up any stale asia-south1 functions
+          echo "Cleaning up any stale asia-south1 functions..."
           for func in "${FUNCTIONS[@]}"; do
             echo "Attempting to delete $func from asia-south1..."
             gcloud functions delete "$func" --region asia-south1 --quiet 2>&1 || \
-            echo "✓ $func: Not found or already deleted (continuing...)"
+            echo "✓ $func: Not found or already deleted"
           done
 
           rm /tmp/gcloud-key.json 2>/dev/null || true
@@ -144,6 +148,8 @@ jobs:
           echo "✅ Ready to deploy new functions"
 
       - name: Deploy Cloud Functions
+        env:
+          FIREBASE_SUPPRESS_REGION_WARNING: 'true'
         run: |
           echo "🚀 Deploying Cloud Functions..."
           firebase deploy \

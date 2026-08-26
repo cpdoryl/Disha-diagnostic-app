@@ -505,6 +505,10 @@ export const runSimulation = functions.https.onCall(
 // (not from index.ts to avoid Gen 1 conversion)
 // See: functions/src/firstOpinion/triggers.ts
 //
+// IMPORTANT: These functions are defined in asia-south1 region in their source files.
+// Exporting them here should preserve their region setting, but Firebase CLI may override.
+// If deployment fails with region conflicts, comment these out and deploy via gcloud CLI directly.
+//
 export { syncMultipliers } from './firstOpinion/multiplierSync';
 export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
 
