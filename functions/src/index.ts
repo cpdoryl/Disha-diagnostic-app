@@ -547,3 +547,16 @@ export { onCycleCompletion } from './firstOpinion/onCycleCompletion';
 export { generateDiagnosticReport } from './analysis/generateReport';
 export { analyzeDimensions } from './analysis/dimensionAnalysis';
 export { analyzeTrends } from './analysis/trendAnalysis';
+
+// ====== DISHA Stage 3 - Reverse Simulation Engine ======
+// Complete reverse outcome modeling with 7-step process
+// Goal Setting → Reverse Calculation → Feasibility → Action Mapping →
+// Resource Allocation → Timeline → Execution & Monitoring
+export {
+  setGoalSetting,
+  performReverseCalculation,
+  analyzeFeasibility,
+  generateActionPlan,
+  allocateResources,
+  generateTimeline,
+} from './reverseSimulation';
