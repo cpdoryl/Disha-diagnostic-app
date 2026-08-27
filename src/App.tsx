@@ -11,6 +11,7 @@ import { Admin } from './pages/Admin';
 import { FirstOpinionPage } from './pages/FirstOpinionPage';
 import { MultiUserAssessmentPage } from './pages/MultiUserAssessment';
 import { StakeholderSurvey } from './pages/StakeholderSurvey';
+import { ReverseSimulationEngine } from './pages/ReverseSimulationEngine';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -119,6 +120,8 @@ export default function App() {
         return <Admin />;
       case '14D_ASSESSMENT':
         return <MultiUserAssessmentPage />;
+      case 'REVERSE_SIMULATION':
+        return <ReverseSimulationEngine />;
       default:
         return <Dashboard />;
     }
