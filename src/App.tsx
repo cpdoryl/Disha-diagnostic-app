@@ -3,7 +3,6 @@ import { AppLayout } from './components/layout/AppLayout';
 import { Dashboard } from './pages/Dashboard';
 import { useAppStore } from './store';
 import { CompareStage } from './pages/CompareStage';
-import { SimulateStage } from './pages/SimulateStage';
 import { SynthesizeStage } from './pages/SynthesizeStage';
 import { Login } from './pages/Login';
 import { LandingPage } from './pages/LandingPage';
@@ -113,8 +112,6 @@ export default function App() {
         return <FirstOpinionPage />;
       case 'COMPARE':
         return <CompareStage />;
-      case 'SIMULATE':
-        return <SimulateStage />;
       case 'SYNTHESIZE':
         return <SynthesizeStage />;
       case 'ADMIN':
