@@ -5,61 +5,55 @@ import { GoalSettingWizard } from '../GoalSettingWizard';
 describe('GoalSettingWizard Component', () => {
   const mockOnNext = vi.fn();
 
-  it('renders without crashing', () => {
+  it('renders without errors', () => {
+    expect(() => render(<GoalSettingWizard onNext={mockOnNext} />)).not.toThrow();
+  });
+
+  it('component accepts callback', () => {
     const { container } = render(<GoalSettingWizard onNext={mockOnNext} />);
     expect(container).toBeTruthy();
   });
 
-  it('accepts onNext callback prop', () => {
-    const { container } = render(<GoalSettingWizard onNext={mockOnNext} />);
-    expect(container.querySelector('div')).toBeTruthy();
-  });
-
-  it('renders component successfully', () => {
+  it('renders successfully', () => {
     const { container } = render(<GoalSettingWizard onNext={mockOnNext} />);
     expect(container).toBeInTheDocument();
   });
 
-  it('handles mock callback without errors', () => {
-    expect(() => {
-      render(<GoalSettingWizard onNext={mockOnNext} />);
-    }).not.toThrow();
-  });
-
-  it('renders with valid structure', () => {
+  it('component mounts', () => {
     const { container } = render(<GoalSettingWizard onNext={mockOnNext} />);
-    expect(container.innerHTML.length > 0).toBeTruthy();
+    expect(container.children.length).toBeGreaterThan(0);
   });
 
-  it('maintains state through render', () => {
+  it('re-renders without error', () => {
     const { rerender } = render(<GoalSettingWizard onNext={mockOnNext} />);
-    rerender(<GoalSettingWizard onNext={mockOnNext} />);
-    expect(true).toBeTruthy();
+    expect(() => rerender(<GoalSettingWizard onNext={mockOnNext} />)).not.toThrow();
   });
 
-  it('component is stable', () => {
-    const { container } = render(<GoalSettingWizard onNext={mockOnNext} />);
-    expect(container).toBeTruthy();
-  });
-
-  it('accepts callback prop', () => {
+  it('callback is defined', () => {
     render(<GoalSettingWizard onNext={mockOnNext} />);
     expect(mockOnNext).toBeDefined();
   });
 
-  it('no errors during rendering', () => {
-    expect(() => {
-      render(<GoalSettingWizard onNext={mockOnNext} />);
-    }).not.toThrow();
+  it('renders div element', () => {
+    const { container } = render(<GoalSettingWizard onNext={mockOnNext} />);
+    expect(container.querySelector('div')).toBeTruthy();
   });
 
-  it('component renders content', () => {
-    const { container } = render(<GoalSettingWizard onNext={mockOnNext} />);
-    expect(container.innerHTML.length > 0).toBe(true);
+  it('component defined', () => {
+    expect(GoalSettingWizard).toBeDefined();
   });
 
-  it('renders with valid props', () => {
+  it('does not throw on render', () => {
+    expect(() => render(<GoalSettingWizard onNext={mockOnNext} />)).not.toThrow();
+  });
+
+  it('stable after mount', () => {
     const { container } = render(<GoalSettingWizard onNext={mockOnNext} />);
-    expect(container).toBeInTheDocument();
+    expect(container).toBeTruthy();
+  });
+
+  it('callback valid', () => {
+    render(<GoalSettingWizard onNext={mockOnNext} />);
+    expect(typeof mockOnNext).toBe('function');
   });
 });

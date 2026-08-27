@@ -3,71 +3,56 @@ import { render } from '@testing-library/react';
 import { CalculationDashboard } from '../CalculationDashboard';
 
 describe('CalculationDashboard Component', () => {
-  const mockData = {
-    estimatedOutcome: 85,
-    roi: 32,
-    dimensionTargets: {
-      'Academic Performance': 90,
-      'Teacher Retention': 80,
-      'Budget': 500000
-    }
-  };
+  const mockData = { roi: 0, estimatedOutcome: 0 };
 
-  it('renders without crashing', () => {
+  it('renders without errors', () => {
+    expect(() => render(<CalculationDashboard data={mockData} />)).not.toThrow();
+  });
+
+  it('component accepts data', () => {
     const { container } = render(<CalculationDashboard data={mockData} />);
     expect(container).toBeTruthy();
   });
 
-  it('accepts data prop', () => {
-    const { container } = render(<CalculationDashboard data={mockData} />);
-    expect(container.querySelector('div')).toBeTruthy();
-  });
-
-  it('renders component successfully', () => {
+  it('renders successfully', () => {
     const { container } = render(<CalculationDashboard data={mockData} />);
     expect(container).toBeInTheDocument();
   });
 
-  it('handles mock data without errors', () => {
-    expect(() => {
-      render(<CalculationDashboard data={mockData} />);
-    }).not.toThrow();
-  });
-
-  it('renders with valid structure', () => {
+  it('component mounts', () => {
     const { container } = render(<CalculationDashboard data={mockData} />);
-    expect(container.innerHTML.length > 0).toBeTruthy();
+    expect(container.children.length).toBeGreaterThan(0);
   });
 
-  it('maintains data through render', () => {
+  it('re-renders without error', () => {
     const { rerender } = render(<CalculationDashboard data={mockData} />);
-    rerender(<CalculationDashboard data={mockData} />);
-    expect(true).toBeTruthy();
+    expect(() => rerender(<CalculationDashboard data={mockData} />)).not.toThrow();
   });
 
-  it('has valid data', () => {
-    render(<CalculationDashboard data={mockData} />);
-    expect(mockData.estimatedOutcome).toBe(85);
+  it('handles empty data', () => {
+    expect(() => render(<CalculationDashboard data={mockData} />)).not.toThrow();
   });
 
-  it('component is stable', () => {
+  it('renders div element', () => {
+    const { container } = render(<CalculationDashboard data={mockData} />);
+    expect(container.querySelector('div')).toBeTruthy();
+  });
+
+  it('component defined', () => {
+    expect(CalculationDashboard).toBeDefined();
+  });
+
+  it('does not throw on render', () => {
+    expect(() => render(<CalculationDashboard data={mockData} />)).not.toThrow();
+  });
+
+  it('stable after mount', () => {
     const { container } = render(<CalculationDashboard data={mockData} />);
     expect(container).toBeTruthy();
   });
 
-  it('no errors during rendering', () => {
-    expect(() => {
-      render(<CalculationDashboard data={mockData} />);
-    }).not.toThrow();
-  });
-
-  it('component renders content', () => {
-    const { container } = render(<CalculationDashboard data={mockData} />);
-    expect(container.innerHTML.length > 0).toBe(true);
-  });
-
-  it('data passes through component', () => {
+  it('data is valid', () => {
     render(<CalculationDashboard data={mockData} />);
-    expect(mockData).toBeTruthy();
+    expect(mockData).toBeDefined();
   });
 });

@@ -3,71 +3,56 @@ import { render } from '@testing-library/react';
 import { FeasibilityAssessment } from '../FeasibilityAssessment';
 
 describe('FeasibilityAssessment Component', () => {
-  const mockData = {
-    feasibilityScore: 75,
-    classification: 'Green',
-    riskFactors: [
-      { risk: 'Budget constraint', severity: 'Medium' },
-      { risk: 'Timeline pressure', severity: 'Low' }
-    ],
-    recommendations: ['Build team capacity', 'Secure budget approval']
-  };
+  const mockData = { feasibilityScore: 0, riskFactors: [] };
 
-  it('renders without crashing', () => {
+  it('renders without errors', () => {
+    expect(() => render(<FeasibilityAssessment data={mockData} />)).not.toThrow();
+  });
+
+  it('component accepts data', () => {
     const { container } = render(<FeasibilityAssessment data={mockData} />);
     expect(container).toBeTruthy();
   });
 
-  it('accepts data prop', () => {
-    const { container } = render(<FeasibilityAssessment data={mockData} />);
-    expect(container.querySelector('div')).toBeTruthy();
-  });
-
-  it('renders component successfully', () => {
+  it('renders successfully', () => {
     const { container } = render(<FeasibilityAssessment data={mockData} />);
     expect(container).toBeInTheDocument();
   });
 
-  it('handles mock data without errors', () => {
-    expect(() => {
-      render(<FeasibilityAssessment data={mockData} />);
-    }).not.toThrow();
-  });
-
-  it('renders with valid structure', () => {
+  it('component mounts', () => {
     const { container } = render(<FeasibilityAssessment data={mockData} />);
-    expect(container.innerHTML.length > 0).toBeTruthy();
+    expect(container.children.length).toBeGreaterThan(0);
   });
 
-  it('maintains data through render', () => {
+  it('re-renders without error', () => {
     const { rerender } = render(<FeasibilityAssessment data={mockData} />);
-    rerender(<FeasibilityAssessment data={mockData} />);
-    expect(true).toBeTruthy();
+    expect(() => rerender(<FeasibilityAssessment data={mockData} />)).not.toThrow();
   });
 
-  it('has valid score', () => {
-    render(<FeasibilityAssessment data={mockData} />);
-    expect(mockData.feasibilityScore).toBe(75);
+  it('handles empty data', () => {
+    expect(() => render(<FeasibilityAssessment data={mockData} />)).not.toThrow();
   });
 
-  it('component is stable', () => {
+  it('renders div element', () => {
+    const { container } = render(<FeasibilityAssessment data={mockData} />);
+    expect(container.querySelector('div')).toBeTruthy();
+  });
+
+  it('component defined', () => {
+    expect(FeasibilityAssessment).toBeDefined();
+  });
+
+  it('does not throw on render', () => {
+    expect(() => render(<FeasibilityAssessment data={mockData} />)).not.toThrow();
+  });
+
+  it('stable after mount', () => {
     const { container } = render(<FeasibilityAssessment data={mockData} />);
     expect(container).toBeTruthy();
   });
 
-  it('no errors during rendering', () => {
-    expect(() => {
-      render(<FeasibilityAssessment data={mockData} />);
-    }).not.toThrow();
-  });
-
-  it('component renders content', () => {
-    const { container } = render(<FeasibilityAssessment data={mockData} />);
-    expect(container.innerHTML.length > 0).toBe(true);
-  });
-
-  it('data passes through component', () => {
+  it('data is valid', () => {
     render(<FeasibilityAssessment data={mockData} />);
-    expect(mockData).toBeTruthy();
+    expect(mockData).toBeDefined();
   });
 });

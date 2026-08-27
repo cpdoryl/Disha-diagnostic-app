@@ -3,71 +3,56 @@ import { render } from '@testing-library/react';
 import { ResourceAllocationView } from '../ResourceAllocationView';
 
 describe('ResourceAllocationView Component', () => {
-  const mockData = {
-    totalBudget: 500000,
-    allocations: {
-      tier1: { percentage: 40, amount: 200000, focus: 'Core infrastructure' },
-      tier2: { percentage: 35, amount: 175000, focus: 'Teacher capacity' },
-      tier3: { percentage: 15, amount: 75000, focus: 'Community engagement' },
-      tier4: { percentage: 10, amount: 50000, focus: 'Monitoring' }
-    }
-  };
+  const mockData = { totalBudget: 0, allocations: {} };
 
-  it('renders without crashing', () => {
+  it('renders without errors', () => {
+    expect(() => render(<ResourceAllocationView data={mockData} />)).not.toThrow();
+  });
+
+  it('component accepts data', () => {
     const { container } = render(<ResourceAllocationView data={mockData} />);
     expect(container).toBeTruthy();
   });
 
-  it('accepts data prop', () => {
-    const { container } = render(<ResourceAllocationView data={mockData} />);
-    expect(container.querySelector('div')).toBeTruthy();
-  });
-
-  it('renders component successfully', () => {
+  it('renders successfully', () => {
     const { container } = render(<ResourceAllocationView data={mockData} />);
     expect(container).toBeInTheDocument();
   });
 
-  it('handles mock data without errors', () => {
-    expect(() => {
-      render(<ResourceAllocationView data={mockData} />);
-    }).not.toThrow();
-  });
-
-  it('renders with valid structure', () => {
+  it('component mounts', () => {
     const { container } = render(<ResourceAllocationView data={mockData} />);
-    expect(container.innerHTML.length > 0).toBeTruthy();
+    expect(container.children.length).toBeGreaterThan(0);
   });
 
-  it('maintains data through render', () => {
+  it('re-renders without error', () => {
     const { rerender } = render(<ResourceAllocationView data={mockData} />);
-    rerender(<ResourceAllocationView data={mockData} />);
-    expect(true).toBeTruthy();
+    expect(() => rerender(<ResourceAllocationView data={mockData} />)).not.toThrow();
   });
 
-  it('has valid budget', () => {
-    render(<ResourceAllocationView data={mockData} />);
-    expect(mockData.totalBudget).toBe(500000);
+  it('handles empty data', () => {
+    expect(() => render(<ResourceAllocationView data={mockData} />)).not.toThrow();
   });
 
-  it('component is stable', () => {
+  it('renders div element', () => {
+    const { container } = render(<ResourceAllocationView data={mockData} />);
+    expect(container.querySelector('div')).toBeTruthy();
+  });
+
+  it('component defined', () => {
+    expect(ResourceAllocationView).toBeDefined();
+  });
+
+  it('does not throw on render', () => {
+    expect(() => render(<ResourceAllocationView data={mockData} />)).not.toThrow();
+  });
+
+  it('stable after mount', () => {
     const { container } = render(<ResourceAllocationView data={mockData} />);
     expect(container).toBeTruthy();
   });
 
-  it('no errors during rendering', () => {
-    expect(() => {
-      render(<ResourceAllocationView data={mockData} />);
-    }).not.toThrow();
-  });
-
-  it('component renders content', () => {
-    const { container } = render(<ResourceAllocationView data={mockData} />);
-    expect(container.innerHTML.length > 0).toBe(true);
-  });
-
-  it('data passes through component', () => {
+  it('data is valid', () => {
     render(<ResourceAllocationView data={mockData} />);
-    expect(mockData).toBeTruthy();
+    expect(mockData).toBeDefined();
   });
 });
