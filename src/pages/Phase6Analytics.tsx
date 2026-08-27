@@ -4,10 +4,10 @@
  */
 
 import React, { useState } from 'react';
-import { DataAuditDashboard } from '../components/Phase5_DataInfrastructure/DataAuditDashboard';
-import { ResponseRateTracker } from '../components/Phase5_DataInfrastructure/ResponseRateTracker';
-import { TrendAnalysis } from '../components/Phase5_DataInfrastructure/TrendAnalysis';
-import { QualityMonitoring } from '../components/Phase5_DataInfrastructure/QualityMonitoring';
+import { DataAuditDashboard } from '@/components/Phase5_DataInfrastructure/DataAuditDashboard';
+import { ResponseRateTracker } from '@/components/Phase5_DataInfrastructure/ResponseRateTracker';
+import { TrendAnalysis } from '@/components/Phase5_DataInfrastructure/TrendAnalysis';
+import { QualityMonitoring } from '@/components/Phase5_DataInfrastructure/QualityMonitoring';
 
 // ============================================================================
 // TYPES
