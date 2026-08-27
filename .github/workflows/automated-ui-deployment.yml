@@ -24,7 +24,7 @@ jobs:
           node-version: '20'
 
       - name: 📦 Install dependencies
-        run: npm install --legacy-peer-deps --no-audit
+        run: npm install --legacy-peer-deps --no-audit --production=false
 
       - name: 🧪 Run automated UI testing
         run: node scripts/automated-ui-testing-deployment.js
@@ -33,6 +33,8 @@ jobs:
 
       - name: 🔨 Build application
         run: npm run build
+        env:
+          NODE_ENV: production
 
       - name: ✅ Run test suite
         run: npm run test:run
