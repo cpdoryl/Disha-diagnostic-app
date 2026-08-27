@@ -14,7 +14,6 @@ export default defineConfig(() => {
       outDir: 'build',
       emptyOutDir: true,
       sourcemap: false,
-      minify: 'terser',
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
