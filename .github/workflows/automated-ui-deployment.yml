@@ -32,7 +32,7 @@ jobs:
           NODE_ENV: test
 
       - name: 🔨 Build application
-        run: npm run build
+        run: npx vite build
         env:
           NODE_ENV: production
 
@@ -114,6 +114,9 @@ jobs:
           rm -f src/components/LegacyDashboard.tsx || true
           echo "✅ Old components removed"
 
+      - name: 📦 Install dependencies
+        run: npm install --legacy-peer-deps --no-audit --production=false
+
       - name: 📝 Update routing
         run: |
           echo "Updating application routing..."
@@ -121,7 +124,7 @@ jobs:
           # to remove old routes and ensure new ones work
 
       - name: 🔨 Build after cleanup
-        run: npm run build
+        run: npx vite build
 
       - name: 🧪 Test after cleanup
         run: npm run test:run
