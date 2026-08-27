@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../store';
-import { LayoutDashboard, Target, BarChart2, Activity, Settings, LogOut, Menu, X, GraduationCap, Users, CheckSquare, Megaphone, HeartPulse, Plus, Building2, Edit3, Trash2, ChevronDown, Download, FileArchive, FileText, Sliders } from 'lucide-react';
+import { LayoutDashboard, Target, BarChart2, Settings, LogOut, Menu, X, GraduationCap, Users, CheckSquare, Megaphone, HeartPulse, Plus, Building2, Edit3, Trash2, ChevronDown, Download, FileArchive, FileText, Sliders } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ViewState, School } from '../../types';
 import { auth } from '../../lib/firebase';
@@ -42,15 +42,14 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   };
 
   const navigation: { name: string; view: ViewState; icon: React.ElementType; stage?: string }[] = [
-    { name: 'Dashboard', view: 'DASHBOARD', icon: LayoutDashboard },
+    { name: 'School Overview', view: 'DASHBOARD', icon: LayoutDashboard },
     ...(isAdmin ? [{ name: 'Admin', view: 'ADMIN' as ViewState, icon: Users }] : []),
-    { name: 'Disha Checkup', view: 'FIRST_OPINION' as ViewState, icon: HeartPulse, stage: 'ANNUAL HEALTH CHECKUP' },
-    { name: '14D Assessment', view: '14D_ASSESSMENT' as ViewState, icon: Target, stage: 'MULTILATERAL DIAGNOSTIC' },
-    { name: 'Compare (Diagnose)', view: 'COMPARE', icon: BarChart2, stage: 'STAGE 2: BENCHMARK' },
-    { name: 'Simulate (Model)', view: 'SIMULATE', icon: Activity, stage: 'STAGE 3: STRATEGIZE' },
+    { name: 'First Opinion Check', view: 'FIRST_OPINION' as ViewState, icon: HeartPulse, stage: 'ANNUAL HEALTH CHECKUP' },
+    { name: '14D Diagnostic Assessment', view: '14D_ASSESSMENT' as ViewState, icon: Target, stage: 'MULTILATERAL DIAGNOSTIC' },
+    { name: 'Compare & Diagnose', view: 'COMPARE', icon: BarChart2, stage: 'STAGE 2: BENCHMARK' },
     { name: 'Reverse Simulation', view: 'REVERSE_SIMULATION' as ViewState, icon: Sliders, stage: 'STAGE 3: STRATEGIZE' },
-    { name: 'Synthesize (Report)', view: 'SYNTHESIZE', icon: FileText, stage: 'STAGE 4: SYNTHESIZE' },
-    { name: 'Monitoring', view: 'MONITORING' as ViewState, icon: Settings },
+    { name: 'Synthesize & Report', view: 'SYNTHESIZE', icon: FileText, stage: 'STAGE 4: SYNTHESIZE' },
+    { name: 'Analytics & Monitoring', view: 'MONITORING' as ViewState, icon: Settings },
   ];
 
   const handleNavClick = (view: ViewState) => {
