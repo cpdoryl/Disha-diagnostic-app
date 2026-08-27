@@ -22,7 +22,6 @@
     "firebase-functions": "^6.2.0"
   },
   "devDependencies": {
-    "@types/firebase-functions": "^0.10.0",
     "@types/jest": "^29.5.11",
     "@types/node": "^22.14.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
