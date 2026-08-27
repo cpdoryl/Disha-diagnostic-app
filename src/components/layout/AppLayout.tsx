@@ -44,13 +44,13 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const navigation: { name: string; view: ViewState; icon: React.ElementType; stage?: string }[] = [
     { name: 'Dashboard', view: 'DASHBOARD', icon: LayoutDashboard },
     ...(isAdmin ? [{ name: 'Admin', view: 'ADMIN' as ViewState, icon: Users }] : []),
-    { name: 'Disha Checkup', view: 'CHECKUP', icon: HeartPulse, stage: 'ANNUAL HEALTH CHECKUP' },
+    { name: 'Disha Checkup', view: 'FIRST_OPINION' as ViewState, icon: HeartPulse, stage: 'ANNUAL HEALTH CHECKUP' },
     { name: '14D Assessment', view: '14D_ASSESSMENT' as ViewState, icon: Target, stage: 'MULTILATERAL DIAGNOSTIC' },
     { name: 'Compare (Diagnose)', view: 'COMPARE', icon: BarChart2, stage: 'STAGE 2: BENCHMARK' },
     { name: 'Simulate (Model)', view: 'SIMULATE', icon: Activity, stage: 'STAGE 3: STRATEGIZE' },
     { name: 'Reverse Simulation', view: 'REVERSE_SIMULATION' as ViewState, icon: Sliders, stage: 'STAGE 3: STRATEGIZE' },
     { name: 'Synthesize (Report)', view: 'SYNTHESIZE', icon: FileText, stage: 'STAGE 4: SYNTHESIZE' },
-    { name: 'Monitoring', view: 'MONITORING', icon: Settings },
+    { name: 'Monitoring', view: 'MONITORING' as ViewState, icon: Settings },
   ];
 
   const handleNavClick = (view: ViewState) => {
