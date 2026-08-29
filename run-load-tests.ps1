@@ -103,7 +103,7 @@ Write-Host ""
 Write-Host "📅 Test Schedule" -ForegroundColor Cyan
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 $totalDuration = 0
-foreach ($i = 0; $i -lt $testsToRun.Count; $i++) {
+for ($i = 0; $i -lt $testsToRun.Count; $i++) {
     $test = $testsToRun[$i]
     Write-Host "  $($i + 1). $($test.name)" -ForegroundColor White
     Write-Host "     Script: $($test.script)" -ForegroundColor Gray
@@ -131,7 +131,7 @@ $startTime = Get-Date
 $results = @()
 
 # Run each test
-foreach ($i = 0; $i -lt $testsToRun.Count; $i++) {
+for ($i = 0; $i -lt $testsToRun.Count; $i++) {
     $test = $testsToRun[$i]
     $testNum = $i + 1
 
