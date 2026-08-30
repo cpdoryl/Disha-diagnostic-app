@@ -1664,7 +1664,7 @@ HOW TO USE IN DISHA:
                 </li>
                 <li className="flex gap-2 items-start">
                   <CheckCircle2 className="w-4.5 h-4.5 text-blue-500 shrink-0 mt-0.5" />
-                  <span><strong>Reverse-Parameter Simulation Engine:</strong> Simulate back-testing and adjustment of key educational metrics in real-time to forecast target outcomes and prevent structural risks.</span>
+                  <span><strong>Real-Time Dashboard:</strong> View instant diagnostic results and actionable recommendations without waiting for complex analysis cycles.</span>
                 </li>
               </ul>
               <div className="border-t border-slate-800 pt-4 text-xs font-semibold text-indigo-400 flex items-center gap-1.5">
@@ -1676,8 +1676,14 @@ HOW TO USE IN DISHA:
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3 text-xs text-gray-500">
               <h5 className="font-bold text-gray-800 uppercase tracking-widest text-[10px]">Active First Opinion Target</h5>
               <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 font-medium">
-                <p className="font-bold text-gray-900">{activeSchool?.name || 'Vasant Vihar Public School'}</p>
-                <p className="text-gray-500 mt-0.5">Mumbai Branch &bull; Primary & Secondary</p>
+                {activeSchool ? (
+                  <>
+                    <p className="font-bold text-gray-900">{activeSchool.name}</p>
+                    <p className="text-gray-500 mt-0.5">{activeSchool.city} &bull; {activeSchool.board}</p>
+                  </>
+                ) : (
+                  <p className="text-gray-500 italic">No school selected. Select a school from the dropdown to begin.</p>
+                )}
               </div>
             </div>
           </div>
