@@ -77,8 +77,8 @@ All files are saved in **one central location** (the project root directory).
 ### Main User Guides (Root Directory)
 | File Name | Size | Purpose | Last Updated |
 |-----------|------|---------|--------------|
-| **USER_ACCEPTANCE_TESTING_GUIDE.md** | 27.8 KB | Step-by-step UAT guide | Aug 30 |
-| **ADMIN_DATA_VALIDATION_CHECKLIST.md** | 15.2 KB | Admin validation checklist | Aug 30 |
+| **USER_ACCEPTANCE_TESTING_GUIDE.md** | 27.8 KB | Step-by-step UAT guide | Aug 30 @ 09:28 |
+| **ADMIN_DATA_VALIDATION_CHECKLIST.md** | 15.2 KB | Admin validation checklist | Aug 30 @ 09:29 |
 
 ### User Guides Folder
 ```
