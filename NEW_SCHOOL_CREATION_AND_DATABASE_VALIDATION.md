@@ -651,6 +651,7 @@ REPORT BACK:
 **Database Verification Result:** ✅ PASSED
 
 All fields successfully saved to Firestore:
+
 - schoolCode field: ✅ Working (empty when not filled)
 - state field: ✅ Working (saved as "Maharashtra")
 - schoolType field: ✅ Working (saved as "Public")

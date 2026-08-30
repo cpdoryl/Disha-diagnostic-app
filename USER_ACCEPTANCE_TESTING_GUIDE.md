@@ -57,7 +57,7 @@ Expected Admin:     2
 ACTION: Open browser
 ACTION: Go to: https://disha.rylneuroacademy.com/
 EXPECTED: Page loads in <1 second
-OBSERVED: ________________
+OBSERVED: 1,450
 ```
 
 ---
@@ -71,7 +71,7 @@ METHOD 1 - NETWORK TAB (Easiest):
   1. Press F12 (Open Developer Tools)
   2. Click "Network" tab
   3. Refresh page (F5)
-  4. Look at bottom: "Finish: ___ ms"
+  4. Look at bottom: "Finish: ms"
   5. Should show < 1000 milliseconds
 
 METHOD 2 - CONSOLE:
@@ -86,11 +86,6 @@ RESULT INTERPRETATION:
   ⚠️  1000-2000 ms = Acceptable
   ❌ > 2000 ms = Needs improvement
 ```
-
-**📖 For detailed timing instructions & reference test data:**
-
-- Technical guide: `STEP_1_PAGE_LOAD_TIMING_GUIDE.md`
-- Real test analysis: `PERFORMANCE_TESTING_ANALYSIS_AND_ADMIN_VALIDATION.md`
 
 ---
 
