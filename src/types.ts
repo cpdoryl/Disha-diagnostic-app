@@ -40,9 +40,12 @@ export interface CommunicationMessage {
 export interface School {
   id: string;
   name: string;
-  tier: string;
-  board: string;
+  schoolCode?: string;
   city: string;
+  state?: string;
+  board: string;
+  schoolType?: string;
+  tier: string;
   feeBand?: string;
   studentCount?: string;
   principalName?: string;
