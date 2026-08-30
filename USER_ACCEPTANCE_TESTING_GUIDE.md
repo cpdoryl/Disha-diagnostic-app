@@ -87,7 +87,8 @@ RESULT INTERPRETATION:
   ❌ > 2000 ms = Needs improvement
 ```
 
-**📖 For detailed timing instructions & reference test data:** 
+**📖 For detailed timing instructions & reference test data:**
+
 - Technical guide: `STEP_1_PAGE_LOAD_TIMING_GUIDE.md`
 - Real test analysis: `PERFORMANCE_TESTING_ANALYSIS_AND_ADMIN_VALIDATION.md`
 

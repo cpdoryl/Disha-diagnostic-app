@@ -18,36 +18,57 @@ ACTION: Press Enter
 WAIT: Page loads (should be ~1,450 ms based on earlier testing)
 ```
 
-### **What You Should See on Home Page:**
+### **What You Should See on Home Page - ACTUAL LAYOUT:**
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  DISHA Diagnostic Engine                    🔒      │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  Logo/Header:  DISHA School Diagnostic             │
-│                14-Dimension Assessment System      │
-│                                                     │
-│  Main Content Area:                                │
-│  ┌─────────────────────────────────────────────┐  │
-│  │  Welcome to DISHA Diagnostic Engine         │  │
-│  │                                             │  │
-│  │  🎯 School Assessment & Analysis Platform  │  │
-│  │                                             │  │
-│  │  Features:                                  │  │
-│  │  ✅ Multi-stakeholder feedback              │  │
-│  │  ✅ Real-time dashboard                     │  │
-│  │  ✅ AI-powered predictions                  │  │
-│  │  ✅ Comprehensive reporting                 │  │
-│  │                                             │  │
-│  │  [🔵 CREATE ASSESSMENT] ← FIND THIS BUTTON  │  │
-│  │  [View Assessments]                         │  │
-│  │  [Reports]                                  │  │
-│  │                                             │  │
-│  └─────────────────────────────────────────────┘  │
-│                                                     │
-│  Footer: Copyright 2026 | About | Contact | Help   │
-└─────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│  TOP NAVIGATION BAR                                           │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ DISHA Logo │ Why DISHA │ Frameworks │ Engine │ Modules │ │
+│  │                              FAQs │ Sign In │[Launch Platform]
+│  └─────────────────────────────────────────────────────────┘ │
+├───────────────────────────────────────────────────────────────┤
+│                                                               │
+│  HERO SECTION (Gradient Purple to Blue):                     │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │                                                      │   │
+│  │  Transform Your School Governance Today             │   │
+│  │                                                      │   │
+│  │  Join forward-thinking school owners, trustees...   │   │
+│  │                                                      │   │
+│  │  [🔵 Start Your Free Assessment]                     │   │
+│  │  [Schedule Live Walkthrough]                         │   │
+│  │                                                      │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                               │
+│  FAQ SECTION:                                               │
+│  "Clear Answers for School Leaders"                         │
+│  ├─ Why does my school need DISHA?                         │
+│  ├─ How long does assessment take?                         │
+│  ├─ What educational standards?                            │
+│  └─ Is data safe and compliant?                            │
+│                                                               │
+│  CORE CAPABILITIES SECTION:                                 │
+│  ┌─ First Opinion Triage Engine                           │
+│  ├─ 360° Multilateral Survey Hub                          │
+│  ├─ Predictive What-If Simulator                          │
+│  ├─ Peer Benchmarking Radar                               │
+│  ├─ Operational SLA & Risk Tracker                        │
+│  └─ AI Saathi Leadership Copilot                          │
+│                                                               │
+│  THE 4-STEP DISHA ENGINE:                                   │
+│  ┌─ Step 1: First Opinion Triage                          │
+│  ├─ Step 2: 360° Multilateral Capture                     │
+│  ├─ Step 3: Peer Benchmarking                             │
+│  └─ Step 4: Simulate & Execute                            │
+│                                                               │
+│  EDUCATIONAL STANDARDS:                                     │
+│  NEP 2020 │ CBSE SQAAF │ EWISR 14-Dimensions │ WHO Standards │
+│                                                               │
+│  FOOTER:                                                    │
+│  © 2026 RYL Neuroacademy | Version 3.0 Production Edition  │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ### **Verification Checklist - Home Page:**
