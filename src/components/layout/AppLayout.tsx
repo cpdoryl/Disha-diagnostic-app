@@ -139,22 +139,20 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
                           <p className="text-[11px] text-slate-400 truncate">{school.city} &bull; {school.board}</p>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
+                          <button
                             onClick={(e) => handleOpenEditModal(e, school)}
                             className="p-1 text-slate-400 hover:text-white hover:bg-slate-600 rounded"
                             title="Edit"
                           >
                             <Edit3 className="w-3 h-3" />
                           </button>
-                          {schools.length > 1 && (
-                            <button 
-                              onClick={(e) => handleDeleteSchool(e, school.id)}
-                              className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-600 rounded"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
+                          <button
+                            onClick={(e) => handleDeleteSchool(e, school.id)}
+                            className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-600 rounded"
+                            title="Delete school profile"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
                       </div>
                     ))}
