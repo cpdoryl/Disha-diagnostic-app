@@ -1,0 +1,9 @@
+name,value,category,validationStatus,dataSource,updatedAt
+STR,0.82,CORE,VALID,HR System - Teacher Roster,2026-08-30T10:00:00Z
+Parent SLA,0.90,CORE,VALID,Communication Log / Helpdesk,2026-08-30T10:00:00Z
+Training Hours,0.85,CORE,VALID,HR System - Training Records,2026-08-30T10:00:00Z
+Planning Time,0.88,CORE,VALID,Timetable System - Scheduling,2026-08-30T10:00:00Z
+Fee Realization,0.98,EXPANDED,VALID,Finance System - Accounts Ledger,2026-08-30T10:00:00Z
+Safety Score,1.0,EXPANDED,VALID,Facilities & Safety Audit Records,2026-08-30T10:00:00Z
+LMS Usage,0.92,EXPANDED,VALID,LMS Analytics Dashboard,2026-08-30T10:00:00Z
+Co-Curricular,0.88,EXPANDED,VALID,Activity / Co-Curricular Rosters,2026-08-30T10:00:00Z

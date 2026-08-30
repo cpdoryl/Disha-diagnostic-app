@@ -1,0 +1,170 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "First Opinion Engine - Challenge Response Schema",
+  "description": "JSON schema for validating challenge response data",
+  "type": "object",
+  "required": ["metadata", "responses"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Metadata about the batch",
+      "required": ["type", "version", "totalRecords"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "challenge_responses_batch",
+          "description": "Fixed value indicating data type"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$",
+          "description": "Schema version (e.g., 1.0)",
+          "example": "1.0"
+        },
+        "totalRecords": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 15,
+          "description": "Number of challenge responses (1-15)"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of creation"
+        },
+        "schoolId": {
+          "type": "string",
+          "description": "School identifier",
+          "example": "test_school_001"
+        },
+        "cycleId": {
+          "type": "string",
+          "description": "Assessment cycle identifier",
+          "example": "cycle_2026_08"
+        }
+      }
+    },
+    "responses": {
+      "type": "array",
+      "description": "Array of challenge responses",
+      "minItems": 1,
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "required": ["challengeId", "responseValue"],
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "pattern": "^C([1-9]|1[0-5])$",
+            "description": "Challenge ID from C1 to C15",
+            "examples": ["C1", "C5", "C15"]
+          },
+          "challengeName": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Human-readable challenge name",
+            "examples": [
+              "Enrollment Decline",
+              "Teacher Attrition",
+              "Academic Rigor"
+            ]
+          },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "Growth & Enrollment",
+              "People & Staffing",
+              "Academic & Student Wellbeing",
+              "Reputation & Competition",
+              "Operations & Finance"
+            ],
+            "description": "Challenge domain classification"
+          },
+          "responseValue": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6,
+            "description": "Response option (1=No Impact to 6=Major Crisis)",
+            "examples": [1, 2, 3, 4, 5, 6]
+          },
+          "responseLabel": {
+            "type": "string",
+            "enum": [
+              "No Impact",
+              "Minor Challenge",
+              "Significant Challenge",
+              "Major Crisis"
+            ],
+            "description": "Human-readable response label"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Domain weight for calculation (optional)",
+            "example": 0.20
+          },
+          "responderId": {
+            "type": "string",
+            "description": "Unique respondent identifier (optional)",
+            "example": "principal_001"
+          },
+          "respondentRole": {
+            "type": "string",
+            "enum": ["Principal", "Teacher", "Parent", "Student", "Admin", "Other"],
+            "description": "Role of respondent (optional)"
+          },
+          "respondentEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Email of respondent (optional)",
+            "example": "principal@school.com"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of response (optional)",
+            "example": "2026-08-30T15:05:00Z"
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "metadata": {
+        "type": "challenge_responses_batch",
+        "version": "1.0",
+        "totalRecords": 15,
+        "timestamp": "2026-08-30T15:00:00Z",
+        "schoolId": "test_school_001"
+      },
+      "responses": [
+        {
+          "challengeId": "C1",
+          "challengeName": "Enrollment Decline",
+          "domain": "Growth & Enrollment",
+          "responseValue": 1,
+          "responseLabel": "No Impact",
+          "weight": 0.20,
+          "responderId": "principal_001",
+          "respondentRole": "Principal",
+          "respondentEmail": "principal@school.com",
+          "timestamp": "2026-08-30T15:05:00Z"
+        },
+        {
+          "challengeId": "C2",
+          "challengeName": "Student Retention",
+          "domain": "Growth & Enrollment",
+          "responseValue": 1,
+          "responseLabel": "No Impact",
+          "weight": 0.20,
+          "responderId": "principal_001",
+          "respondentRole": "Principal",
+          "respondentEmail": "principal@school.com",
+          "timestamp": "2026-08-30T15:05:00Z"
+        }
+      ]
+    }
+  ]
+}
