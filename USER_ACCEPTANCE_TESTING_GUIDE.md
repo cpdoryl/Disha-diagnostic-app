@@ -24,6 +24,7 @@
 ## 🎯 TESTING SETUP
 
 ### What You'll Need
+
 ```
 ✅ Browser (Chrome recommended)
 ✅ Test email addresses for multiple users
@@ -34,6 +35,7 @@
 ```
 
 ### Test Data
+
 ```
 School Name:        Test School Alpha
 Assessment Name:    School Health Diagnostic - Aug 2026
@@ -50,14 +52,16 @@ Expected Admin:     2
 ### USER STEPS (As Admin)
 
 **Step 1: Access Application**
+
 ```
 ACTION: Open browser
-ACTION: Go to: https://disha-diagnostics.web.app/
+ACTION: Go to: https://disha.rylneuroacademy.com/
 EXPECTED: Page loads in <1 second
-OBSERVED: _________________
+OBSERVED: ________________
 ```
 
 **Step 2: Navigate to Create Assessment**
+
 ```
 ACTION: Look for "Create Assessment" button
 ACTION: Click the button
@@ -66,6 +70,7 @@ OBSERVED: _________________
 ```
 
 **Step 3: Fill Assessment Details**
+
 ```
 ACTION: Enter Assessment Name: "School Health Diagnostic"
 ACTION: Select School: "Test School Alpha"
@@ -75,6 +80,7 @@ OBSERVED: _________________
 ```
 
 **Step 4: Configure Stakeholders**
+
 ```
 ACTION: Set Expected Teachers: 5
 ACTION: Set Expected Parents: 8
@@ -86,6 +92,7 @@ OBSERVED: _________________
 ```
 
 **Step 5: Receive Confirmation**
+
 ```
 EXPECTED: Success message shown
 EXPECTED: Assessment ID displayed
@@ -100,6 +107,7 @@ OBSERVED: _________________
 ### Data Storage Verification
 
 **Database Check (Firebase Console)**
+
 ```
 Navigation: Firebase Console → Firestore → assessments collection
 
@@ -117,6 +125,7 @@ Check 1: Assessment Document Created
 ```
 
 **Check 2: Assessment Configuration Stored**
+
 ```
 Database Field Verification:
   ☐ eventName: "School Health Diagnostic"
@@ -129,6 +138,7 @@ Database Field Verification:
 ```
 
 **Check 3: Cloud Function Execution**
+
 ```
 Logs to Check: Firebase Console → Functions → Logs
 
@@ -140,6 +150,7 @@ Logs to Check: Firebase Console → Functions → Logs
 ```
 
 **Check 4: Real-Time Update**
+
 ```
 Frontend Verification:
   ☐ New assessment appears in list immediately
@@ -155,6 +166,7 @@ Frontend Verification:
 ### USER STEPS (As Admin)
 
 **Step 1: Locate Assessment**
+
 ```
 ACTION: Find "School Health Diagnostic" in list
 ACTION: Click on it to open
@@ -163,15 +175,17 @@ OBSERVED: _________________
 ```
 
 **Step 2: Copy Assessment Link**
+
 ```
 ACTION: Click "Copy Link" button
 ACTION: Link copied to clipboard
 EXPECTED: Confirmation message shown
-EXAMPLE LINK: https://disha-diagnostics.web.app/?assessment=assess_2026_08_29_001
+EXAMPLE LINK: https://disha.rylneuroacademy.com/?assessment=assess_2026_08_29_001
 OBSERVED: _________________
 ```
 
 **Step 3: Share with Teacher (Simulated)**
+
 ```
 ACTION: Open new browser tab (different user context)
 ACTION: Paste link in address bar
@@ -188,6 +202,7 @@ OBSERVED: _________________
 ### Assessment Link Validation
 
 **Check 1: Link Generation**
+
 ```
   ☐ Link format correct: ?assessment={ID}
   ☐ Link is clickable (not truncated)
@@ -196,6 +211,7 @@ OBSERVED: _________________
 ```
 
 **Check 2: Assessment Accessibility**
+
 ```
 When link accessed:
   ☐ Assessment loads correctly
@@ -207,6 +223,7 @@ When link accessed:
 ```
 
 **Check 3: Link Tracking (Optional)**
+
 ```
 Firebase Analytics (if enabled):
   ☐ Link access tracked
@@ -222,6 +239,7 @@ Firebase Analytics (if enabled):
 ### USER STEPS (Simulated Teacher Response)
 
 **Step 1: Access Assessment**
+
 ```
 ACTION: Use assessment link from Feature 2
 ACTION: Assessment page loads
@@ -230,6 +248,7 @@ OBSERVED: _________________
 ```
 
 **Step 2: Select Respondent Type**
+
 ```
 ACTION: Click "Respondent Type" dropdown
 ACTION: Select "Teacher"
@@ -238,6 +257,7 @@ OBSERVED: _________________
 ```
 
 **Step 3: Enter Personal Info**
+
 ```
 ACTION: Name Field: Enter "John Smith"
 ACTION: Email Field: Enter "john.smith@school.com"
@@ -249,6 +269,7 @@ OBSERVED: _________________
 ```
 
 **Step 4: Answer Assessment Questions**
+
 ```
 ACTION: For each of 70 questions:
   - Read question
@@ -276,6 +297,7 @@ OBSERVED: _________________
 ```
 
 **Step 5: Review Before Submit**
+
 ```
 ACTION: Scroll to end of form
 ACTION: Click "Review" to see summary
@@ -285,6 +307,7 @@ OBSERVED: _________________
 ```
 
 **Step 6: Submit Assessment**
+
 ```
 ACTION: Click "Submit Assessment" button
 EXPECTED: Validation succeeds (no required field errors)
@@ -295,6 +318,7 @@ OBSERVED: _________________
 ```
 
 **Step 7: Confirmation**
+
 ```
 EXPECTED: Message: "Thank you for your response"
 EXPECTED: Option to close or go back
@@ -309,6 +333,7 @@ OBSERVED: _________________
 ### Response Data Verification
 
 **Check 1: Response Document Created in Firestore**
+
 ```
 Navigation: Firebase Console → Firestore → assessments → [ID] → responses
 
@@ -322,23 +347,25 @@ Navigation: Firebase Console → Firestore → assessments → [ID] → response
 ```
 
 **Check 2: Response Data Completeness**
+
 ```
 Response Content Verification:
   ☐ All 70 questions have responses
   ☐ Responses are in range 1-5
   ☐ No null/undefined values
-  
+
 Dimension 1 (Questions 1-5):
   ☐ responses.q1: 4
   ☐ responses.q2: 3
   ☐ responses.q3: 4
   ☐ responses.q4: 5
   ☐ responses.q5: 4
-  
+
 [Check all 70 questions...]
 ```
 
 **Check 3: Cloud Function Processing**
+
 ```
 Logs: Firebase Console → Functions → Logs
 
@@ -351,6 +378,7 @@ Logs: Firebase Console → Functions → Logs
 ```
 
 **Check 4: Dashboard Real-Time Update**
+
 ```
 Admin Dashboard Verification:
   ☐ Teacher count increased from 0/5 to 1/5
@@ -367,8 +395,9 @@ Admin Dashboard Verification:
 ### USER STEPS (As Admin - Viewing Dashboard)
 
 **Step 1: Open Assessment Dashboard**
+
 ```
-ACTION: Go to: https://disha-diagnostics.web.app/
+ACTION: Go to: https://disha.rylneuroacademy.com/
 ACTION: Click on "School Health Diagnostic" assessment
 EXPECTED: Dashboard loads
 EXPECTED: Shows response tracking
@@ -376,6 +405,7 @@ OBSERVED: _________________
 ```
 
 **Step 2: Monitor Response Counts**
+
 ```
 EXPECTED: Display shows:
   - Teachers: 1/5 (20%)
@@ -390,11 +420,12 @@ OBSERVED: _________________
 ```
 
 **Step 3: View Dimension Scores (From 1 Response)**
+
 ```
 ACTION: Scroll to "Dimension Scores" section
 EXPECTED: See scores based on teacher's response
 
-Leadership (Q1-5): 
+Leadership (Q1-5):
   Expected Average: (4+3+4+5+4)/5 = 4.0/5
   ☐ Score displayed: _____
 
@@ -409,6 +440,7 @@ OBSERVED: _________________
 ```
 
 **Step 4: Check Quality Indicators**
+
 ```
 ACTION: Look for quality section
 EXPECTED: Shows:
@@ -420,6 +452,7 @@ OBSERVED: _________________
 ```
 
 **Step 5: Real-Time Update Test**
+
 ```
 ACTION: Open second browser tab
 ACTION: Submit another response (different stakeholder)
@@ -436,12 +469,13 @@ OBSERVED: _________________
 ### Dashboard Data Accuracy
 
 **Check 1: Real-Time Calculation**
+
 ```
 Database Verification:
   ☐ Dimension averages calculated correctly
   ☐ Response count updated instantly
   ☐ Percentages computed accurately
-  
+
 Sample Calculation:
   Teacher Response: [4,3,4,5,4] → Average = 4.0
   Expected DB value for Leadership: 4.0
@@ -450,6 +484,7 @@ Sample Calculation:
 ```
 
 **Check 2: Real-Time Listener Activation**
+
 ```
 Firebase Logs:
   ☐ Listener for responses collection active
@@ -459,6 +494,7 @@ Firebase Logs:
 ```
 
 **Check 3: Dashboard State Update**
+
 ```
 Frontend State Verification:
   ☐ React state updated
@@ -468,6 +504,7 @@ Frontend State Verification:
 ```
 
 **Check 4: Data Consistency**
+
 ```
 Cross-Device Verification:
   Device 1 Shows: 1/25 responses
@@ -483,8 +520,9 @@ Cross-Device Verification:
 ### USER STEPS (As Admin)
 
 **Step 1: Navigate to First Opinion Engine**
+
 ```
-ACTION: Go to: https://disha-diagnostics.web.app/
+ACTION: Go to: https://disha.rylneuroacademy.com/
 ACTION: Click "First Opinion Engine" or similar
 EXPECTED: Engine page loads
 EXPECTED: Shows 15 challenge questions
@@ -492,6 +530,7 @@ OBSERVED: _________________
 ```
 
 **Step 2: Answer Challenge Questions**
+
 ```
 Domain 1: Leadership & Vision (3 questions)
   ☐ Q1: Select rating 4 (above average)
@@ -523,6 +562,7 @@ OBSERVED: _________________
 ```
 
 **Step 3: Submit for Calculation**
+
 ```
 ACTION: Click "Calculate Score" button
 EXPECTED: Processing indicator shows
@@ -531,6 +571,7 @@ OBSERVED: _________________
 ```
 
 **Step 4: Review Results**
+
 ```
 EXPECTED: Display shows:
   - Overall Health Score (0-100)
@@ -545,12 +586,13 @@ OBSERVED: _________________
 ```
 
 **Step 5: Review Specific Metrics**
+
 ```
 Sample Expected Values:
   Leadership perception (S_sub): ~70-80/100
   Operational reality (M_obj): ~0.8-0.9
   Health index: S_sub × M_obj × factors
-  
+
 Displayed Values:
   S_sub: ____
   M_obj: ____
@@ -564,6 +606,7 @@ Displayed Values:
 ### First Opinion Engine Calculations
 
 **Check 1: Cloud Function Execution**
+
 ```
 Firebase Logs: Functions → calculateFirstOpinion
 
@@ -575,6 +618,7 @@ Firebase Logs: Functions → calculateFirstOpinion
 ```
 
 **Check 2: Calculation Verification**
+
 ```
 Database: firstOpinionResults collection
 
@@ -587,10 +631,11 @@ Database: firstOpinionResults collection
 ```
 
 **Check 3: Sample Calculation Validation**
+
 ```
 User Response: [4,3,4,5,4,5,4,4,3,4,3,4,4,3,4]
 Sum: 60
-S_sub: (60/15) × 100 = 400... 
+S_sub: (60/15) × 100 = 400...
 
 Wait, let me recalculate:
 Average: 60/15 = 4.0
@@ -603,6 +648,7 @@ Verification:
 ```
 
 **Check 4: Prediction Logic**
+
 ```
   ☐ Predictions generated
   ☐ Recommendations based on scores
@@ -617,6 +663,7 @@ Verification:
 ### USER STEPS (As Admin)
 
 **Step 1: Open Assessment**
+
 ```
 ACTION: Navigate to completed assessment
 ACTION: Click "Generate Report"
@@ -625,6 +672,7 @@ OBSERVED: _________________
 ```
 
 **Step 2: Select Report Type**
+
 ```
 ACTION: Choose "Diagnostic Report" (14-Dimension)
 ACTION: Click Next
@@ -633,6 +681,7 @@ OBSERVED: _________________
 ```
 
 **Step 3: Customize Report**
+
 ```
 ACTION: Select dimensions to include: All 14
 ACTION: Choose visualization: Bar chart
@@ -643,6 +692,7 @@ OBSERVED: _________________
 ```
 
 **Step 4: View Report**
+
 ```
 EXPECTED: Report displays:
   ☐ School name
@@ -656,6 +706,7 @@ OBSERVED: _________________
 ```
 
 **Step 5: Download Report**
+
 ```
 ACTION: Click "Download PDF"
 EXPECTED: PDF file downloaded
@@ -671,6 +722,7 @@ OBSERVED: _________________
 ### Report Generation & Storage
 
 **Check 1: Report Document Created**
+
 ```
 Database: assessments → [ID] → reports
 
@@ -682,6 +734,7 @@ Database: assessments → [ID] → reports
 ```
 
 **Check 2: Report Content Verification**
+
 ```
   ☐ Report contains all 14 dimensions
   ☐ Dimension scores accurate (match dashboard)
@@ -692,6 +745,7 @@ Database: assessments → [ID] → reports
 ```
 
 **Check 3: Cloud Function Execution**
+
 ```
 Logs: Functions → generateReport
 
@@ -704,6 +758,7 @@ Logs: Functions → generateReport
 ```
 
 **Check 4: File Storage**
+
 ```
 Firebase Storage: reports folder
 
@@ -720,6 +775,7 @@ Firebase Storage: reports folder
 ### USER STEPS (As Admin)
 
 **Step 1: Open Assessment**
+
 ```
 ACTION: Navigate to completed assessment
 ACTION: Click "Export Data" or "Download"
@@ -728,6 +784,7 @@ OBSERVED: _________________
 ```
 
 **Step 2: Select Export Format**
+
 ```
 ACTION: Choose format: CSV
 ACTION: Choose date range: All
@@ -737,6 +794,7 @@ OBSERVED: _________________
 ```
 
 **Step 3: Verify CSV File**
+
 ```
 ACTION: Open downloaded CSV in Excel
 EXPECTED: File contains:
@@ -753,6 +811,7 @@ John Smith      | john@school.com  | teacher | 4  | 3  | 4  | ... | 85.5
 ```
 
 **Step 4: Verify Data Accuracy**
+
 ```
 ACTION: Compare CSV data with:
   ☐ Dashboard values match
@@ -768,6 +827,7 @@ ACTION: Compare CSV data with:
 ### Data Export Verification
 
 **Check 1: Export Function Execution**
+
 ```
 Cloud Function Logs:
 
@@ -779,6 +839,7 @@ Cloud Function Logs:
 ```
 
 **Check 2: CSV File Validation**
+
 ```
 File Structure:
   ☐ Headers match database fields
@@ -786,7 +847,7 @@ File Structure:
   ☐ Column count = all questions (70+)
   ☐ No encoding issues
   ☐ Quotation marks correct for text fields
-  
+
 Data Integrity:
   ☐ All responses present
   ☐ Scores calculated
@@ -795,20 +856,22 @@ Data Integrity:
 ```
 
 **Check 3: Data Accuracy**
+
 ```
 Sample Verification (Row 1):
   From CSV Column:  John Smith
   From Database:    john_smith
   ☐ Match: Yes/No
-  
+
   From CSV Q1:      4
   From Database Q1: 4
   ☐ Match: Yes/No
-  
+
   [Verify 5-10 random data points]
 ```
 
 **Check 4: File Storage & Accessibility**
+
 ```
   ☐ CSV file saved to temp storage
   ☐ Download link generated
@@ -823,6 +886,7 @@ Sample Verification (Row 1):
 ### Complete Checklist - All Features
 
 #### Assessment Lifecycle
+
 ```
 ☐ [Feature 1] Assessment created successfully
 ☐ [Feature 1] Assessment stored in Firestore
@@ -860,6 +924,7 @@ Sample Verification (Row 1):
 ```
 
 #### Data Persistence Verification
+
 ```
 Firestore Collections:
 ☐ assessments collection populated
@@ -881,6 +946,7 @@ Real-Time Listeners:
 ```
 
 #### Cloud Functions Execution
+
 ```
 ☐ createAssessment function runs
 ☐ submitResponse function runs
@@ -897,6 +963,7 @@ All Functions:
 ```
 
 #### Error Handling & Recovery
+
 ```
 ☐ Missing required fields detected
 ☐ Duplicate responses prevented
@@ -907,6 +974,7 @@ All Functions:
 ```
 
 #### Performance Verification
+
 ```
 ☐ Page loads < 1 second
 ☐ Dashboard updates < 500ms
@@ -923,6 +991,7 @@ All Functions:
 ### Complete Data Flow - Step by Step
 
 #### Step 1: Assessment Creation
+
 ```
 Flow:
 User Input → Frontend React Component
@@ -945,6 +1014,7 @@ ADMIN CHECKS:
 ```
 
 #### Step 2: Response Submission
+
 ```
 Flow:
 User Selects Answers (1-5 scale)
@@ -970,6 +1040,7 @@ ADMIN CHECKS:
 ```
 
 #### Step 3: Dashboard Calculation
+
 ```
 Flow:
 New Response Arrives
@@ -996,6 +1067,7 @@ ADMIN CHECKS:
 ```
 
 #### Step 4: First Opinion Engine
+
 ```
 Flow:
 15 Challenge Questions Answered
@@ -1031,6 +1103,7 @@ ADMIN CHECKS:
 ```
 
 #### Step 5: Report Generation
+
 ```
 Flow:
 Admin Clicks "Generate Report"
@@ -1070,6 +1143,7 @@ ADMIN CHECKS:
 ```
 
 #### Step 6: Data Export
+
 ```
 Flow:
 Admin Clicks "Export Data"
@@ -1145,15 +1219,15 @@ RESULT: ✅ PASS / ❌ FAIL
 Check 1: Real-time Listener Active?
   Navigate to: Firebase Console → Firestore → responses collection
   ☐ Listener should be monitoring this collection
-  
+
 Check 2: Response Saved?
   ☐ New response document visible in Firestore
   ☐ All 70 questions populated
-  
+
 Check 3: Cloud Function Logs
   ☐ submitResponse function runs
   ☐ No errors in logs
-  
+
 Solution: Refresh page manually, check network tab
 ```
 
@@ -1164,15 +1238,15 @@ Check 1: Cloud Function Logs
   Functions → generateReport
   ☐ Function triggered
   ☐ Check error messages
-  
+
 Check 2: Cloud Storage
   Check if PDF file uploaded
   ☐ Should be in reports/ folder
-  
+
 Check 3: Firestore
   Check if report document created
   ☐ Should have report metadata
-  
+
 Solution: Retry generation, check Cloud Function quota
 ```
 
@@ -1182,11 +1256,11 @@ Solution: Retry generation, check Cloud Function quota
 Check 1: Cloud Function Logs
   Functions → exportData
   ☐ Check for errors
-  
+
 Check 2: Data Integrity
   ☐ Verify source data in Firestore
   ☐ Check for special characters
-  
+
 Solution: Try different export format (JSON), check file encoding
 ```
 
@@ -1214,4 +1288,3 @@ RESULT: Application is ready for production
 **Testing Guide Created:** August 29, 2026  
 **Ready for:** User Acceptance Testing  
 **Admin Validation:** Complete Checklist Provided
-

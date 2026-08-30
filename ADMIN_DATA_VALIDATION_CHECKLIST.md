@@ -69,7 +69,7 @@ Click on your assessment ID document and verify:
 ### ✅ Quick Checklist
 
 ```
-☐ Link format: https://disha-diagnostics.web.app/?assessment=[ID]
+☐ Link format: https://disha.rylneuroacademy.com/?assessment=[ID]
 ☐ Link is clickable (not truncated)
 ☐ Link works in new browser/incognito
 ☐ Assessment loads without login
@@ -148,7 +148,7 @@ Should equal: 4.0
 
 ```
 🔍 WHERE TO VERIFY
-Application URL: https://disha-diagnostics.web.app/
+Application URL: https://disha.rylneuroacademy.com/
 
 Dashboard Display:
 ☐ Teachers count: 1/5 (20%)
