@@ -256,6 +256,20 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Contact Phone Number</label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="tel"
+                    placeholder="e.g. +91-98920-73660"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                  />
+                </div>
+              </div>
+
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 mb-1">School Address / Campus Details</label>
                 <div className="relative">

@@ -59,7 +59,7 @@ EXPECTED:
 
 ```
 LOCATION: Left navigation menu
-LOOK FOR: 
+LOOK FOR:
   • "Add School" link
   • "New School" link
   • "School Management"
@@ -110,31 +110,31 @@ TYPICAL FIELDS YOU'LL SEE:
 
 1. School Name (Required)
    Example: "Test School Alpha"
-   
+
 2. School Code (Optional)
    Example: "TSA-2026"
-   
+
 3. Location / City (Required)
    Example: "Bangalore"
-   
+
 4. State (Required)
    Example: "Karnataka"
-   
+
 5. Board / Curriculum (Required)
    Example: "CBSE" or "ICSE"
-   
+
 6. School Type (Optional)
    Example: "Private" or "Public"
-   
+
 7. Principal Name (Optional)
    Example: "Dr. John Smith"
-   
+
 8. Email (Required)
    Example: "admin@testschool.com"
-   
+
 9. Phone (Required)
    Example: "+91-98920-73660"
-   
+
 10. Address (Optional)
     Example: "123 Main Street"
 
@@ -154,41 +154,41 @@ FIELD 1: School Name
   VALUE: "Test School Alpha"
   ACTION: Click field, type name
   VALIDATION: Accept text input
-  
+
 FIELD 2: School Code (if exists)
   VALUE: "TSA-2026-08"
   ACTION: Click field, type code
-  
+
 FIELD 3: Location/City
   VALUE: "Bangalore"
   ACTION: Click field, type city
-  
+
 FIELD 4: State
   VALUE: "Karnataka"
   ACTION: Click dropdown or type
-  
+
 FIELD 5: Board
   VALUE: "CBSE"
   ACTION: Click dropdown, select CBSE
-  
+
 FIELD 6: School Type (if exists)
   VALUE: "Private"
   ACTION: Click dropdown, select type
-  
+
 FIELD 7: Principal Name
   VALUE: "Mr. Testing Principal"
   ACTION: Click field, type name
-  
+
 FIELD 8: Email
   VALUE: "testadmin@testschool.com"
   ACTION: Click field, enter email
   VALIDATION: Valid email format required
-  
+
 FIELD 9: Phone
   VALUE: "+91-98920-73661"
   ACTION: Click field, enter phone
   VALIDATION: Valid phone format required
-  
+
 FIELD 10: Address (if exists)
   VALUE: "123 Testing Street, Bangalore"
   ACTION: Click field, type address
@@ -270,13 +270,13 @@ EXPECTED RESULT:
 ✅ Success message appears
    Example: "School created successfully"
    Or: "New school added"
-   
+
 ✅ School appears in dropdown
    Example: "Test School Alpha" now selectable
-   
+
 ✅ Dashboard updates
    Example: New school name shown in header
-   
+
 ✅ Confirmation visible
    School name changed from "Podar International"
    to "Test School Alpha"
@@ -291,7 +291,7 @@ EXPECTED RESULT:
 ```
 FIREBASE CONSOLE ACCESS:
   URL: https://console.firebase.google.com/
-  
+
 NAVIGATION:
   1. Select your project (DISHA)
   2. Go to: Firestore Database
@@ -345,7 +345,7 @@ BASIC FIELDS:
   └─ Value: "Test School Alpha"
   └─ Type: String
   └─ Length: < 100 characters
-  
+
 ☐ schoolCode field exists
   └─ Value: "TSA-2026-08"
   └─ Type: String
@@ -366,7 +366,7 @@ CONTACT FIELDS:
   └─ Value: "testadmin@testschool.com"
   └─ Type: String
   └─ Valid email format (contains @)
-  
+
 ☐ phone field exists
   └─ Value: "+91-98920-73661"
   └─ Type: String
@@ -424,20 +424,20 @@ AFTER CREATING NEW SCHOOL:
 ✅ School Profile Section Updated
    Old: "Podar International S..."
    New: "Test School Alpha"
-   
+
 ✅ Location Shows
    "Bangalore" (or city entered)
-   
+
 ✅ Board Shows
    "CBSE"
-   
+
 ✅ School dropdown includes new school
    Can switch between schools
-   
+
 ✅ All metrics reset for new school
    OR
    Shows blank/no data yet
-   
+
 ✅ Navigation menu updates
    Shows new school context
 ```
@@ -466,27 +466,27 @@ PHASE 1: CREATION
   4. ☐ Review data entered
   5. ☐ Click Save/Create button
   6. ☐ See success message
-  
+
 PHASE 2: UI VERIFICATION
   7. ☐ New school appears in dropdown
   8. ☐ Dashboard updates with new school
   9. ☐ School name shows correctly
   10. ☐ All UI elements update
-  
+
 PHASE 3: DATABASE VERIFICATION
   11. ☐ Open Firebase Firestore
   12. ☐ Navigate to "schools" collection
   13. ☐ Find new school document
   14. ☐ Verify all fields exist
   15. ☐ Verify all data matches
-  
+
 PHASE 4: DATA INTEGRITY
   16. ☐ Check field types correct
   17. ☐ Verify no null values
   18. ☐ Confirm timestamps
   19. ☐ Validate email format
   20. ☐ Validate phone format
-  
+
 PHASE 5: CROSS-VALIDATION
   21. ☐ UI data = Database data
   22. ☐ No discrepancies
@@ -506,19 +506,19 @@ CREATION PHASE:
   ☐ Form fields visible: ________________
   ☐ Form submission success: Yes / No
   ☐ Success message: ________________
-  
+
 UI VERIFICATION:
   ☐ School appears in dropdown: Yes / No
   ☐ Dashboard updated: Yes / No
   ☐ School name shows as: ________________
   ☐ Location shows as: ________________
-  
+
 DATABASE VERIFICATION:
   ☐ Document created in Firestore: Yes / No
   ☐ Collection path: ________________
   ☐ Document ID: ________________
   ☐ All required fields present: Yes / No
-  
+
 DATA VALUES:
   ☐ School Name: ________________
   ☐ Location: ________________
@@ -526,19 +526,19 @@ DATA VALUES:
   ☐ Email: ________________
   ☐ Phone: ________________
   ☐ Created Timestamp: ________________
-  
+
 VALIDATION RESULT:
   ☐ All data matches UI and DB: Yes / No
   ☐ No missing fields: Yes / No
   ☐ No null/undefined values: Yes / No
   ☐ Email format valid: Yes / No
   ☐ Phone format valid: Yes / No
-  
+
 OVERALL STATUS:
   ☐ ✅ PASS - School created successfully
   ☐ ⚠️ PARTIAL - Some issues found
   ☐ ❌ FAIL - Critical issues found
-  
+
 Issues Found:
   _________________________________
   _________________________________
@@ -627,7 +627,7 @@ AFTER CREATION:
   10. ☐ Find new school document
   11. ☐ Take screenshot of database fields
   12. ☐ Verify all data matches
-  
+
 REPORT BACK:
   13. ☐ Screenshot of form
   14. ☐ Screenshot of dashboard
@@ -641,4 +641,3 @@ REPORT BACK:
 **Purpose:** Step-by-step new school creation with database validation  
 **Status:** 🟢 Ready for testing  
 **Next Action:** Find and click "Create New School" option
-
