@@ -60,6 +60,37 @@ EXPECTED: Page loads in <1 second
 OBSERVED: ________________
 ```
 
+---
+
+### ⏱️ **HOW TO MEASURE PAGE LOAD TIME**
+
+**To verify page loads in < 1 second:**
+
+```
+METHOD 1 - NETWORK TAB (Easiest):
+  1. Press F12 (Open Developer Tools)
+  2. Click "Network" tab
+  3. Refresh page (F5)
+  4. Look at bottom: "Finish: ___ ms"
+  5. Should show < 1000 milliseconds
+
+METHOD 2 - CONSOLE:
+  1. Press F12
+  2. Click "Console" tab
+  3. Paste: window.performance.timing.loadEventEnd - window.performance.timing.navigationStart
+  4. Press Enter
+  5. Result should be < 1000
+
+RESULT INTERPRETATION:
+  ✅ < 1000 ms = Excellent
+  ⚠️  1000-2000 ms = Acceptable
+  ❌ > 2000 ms = Needs improvement
+```
+
+**📖 For detailed timing instructions:** See `STEP_1_PAGE_LOAD_TIMING_GUIDE.md`
+
+---
+
 **Step 2: Navigate to Create Assessment**
 
 ```

@@ -38,7 +38,7 @@ Step 1 is the **initial verification** that your application is accessible and f
 ✅ Internet connection active
 ```
 
-### Step 1.1: Open Your Browser
+### Step 1.1: Open Your Browser & Verify Page Load Time
 
 **ACTION:**
 ```
@@ -52,7 +52,7 @@ Step 1 is the **initial verification** that your application is accessible and f
 ✅ Page loads without errors
 ✅ No SSL/certificate warning
 ✅ URL shows: https://disha.rylneuroacademy.com/
-✅ Page completes loading in <2 seconds
+✅ Page completes loading in < 1 second (or < 2 seconds acceptable)
 ```
 
 **WHAT YOU SHOULD SEE:**
@@ -64,12 +64,100 @@ Step 1 is the **initial verification** that your application is accessible and f
 - No white screen of death
 ```
 
+---
+
+### ⏱️ **HOW TO CHECK PAGE LOAD TIMING**
+
+**QUICK METHOD (30 seconds):**
+
+```
+1. Open Browser Developer Tools: Press F12
+2. Click "Network" tab
+3. Refresh page: Press F5
+4. Wait for all requests to complete
+5. Look at BOTTOM of Network tab for "Finish" time
+6. Should show < 1000 milliseconds (ms)
+
+EXAMPLE:
+  Finish: 847 ms  ✅ PASS (less than 1 second)
+  Finish: 1,234 ms ⚠️ ACCEPTABLE (slightly over)
+  Finish: 2,500 ms ❌ SLOW (needs investigation)
+```
+
+**DETAILED TIMING VERIFICATION:**
+
+```
+Step 1: Copy this code into Console (F12 → Console tab)
+  window.performance.timing.loadEventEnd - window.performance.timing.navigationStart
+
+Step 2: Press Enter and note the number
+  Example result: 847 (milliseconds)
+
+Step 3: Convert to seconds (divide by 1000)
+  847 ÷ 1000 = 0.847 seconds ✅
+
+Step 4: Check if under 1 second
+  < 1000 ms = ✅ EXCELLENT
+  1000-2000 ms = ⚠️ ACCEPTABLE
+  > 2000 ms = ❌ NEEDS IMPROVEMENT
+```
+
+**FULL TIMING BREAKDOWN (Optional):**
+
+```
+Copy this into Console for detailed breakdown:
+
+const perf = window.performance.timing;
+console.log({
+  'DNS Lookup': perf.domainLookupEnd - perf.domainLookupStart,
+  'TCP Connection': perf.connectEnd - perf.connectStart,
+  'Request Time': perf.responseStart - perf.requestStart,
+  'Response Time': perf.responseEnd - perf.responseStart,
+  'DOM Processing': perf.domComplete - perf.domLoading,
+  'Total Load Time': perf.loadEventEnd - perf.navigationStart
+});
+
+This shows you WHERE the time is being spent
+```
+
+**INTERPRETATION:**
+
+```
+GOAL: < 1 SECOND (< 1000 MILLISECONDS)
+
+✅ 500 ms    = Excellent
+✅ 750 ms    = Excellent
+✅ 950 ms    = Good (meets goal)
+⚠️  1,050 ms = Slightly over goal (acceptable)
+⚠️  1,500 ms = Acceptable but not ideal
+❌ 2,000 ms = Needs investigation
+❌ 3,000+ ms = Needs optimization
+
+YOUR TARGET: ✅ Under 1 second for best performance
+```
+
+---
+
 **OBSERVATION:**
 ```
 Page loaded successfully?      ☐ Yes  ☐ No
-Time to load:                  _______ seconds
+Page Load Time (ms):           _______ ms
+Converted to Seconds:          _______ seconds
+Load Status:                   ☐ Excellent  ☐ Acceptable  ☐ Slow
 Any errors displayed?          ☐ Yes  ☐ No
 ```
+
+---
+
+### 📖 **FOR DETAILED TIMING INSTRUCTIONS**
+
+**Reference Guide:** `STEP_1_PAGE_LOAD_TIMING_GUIDE.md`
+- Complete 4 methods to measure timing
+- Network tab detailed walkthrough
+- Console script examples
+- Lighthouse audit tool guide
+- Troubleshooting slow loads
+- Performance interpretation guide
 
 ---
 

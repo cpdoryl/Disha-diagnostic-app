@@ -62,6 +62,17 @@ All files are saved in **one central location** (the project root directory).
 
 ---
 
+## 🌐 CUSTOM DOMAIN TESTING GUIDES
+
+| File Name | Size | Purpose | Last Updated |
+|-----------|------|---------|--------------|
+| **STEP_1_CUSTOM_DOMAIN_TESTING_GUIDE.md** | 12.5 KB | Initial custom domain verification | Aug 30 |
+| **STEP_1_PAGE_LOAD_TIMING_GUIDE.md** | 14.2 KB | Page load timing measurement guide | Aug 30 |
+
+**Purpose:** Complete guides for testing on custom domain https://disha.rylneuroacademy.com/
+
+---
+
 ## 🧪 COMPREHENSIVE TESTING REPORTS
 
 | File Name | Size | Purpose | Last Updated |
@@ -109,7 +120,7 @@ Location: C:\disha-diagnostic-engine\USER_GUIDES\
 
 ## 📊 COMPLETE FILE LISTING
 
-### Total Documentation Files: 36
+### Total Documentation Files: 38
 
 ```
 Root Directory: C:\disha-diagnostic-engine\
@@ -137,6 +148,8 @@ Root Directory: C:\disha-diagnostic-engine\
   ├── PHASE_7_KICKOFF.md
   ├── PHASE_7_UAT_EXECUTION.md
   ├── PHASE_7_ACCESSIBILITY_FIXES.md
+  ├── STEP_1_CUSTOM_DOMAIN_TESTING_GUIDE.md
+  ├── STEP_1_PAGE_LOAD_TIMING_GUIDE.md
   ├── COMPREHENSIVE_FUNCTIONAL_TEST_PLAN.md
   ├── COMPREHENSIVE_FUNCTIONAL_TEST_REPORT.md
   ├── DEPLOYMENT_VERIFICATION_STATUS.md
