@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "scenario": "Tier 1 Metro School - Premium Private",
+    "description": "Large, well-funded school in major metropolitan area",
+    "testPurpose": "Baseline validation for premium schools",
+    "createdDate": "2026-08-30"
+  },
+  "schoolProfile": {
+    "schoolId": "test_tier1_metro_001",
+    "schoolName": "Sterling International School - Mumbai",
+    "board": "CBSE",
+    "schoolSize": "Large (1500+ students)",
+    "feeBand": "Premium (₹75k+ per year)",
+    "cityTier": "Tier 1 (Metro)",
+    "schoolType": "Private",
+    "location": "Airoli, Navi Mumbai",
+    "principalName": "Dr. Rajesh Kumar",
+    "contactEmail": "principal@sterlinginternational.com",
+    "contactPhone": "+91-9876543210"
+  },
+  "benchmarkingData": {
+    "comparable": [
+      "DHFL Preschool",
+      "Vidya Valley",
+      "Global Indian International School"
+    ],
+    "peerGroupAverage": {
+      "s_subExpected": 78,
+      "m_objExpected": 75,
+      "healthIndexExpected": 76,
+      "riskLevel": "LOW"
+    }
+  },
+  "baselineMetrics": {
+    "totalStudents": 1850,
+    "totalTeachers": 95,
+    "studentTeacherRatio": "1:19.5",
+    "annualFeePerStudent": 95000,
+    "totalAnnualRevenue": "1,75,75,000",
+    "boardExamPassRate": 98.5,
+    "studentRetention": 96.2,
+    "teacherRetention": 89.5,
+    "parentSatisfactionNPS": 82
+  },
+  "infrastructureData": {
+    "campusSize": "5 acres",
+    "buildings": 6,
+    "classrooms": 60,
+    "smartClassrooms": 48,
+    "lmsAdoptionRate": 92,
+    "safetyIncidentsYearly": 0,
+    "infrastructureQualityScore": "Excellent"
+  },
+  "staffingData": {
+    "totalStaff": 120,
+    "teachersWithMA": 78,
+    "teachersWithPHD": 12,
+    "averageTeacherExperience": 8.5,
+    "professionDevelopmentHoursPerYear": 56,
+    "weeklyPlanningSessionsPerTeacher": 2.5,
+    "administrativeOverheadPercentage": 18
+  },
+  "financialData": {
+    "feeRealizationRate": 98,
+    "defaultRatePercentage": 1.2,
+    "financialHealthScore": 94,
+    "operatingMargin": 22,
+    "investmentInAcademics": 38,
+    "investmentInInfrastructure": 35,
+    "investmentInStaffDevelopment": 15,
+    "investmentInTechnology": 12
+  },
+  "communicationMetrics": {
+    "parentResponseSLAHours": 12,
+    "averageParentResponseTime": "6 hours",
+    "parentCommunicationFrequency": "Daily",
+    "communicationChannels": [
+      "SMS",
+      "WhatsApp",
+      "Parent Portal",
+      "Email"
+    ]
+  },
+  "expectedScoreRange": {
+    "s_sub": {
+      "min": 78,
+      "max": 88,
+      "description": "Strong leadership confidence, data-backed"
+    },
+    "m_obj": {
+      "min": 75,
+      "max": 85,
+      "description": "Strong operational metrics support perception"
+    },
+    "healthIndex": {
+      "min": 76,
+      "max": 86,
+      "description": "GOOD to EXCELLENT health status"
+    },
+    "gap": {
+      "min": 30,
+      "max": 45,
+      "description": "ALIGNED - Perception matches reality"
+    }
+  },
+  "expectedCharacteristics": {
+    "quadrant": "ALIGNED",
+    "delusionPenalty": 0,
+    "earlyWarnings": 0,
+    "topChallenge": "Teacher Career Progression",
+    "topRecommendation": "Continue excellence in current areas while addressing teacher career trajectory",
+    "riskLevel": "LOW",
+    "trajectory": "STABLE_WITH_SLIGHT_IMPROVEMENT"
+  },
+  "useCase": {
+    "scenario": "Premium performing school in tier 1 metro",
+    "testValidation": "Verify system correctly scores high-performing schools",
+    "expectedBehavior": "Reports should show strong health, aligned perception-reality, minimal risks",
+    "boardActionRequired": "Strategic planning for sustained excellence and teacher retention"
+  }
+}
