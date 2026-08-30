@@ -12,9 +12,11 @@
 
 ```
 Files contained in USER_TESTING folder:
-├── README.md (START HERE)
-├── INDEX.md (THIS FILE)
-└── [Reference to files listed below]
+├── README.md (Comprehensive hub - START HERE)
+├── INDEX.md (Master index & quick reference - THIS FILE)
+└── USE_CASES_AND_DATA_COLLECTION_RATIONALE.md (Knowledge & understanding)
+
+[All other files referenced and organized below]
 ```
 
 ---

@@ -12,38 +12,56 @@
 ```
 C:\disha-diagnostic-engine\USER_TESTING\
 │
-├── README.md (THIS FILE)
-│   └─ Index and guide to all testing files
+├── 📋 FOLDER DOCUMENTATION
+│   ├── README.md (THIS FILE - Comprehensive guide)
+│   ├── INDEX.md (Master index & quick reference)
+│   └── USE_CASES_AND_DATA_COLLECTION_RATIONALE.md (Knowledge & understanding)
 │
 ├── 🏠 LANDING PAGE & NAVIGATION
 │   ├── NEXT_STEPS_FROM_HOME_PAGE.md
 │   └── REAL_WORKFLOW_GUIDE.md
 │
 ├── 🔐 AUTHENTICATION & LOGIN
-│   ├── (Login procedures documented in REAL_WORKFLOW_GUIDE.md)
+│   ├── (Login procedures in REAL_WORKFLOW_GUIDE.md)
 │   └── (Dashboard access steps)
 │
-├── ⏱️ PERFORMANCE TESTING
-│   ├── STEP_1_PAGE_LOAD_TIMING_GUIDE.md
-│   └── (Timing verification procedures)
+├── ⏱️ PERFORMANCE & TIMING TESTING
+│   └── STEP_1_PAGE_LOAD_TIMING_GUIDE.md
 │
-├── 📝 STEP-BY-STEP GUIDES
-│   ├── STEP_2_CREATE_ASSESSMENT_DETAILED_GUIDE.md
+├── 📝 STEP-BY-STEP TESTING PROCEDURES
 │   ├── STEP_1_CUSTOM_DOMAIN_TESTING_GUIDE.md
+│   ├── STEP_2_CREATE_ASSESSMENT_DETAILED_GUIDE.md
 │   └── NEW_SCHOOL_CREATION_AND_DATABASE_VALIDATION.md
+│       ├── School creation procedures
+│       ├── Database validation checklists
+│       ├── Data verification steps
+│       └── Admin sign-off forms
 │
 ├── 🎯 USER ACCEPTANCE TESTING (UAT)
 │   ├── USER_ACCEPTANCE_TESTING_GUIDE.md
-│   ├── PERFORMANCE_TESTING_ANALYSIS_AND_ADMIN_VALIDATION.md
-│   └── (7-Feature complete testing procedures)
+│   │   ├── Feature 1-7 complete testing
+│   │   ├── Admin validation checkpoints
+│   │   └── Data flow verification
+│   │
+│   └── PERFORMANCE_TESTING_ANALYSIS_AND_ADMIN_VALIDATION.md
+│       ├── Admin testing procedures
+│       ├── Database validation
+│       ├── Performance analysis
+│       └── Admin sign-off forms
 │
 ├── 📖 USER GUIDES & DOCUMENTATION
 │   ├── QUICK_START_GUIDE.md
 │   ├── FEATURE_OVERVIEW.md
 │   └── DISHA_FAQ.md
 │
-└── 📋 TESTING CHECKLISTS & TEMPLATES
-    └── (Observation logs, validation forms)
+└── 📋 TESTING KNOWLEDGE & RATIONALE
+    └── USE_CASES_AND_DATA_COLLECTION_RATIONALE.md
+        ├── Use cases (4 detailed scenarios)
+        ├── Field-by-field analysis (why data collected)
+        ├── Business value explanation
+        ├── Data flow through system
+        ├── Knowledge gained from testing
+        └── Testing validation guidance
 ```
 
 ---
