@@ -49,7 +49,8 @@ import {
   Sliders,
   Target,
   Check,
-  Download
+  Download,
+  Lock
 } from 'lucide-react';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -1810,43 +1811,32 @@ HOW TO USE IN DISHA:
                 </div>
               )}
 
-              {/* School Profile Baseline - read-only, sourced directly from the active school profile */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
-                <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5 text-slate-500" />
-                  School Profile Baseline (Sector Benchmarking)
-                </h4>
-                <p className="text-[11px] text-slate-500 font-medium -mt-2">
-                  Pulled from the active school profile — edit the school profile from the sidebar to change these.
+              {/* School Profile Baseline - locked summary, sourced directly from the active school profile (not editable, not re-asked) */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-slate-500" />
+                    School Profile Baseline (Sector Benchmarking)
+                  </h4>
+                  <span className="text-[10px] font-black text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full shrink-0">
+                    LOCKED &bull; FROM SCHOOL PROFILE
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Already on file for <strong>{activeSchool?.name || 'this school'}</strong> — not asked again here. To change any of these, edit the school profile from the sidebar.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-bold text-gray-700">
-                  <div className="space-y-1.5">
-                    <label className="text-gray-500 block">Affiliation Board</label>
-                    <div className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      {activeSchool?.board || 'Not set in school profile'}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-700">
+                  {[
+                    { label: 'Affiliation Board', value: activeSchool?.board },
+                    { label: 'Student Body Size', value: activeSchool?.studentCount },
+                    { label: 'Annual Fee Band', value: activeSchool?.feeBand },
+                    { label: 'City / Location Tier', value: activeSchool?.tier },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex items-center justify-between gap-2 bg-slate-100/70 rounded-lg px-3 py-2">
+                      <span className="text-slate-500 font-medium">{label}</span>
+                      <span className="font-bold text-slate-800 text-right">{value || 'Not set in school profile'}</span>
                     </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-gray-500 block">Student Body Size</label>
-                    <div className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      {activeSchool?.studentCount || 'Not set in school profile'}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-gray-500 block">Annual Fee Band</label>
-                    <div className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      {activeSchool?.feeBand || 'Not set in school profile'}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-gray-500 block">City / Location Tier</label>
-                    <div className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      {activeSchool?.tier || 'Not set in school profile'}
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
