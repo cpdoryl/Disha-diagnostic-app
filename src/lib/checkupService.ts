@@ -24,6 +24,11 @@ export interface CheckupData {
   operationalMetricsUploaded: Record<string, any>;
   createdBy: string;
   schoolId: string;
+  selectedChallenges?: string[];
+  board?: string;
+  cityTier?: string;
+  feeBand?: string;
+  uploadedFileName?: string;
 }
 
 export interface CheckupAnalysis {
@@ -42,7 +47,13 @@ export interface CheckupAnalysis {
 
 /**
  * Save checkup data to Firestore
- * Triggers analyzeCheckup Cloud Function automatically
+ *
+ * NOTE: this does NOT trigger any Cloud Function analysis. The
+ * analyzeCheckup Cloud Function is a callable function
+ * (functions.https.onCall) and nothing in this app currently invokes it -
+ * the actual DISHA Score is always computed locally
+ * (FirstOpinionPage.tsx's runLocalDiagnosticCalculation), immediately
+ * after this save completes.
  */
 export const saveCheckupToFirestore = async (
   schoolId: string,
@@ -57,6 +68,11 @@ export const saveCheckupToFirestore = async (
       surveyInput: checkupData.surveyInput,
       operationalMetricsUploaded: checkupData.operationalMetricsUploaded,
       submittedBy: checkupData.createdBy,
+      selectedChallenges: checkupData.selectedChallenges || [],
+      board: checkupData.board || null,
+      cityTier: checkupData.cityTier || null,
+      feeBand: checkupData.feeBand || null,
+      uploadedFileName: checkupData.uploadedFileName || null,
       submittedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()

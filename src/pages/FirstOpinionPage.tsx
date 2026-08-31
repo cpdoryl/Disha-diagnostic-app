@@ -12,7 +12,7 @@ import FileAnalyzer, {
 import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGenerator';
 import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
 import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
-import { saveCheckupToFirestore, waitForCheckupAnalysis, subscribeToCheckupAnalysis } from '../lib/checkupService';
+import { saveCheckupToFirestore, subscribeToCheckupAnalysis } from '../lib/checkupService';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
 import { logAuditEvent } from '../lib/auditService';
@@ -541,11 +541,13 @@ export const FirstOpinionPage = () => {
       checkupId,
       (analysis) => {
         if (analysis) {
+          // Note: CheckupAnalysis (the actual Cloud Function output shape)
+          // has no dishaScore field - the real Health Index score always
+          // comes from the local calculation (runLocalDiagnosticCalculation),
+          // never from this listener. Kept for whatever else reads
+          // firestoreCheckupData, but do not attempt to derive dishaScore here.
           console.log('✓ Analysis updated from Firestore:', analysis);
           setFirestoreCheckupData(analysis);
-          if (analysis.dishaScore) {
-            setDISHAScore(analysis.dishaScore);
-          }
         }
       }
     );
@@ -830,8 +832,26 @@ HOW TO USE IN DISHA:
 
       console.log('  After setOperationalMetrics - queued for update');
 
-      // Generate REAL insights from extracted metrics
-      const insights = generateRealInsights(metrics);
+      // Generate REAL insights from extracted metrics.
+      // generateRealInsights expects fileParser.ts's ParsedData shape
+      // (field "extractedMetrics"), but FileAnalyzer.analyzeFile returns
+      // ExtractedMetrics (field "metricsFound") - passing `metrics` directly
+      // crashed with "can't convert undefined to object" the moment a real
+      // upload reached this code, since parsedData.extractedMetrics was
+      // always undefined. generateRealInsights only ever reads
+      // .extractedMetrics, so adapt just that field rather than rewriting it.
+      const insights = generateRealInsights({
+        fileType: metrics.fileType,
+        fileName: uploadedFileName,
+        uploadedAt: new Date(),
+        dataRows: [],
+        headers: [],
+        extractedMetrics: metrics.metricsFound,
+        parseStatus: 'success',
+        errorMessages: [],
+        warnings: [],
+        confidence: metrics.confidence === 'HIGH' ? 100 : metrics.confidence === 'MEDIUM' ? 60 : 30
+      });
       setRealInsights(insights);
 
       // Generate dynamic diagnosis if we have both metrics and answers
@@ -966,23 +986,20 @@ HOW TO USE IN DISHA:
         user.email || user.uid
       );
       console.log('✓ Audit logged for checkup submission');
-      console.log('⏳ Waiting for Cloud Function analysis (up to 30 seconds)...');
 
-      // Wait for analysis (up to 30 seconds)
-      const analysis = await waitForCheckupAnalysis(schoolId, savedCheckupId);
-
-      if (analysis) {
-        console.log('✓ Analysis complete:', analysis);
-        setFirestoreCheckupData(analysis);
-        // Update DISHA score with Firestore results if available
-        if (analysis.dishaScore) {
-          setDISHAScore(analysis.dishaScore);
-        }
-      } else {
-        console.warn('⚠️ Analysis still processing, running local calculation...');
-        // If cloud function times out, run local diagnostic calculation
-        runLocalDiagnosticCalculation();
-      }
+      // NOTE: the analyzeCheckup Cloud Function exists but is a callable
+      // function (functions.https.onCall) - nothing in this app actually
+      // invokes it (no httpsCallable(functions, 'analyzeCheckup') call
+      // exists anywhere in src/), despite this file's earlier comment
+      // claiming it's "triggered automatically" by the Firestore write.
+      // waitForCheckupAnalysis() polled for its output for a full 30
+      // seconds on every single submission before ever falling back to
+      // the local calculation below - a guaranteed 30s hang for every
+      // user, every time, for a path that can never succeed. Go straight
+      // to the local calculation, which independently implements the same
+      // documented S_sub/M_obj/Health Index formula (dishaScoreCalculator.ts)
+      // and was always the code path that actually ran in practice.
+      runLocalDiagnosticCalculation();
 
       // Navigate to results step
       setTimeout(() => {
