@@ -2034,11 +2034,12 @@ HOW TO USE IN DISHA:
                       : "border-gray-300 bg-gray-50/50 hover:border-blue-500"
                   )}
                 >
-                  <input 
-                    type="file" 
-                    id="evidence-file-check" 
-                    className="hidden" 
-                    onChange={handleFileSelect} 
+                  <input
+                    type="file"
+                    id="evidence-file-check"
+                    accept=".csv,.xlsx,.xls,.pdf"
+                    className="hidden"
+                    onChange={handleFileSelect}
                   />
                   <label htmlFor="evidence-file-check" className="cursor-pointer w-full flex flex-col items-center justify-center">
                     {uploadedFileName ? (
@@ -2068,14 +2069,14 @@ HOW TO USE IN DISHA:
                               </>
                             ) : extractedMetrics?.fileType === 'UNREADABLE_BINARY_FILE' ? (
                               <div className="mt-2 space-y-2 bg-rose-50 p-3 rounded border border-rose-200 text-left">
-                                <p className="text-xs text-rose-800 font-bold">❌ Wrong file format — this is not a data problem</p>
+                                <p className="text-xs text-rose-800 font-bold">❌ Could not read this file — not a missing-data problem</p>
                                 <p className="text-xs text-rose-700">{extractedMetrics.unreadableReason}</p>
                                 <p className="text-xs text-rose-900 font-semibold mt-1">How to fix:</p>
-                                <ol className="text-xs text-rose-700 list-decimal list-inside space-y-0.5">
-                                  <li>Open the file in Excel or Google Sheets</li>
-                                  <li>Excel: File → Save As → "CSV (Comma delimited) (*.csv)". Google Sheets: File → Download → "Comma Separated Values (.csv)"</li>
-                                  <li>Upload the resulting .csv file instead</li>
-                                </ol>
+                                <p className="text-xs text-rose-700">
+                                  Supported formats: .csv, .xlsx/.xls, and text-based .pdf. The file needs a
+                                  "metric_field, value" header with one field per row — see the Required Data
+                                  Fields table above for the exact names to use, then re-upload.
+                                </p>
                               </div>
                             ) : (
                               <>
@@ -2114,7 +2115,7 @@ HOW TO USE IN DISHA:
                           <Upload className="w-5 h-5 text-indigo-500" />
                         </div>
                         <p className="text-xs font-bold text-gray-700">Drag & drop files here, or <span className="text-indigo-600 underline">browse</span></p>
-                        <p className="text-[10px] text-gray-400">PDF, XLS, DOC, or Phone Camera JPG (Up to 15MB)</p>
+                        <p className="text-[10px] text-gray-400">CSV, Excel (.xlsx/.xls), or text-based PDF — see Required Data Fields above (Up to 15MB)</p>
                       </div>
                     )}
                   </label>

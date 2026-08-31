@@ -1,9 +1,25 @@
 /**
- * File Analyzer - Extracts metrics from uploaded CSV/Excel files
+ * File Analyzer - Extracts metrics from uploaded CSV/Excel/PDF files
  * Generates real data-driven insights for First Opinion diagnosis
  */
 
-import { validateDataForChallenges, CHALLENGE_DATA_REQUIREMENTS, getRequiredMetricsForChallenges } from './challengeDataRequirements';
+import * as XLSXLib from 'xlsx';
+import { validateDataForChallenges, CHALLENGE_DATA_REQUIREMENTS, CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges } from './challengeDataRequirements';
+
+// pdfjs-dist (~1.3MB with its worker) is only loaded on demand, the first
+// time a user actually uploads a PDF, instead of being pulled into every
+// page load for a feature most checkups won't use.
+let pdfjsModule: typeof import('pdfjs-dist') | null = null;
+async function getPdfjs() {
+  if (!pdfjsModule) {
+    const lib = await import('pdfjs-dist');
+    // @ts-ignore - Vite ?url import returns the built asset URL as a string
+    const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+    lib.GlobalWorkerOptions.workerSrc = workerUrl;
+    pdfjsModule = lib;
+  }
+  return pdfjsModule;
+}
 
 export interface ExtractedMetrics {
   fileType: string;
@@ -91,9 +107,10 @@ function parseCanonicalOperationalMetricsCSV(rows: string[][]): Record<string, n
   return metrics;
 }
 
-const ALL_KNOWN_FIELD_NAMES = new Set(
-  Object.values(CHALLENGE_DATA_REQUIREMENTS).flatMap(req => req.requiredMetrics.map(m => m.fieldName))
-);
+const ALL_KNOWN_FIELD_NAMES = new Set([
+  ...CORE_OPERATIONAL_METRICS.map(m => m.fieldName),
+  ...Object.values(CHALLENGE_DATA_REQUIREMENTS).flatMap(req => req.requiredMetrics.map(m => m.fieldName))
+]);
 
 export class FileAnalyzer {
   /**
@@ -101,14 +118,24 @@ export class FileAnalyzer {
    */
   static async analyzeFile(file: File): Promise<ExtractedMetrics> {
     const fileName = file.name.toLowerCase();
+    const extension = fileName.split('.').pop() || '';
+
+    if (extension === 'xlsx' || extension === 'xls') {
+      return this.analyzeSpreadsheetFile(file);
+    }
+    if (extension === 'pdf') {
+      return this.analyzePdfFile(file);
+    }
+
     const content = await this.readFile(file);
 
     // Check FIRST whether this is actually readable text at all. A genuine
-    // binary .xlsx/.docx/.pdf/image uploaded here would otherwise fall
-    // through every parser below and be reported as "0 fields found" -
-    // which looks exactly like a data-completeness problem when it is
-    // really a file-format problem, and misleads the user into thinking
-    // their real data is missing when the file was simply never readable.
+    // binary .docx/image (or a misnamed .xlsx/.pdf) uploaded here would
+    // otherwise fall through every parser below and be reported as
+    // "0 fields found" - which looks exactly like a data-completeness
+    // problem when it is really a file-format problem, and misleads the
+    // user into thinking their real data is missing when the file was
+    // simply never readable.
     const unreadableReason = detectUnreadableBinary(content);
     if (unreadableReason) {
       return {
@@ -124,24 +151,8 @@ export class FileAnalyzer {
     // Canonical Operational Metrics CSV takes priority over filename-based
     // guessing whenever present, since it gives exact, unambiguous field names.
     const rows = this.parseCSV(content);
-    if (isCanonicalOperationalMetricsCSV(rows)) {
-      const metricsFound = parseCanonicalOperationalMetricsCSV(rows);
-      const recognizedCount = Object.keys(metricsFound).filter(k => ALL_KNOWN_FIELD_NAMES.has(k)).length;
-      const unrecognizedCount = Object.keys(metricsFound).length - recognizedCount;
-      const insights = [
-        `Loaded ${Object.keys(metricsFound).length} operational metric field(s) from the uploaded file.`
-      ];
-      if (unrecognizedCount > 0) {
-        insights.push(`${unrecognizedCount} field(s) in the file did not match any known metric_field name and were ignored for validation.`);
-      }
-      return {
-        fileType: 'Operational Metrics (Canonical CSV)',
-        metricsFound,
-        insights,
-        affectedDomains: [],
-        confidence: recognizedCount > 0 ? 'HIGH' : 'LOW'
-      };
-    }
+    const canonicalResult = this.buildCanonicalResult(rows);
+    if (canonicalResult) return canonicalResult;
 
     // Detect file type and parse accordingly
     if (fileName.includes('attendance') || fileName.includes('register') || fileName.includes('roster')) {
@@ -196,6 +207,158 @@ export class FileAnalyzer {
       .split('\n')
       .filter(line => line.trim())
       .map(line => line.split(',').map(cell => cell.trim()));
+  }
+
+  /**
+   * If the given rows match the canonical "metric_field,value" format,
+   * build the ExtractedMetrics result for it. Returns null otherwise, so
+   * callers (CSV, Excel, PDF) can fall back to their own next step.
+   */
+  private static buildCanonicalResult(rows: string[][]): ExtractedMetrics | null {
+    if (!isCanonicalOperationalMetricsCSV(rows)) return null;
+    const metricsFound = parseCanonicalOperationalMetricsCSV(rows);
+    const recognizedCount = Object.keys(metricsFound).filter(k => ALL_KNOWN_FIELD_NAMES.has(k)).length;
+    const unrecognizedCount = Object.keys(metricsFound).length - recognizedCount;
+    const insights = [
+      `Loaded ${Object.keys(metricsFound).length} operational metric field(s) from the uploaded file.`
+    ];
+    if (unrecognizedCount > 0) {
+      insights.push(`${unrecognizedCount} field(s) in the file did not match any known metric_field name and were ignored for validation.`);
+    }
+    return {
+      fileType: 'Operational Metrics (Canonical CSV)',
+      metricsFound,
+      insights,
+      affectedDomains: [],
+      confidence: recognizedCount > 0 ? 'HIGH' : 'LOW'
+    };
+  }
+
+  /**
+   * Parse a real .xlsx/.xls file (binary, via SheetJS) for the canonical
+   * metric_field,value table in its first sheet.
+   */
+  private static async analyzeSpreadsheetFile(file: File): Promise<ExtractedMetrics> {
+    let rows: string[][];
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSXLib.read(buffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) throw new Error('No sheets found in this workbook.');
+      const sheet = workbook.Sheets[sheetName];
+      const raw = XLSXLib.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }) as unknown[][];
+      rows = raw.map(r => r.map(c => String(c ?? '').trim()));
+    } catch (error) {
+      const reason = `Could not open this Excel file (${error instanceof Error ? error.message : 'unknown error'}). It may be corrupted or password-protected.`;
+      return {
+        fileType: 'UNREADABLE_BINARY_FILE',
+        metricsFound: {},
+        insights: [reason],
+        affectedDomains: [],
+        confidence: 'LOW',
+        unreadableReason: reason
+      };
+    }
+
+    const canonicalResult = this.buildCanonicalResult(rows);
+    if (canonicalResult) return canonicalResult;
+
+    const reason =
+      `This Excel file was read successfully, but its first sheet does not have the required header ` +
+      `"metric_field" in column A and "value" in column B (with one data row per metric below it). ` +
+      `Add that header row and re-upload — see the "Required Data Fields" table above for the exact field names.`;
+    return {
+      fileType: 'UNREADABLE_BINARY_FILE',
+      metricsFound: {},
+      insights: [reason],
+      affectedDomains: [],
+      confidence: 'LOW',
+      unreadableReason: reason
+    };
+  }
+
+  /**
+   * Best-effort parse of a .pdf file (via pdfjs-dist text extraction) for
+   * the canonical metric_field,value table. This only works for text-based
+   * PDFs (e.g. exported from a spreadsheet or word processor) — a scanned
+   * image PDF has no extractable text and cannot be read this way.
+   */
+  private static async analyzePdfFile(file: File): Promise<ExtractedMetrics> {
+    let lines: string[];
+    try {
+      const buffer = await file.arrayBuffer();
+      const pdfjsLib = await getPdfjs();
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+      const pageLines: string[] = [];
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        // Group text items by their vertical position (y) into lines
+        const byLine = new Map<number, { x: number; str: string }[]>();
+        textContent.items.forEach((item: any) => {
+          const y = Math.round(item.transform[5]);
+          if (!byLine.has(y)) byLine.set(y, []);
+          byLine.get(y)!.push({ x: item.transform[4], str: item.str });
+        });
+        Array.from(byLine.entries())
+          .sort((a, b) => b[0] - a[0]) // top to bottom
+          .forEach(([, items]) => {
+            const line = items.sort((a, b) => a.x - b.x).map(i => i.str).join(' ').trim();
+            if (line) pageLines.push(line);
+          });
+      }
+      lines = pageLines;
+    } catch (error) {
+      const reason = `Could not read this PDF (${error instanceof Error ? error.message : 'unknown error'}). It may be corrupted, password-protected, or a scanned image with no extractable text.`;
+      return {
+        fileType: 'UNREADABLE_BINARY_FILE',
+        metricsFound: {},
+        insights: [reason],
+        affectedDomains: [],
+        confidence: 'LOW',
+        unreadableReason: reason
+      };
+    }
+
+    if (lines.length === 0) {
+      const reason = 'This PDF has no extractable text (likely a scanned image). Export or re-save it as a text-based PDF, or upload a CSV/Excel file instead.';
+      return {
+        fileType: 'UNREADABLE_BINARY_FILE',
+        metricsFound: {},
+        insights: [reason],
+        affectedDomains: [],
+        confidence: 'LOW',
+        unreadableReason: reason
+      };
+    }
+
+    // Each extracted line may separate "field,value" with a comma, colon,
+    // or run of whitespace/tabs, depending on how the source document laid
+    // out the table — try comma first (matches the CSV convention), then
+    // fall back to colon or whitespace splitting.
+    const rows: string[][] = lines.map(line => {
+      if (line.includes(',')) return line.split(',').map(c => c.trim());
+      if (line.includes(':')) return line.split(':').map(c => c.trim());
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 2) return [parts.slice(0, -1).join(' '), parts[parts.length - 1]];
+      return [line.trim()];
+    });
+
+    const canonicalResult = this.buildCanonicalResult(rows);
+    if (canonicalResult) return canonicalResult;
+
+    const reason =
+      `This PDF's text was read successfully, but no "metric_field, value" table could be found in it ` +
+      `(expected a line reading "metric_field, value" followed by one field/value pair per line). ` +
+      `PDF table extraction is best-effort — for reliable results, export the same data as a CSV or Excel file instead.`;
+    return {
+      fileType: 'UNREADABLE_BINARY_FILE',
+      metricsFound: {},
+      insights: [reason],
+      affectedDomains: [],
+      confidence: 'LOW',
+      unreadableReason: reason
+    };
   }
 
   /**
@@ -826,9 +989,11 @@ export function validateFileForChallenges(
   extractedMetrics: ExtractedMetrics,
   selectedChallengeIds: string[]
 ): ChallengeValidationResult {
-  // A genuinely unreadable (binary) upload is a FILE-FORMAT problem, not a
-  // data-completeness problem - report it as such instead of "every field
-  // is missing", which is technically true but misdiagnoses the real cause.
+  // A genuinely unreadable/malformed upload (wrong internal structure,
+  // corrupted file, scanned PDF with no text, etc.) is a FILE-FORMAT/
+  // STRUCTURE problem, not a data-completeness problem - report the
+  // specific diagnosed reason instead of "every field is missing", which
+  // is technically true but misdiagnoses the real cause.
   if (extractedMetrics.fileType === 'UNREADABLE_BINARY_FILE') {
     const requiredMetrics = getRequiredMetricsForChallenges(selectedChallengeIds)
       .map(m => ({
@@ -842,19 +1007,15 @@ export function validateFileForChallenges(
       missingMetrics: [],
       foundMetrics: [],
       recommendations: [
-        'Open the file and re-save/export it as a plain CSV (comma-separated values), not a native .xlsx/.docx/.pdf/image file.',
-        'In Excel: File → Save As → choose "CSV (Comma delimited) (*.csv)".',
-        'In Google Sheets: File → Download → "Comma Separated Values (.csv)".',
-        'Then re-upload the resulting .csv file — do not upload the original file again.'
+        'Supported formats: .csv, .xlsx, .xls, and text-based .pdf.',
+        'The file must contain a header "metric_field" / "value" (two columns) with one metric per row below it.',
+        'See the "Required Data Fields" table above for the exact field names and example values to use.'
       ],
       errorMessage:
-        `❌ FILE FORMAT NOT SUPPORTED — this is not a data problem, it's a file-format problem.\n\n` +
-        `${extractedMetrics.unreadableReason || 'The uploaded file could not be read as text.'}\n\n` +
-        `This app can only read plain CSV text files for operational data, not native Excel/Word/PDF/image files.\n\n` +
-        `HOW TO FIX:\n` +
-        `1. Open the file in Excel or Google Sheets.\n` +
-        `2. Use "Save As" / "Download" and choose CSV (Comma delimited) format.\n` +
-        `3. Re-upload the resulting .csv file.`,
+        `❌ COULD NOT READ THIS FILE — this is not a case of missing data values.\n\n` +
+        `${extractedMetrics.unreadableReason || 'The uploaded file could not be parsed.'}\n\n` +
+        `HOW TO FIX: Make sure the file is a .csv, .xlsx/.xls, or text-based .pdf with a "metric_field,value" ` +
+        `header and one field per row (see the Required Data Fields table above), then re-upload.`,
       challengesCovered: [],
       challengesUncovered: selectedChallengeIds,
       requiredMetrics
