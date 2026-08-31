@@ -15,7 +15,6 @@ import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerato
 import { saveCheckupToFirestore, subscribeToCheckupAnalysis } from '../lib/checkupService';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
-import { logAuditEvent } from '../lib/auditService';
 import {
   HeartPulse,
   HelpCircle,
@@ -381,7 +380,6 @@ const OUTCOMES: OutcomeItem[] = [
 ];
 
 export const FirstOpinionPage = () => {
-  console.log('🔴 FIRST OPINION ENGINE LOADED - This is the latest version');
   const { activeSchool } = useAppStore();
   const [user] = useAuthState(auth);
   const schoolId = activeSchool?.id || '';
@@ -467,8 +465,6 @@ export const FirstOpinionPage = () => {
 
   // Transform hardcoded screening questions data to component format
   const transformChallenges = (): ChallengeItem[] => {
-    console.log('🔄 transformChallenges: Processing', COMPLETE_SCREENING_QUESTIONS.length, 'challenges');
-
     return COMPLETE_SCREENING_QUESTIONS.map(challenge => ({
       id: challenge.id,
       category: challenge.category,
@@ -483,11 +479,6 @@ export const FirstOpinionPage = () => {
           value: opt.value,
           weight: opt.weight || 5 // Fallback to 5 if not defined
         })) || [];
-
-        if (optionsWithWeights.length > 0) {
-          console.log(`  Question ${q.id}: ${optionsWithWeights.length} options with weights`,
-            optionsWithWeights.map(o => `${o.value}=${o.weight}`).join(', '));
-        }
 
         return {
           id: q.id,
@@ -751,7 +742,6 @@ HOW TO USE IN DISHA:
         });
       }
     });
-    console.log('getRequiredQuestions returning:', req.length, 'questions with options');
     return req;
   };
 
@@ -977,15 +967,10 @@ HOW TO USE IN DISHA:
       setCheckupId(savedCheckupId);
       console.log('✓ Checkup saved to Firestore:', savedCheckupId);
 
-      // Log audit event for checkup submission
-      await logAuditEvent(
-        schoolId,
-        'CHECKUP_SUBMITTED',
-        'checkup',
-        savedCheckupId,
-        user.email || user.uid
-      );
-      console.log('✓ Audit logged for checkup submission');
+      // NOTE: saveCheckupToFirestore() (checkupService.ts) already logs a
+      // CHECKUP_SUBMITTED audit event internally - a second explicit call
+      // used to happen here, writing a duplicate audit log document for the
+      // exact same event on every single submission.
 
       // NOTE: the analyzeCheckup Cloud Function exists but is a callable
       // function (functions.https.onCall) - nothing in this app actually

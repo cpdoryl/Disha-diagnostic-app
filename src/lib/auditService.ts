@@ -46,9 +46,12 @@ export const logAuditEvent = async (
   try {
     const auditRef = doc(collection(db, 'schools', schoolId, 'auditLogs'));
 
-    // Get current user info if available
+    // Get current user info if available. Prefer the live signed-in user's
+    // real email; callers commonly pass a uid (Firebase Auth uid, not an
+    // email) as `userId`, which previously landed in userEmail too whenever
+    // it was truthy, showing a uid string where an email was expected.
     const currentUser = auth.currentUser;
-    const userEmail = userId || currentUser?.email || 'system';
+    const userEmail = currentUser?.email || userId || 'system';
 
     await setDoc(auditRef, {
       timestamp: serverTimestamp(),
