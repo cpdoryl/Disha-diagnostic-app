@@ -12,7 +12,7 @@ import FileAnalyzer, {
 import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGenerator';
 import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
 import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
-import { saveCheckupToFirestore, subscribeToCheckupAnalysis } from '../lib/checkupService';
+import { saveCheckupToFirestore, subscribeToCheckupAnalysis, updateCheckupStatus } from '../lib/checkupService';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
 import {
@@ -380,7 +380,7 @@ const OUTCOMES: OutcomeItem[] = [
 ];
 
 export const FirstOpinionPage = () => {
-  const { activeSchool } = useAppStore();
+  const { activeSchool, setCurrentView } = useAppStore();
   const [user] = useAuthState(auth);
   const schoolId = activeSchool?.id || '';
   
@@ -528,6 +528,7 @@ export const FirstOpinionPage = () => {
   const [isSubmittingToFirestore, setIsSubmittingToFirestore] = useState<boolean>(false);
   const [checkupId, setCheckupId] = useState<string | null>(null);
   const [firestoreCheckupData, setFirestoreCheckupData] = useState<any>(null);
+  const [isFinalizingReport, setIsFinalizingReport] = useState<boolean>(false);
 
   // Active Root Cause node
   const [activeRootNode, setActiveRootNode] = useState<string>('workload');
@@ -1100,6 +1101,26 @@ HOW TO USE IN DISHA:
     } finally {
       // Reset submit state after a delay
       setTimeout(() => setIsSubmittingToFirestore(false), 2000);
+    }
+  };
+
+  // "Report Complete" button: was a no-op (onClick={() => {}}) - marks the
+  // checkup PUBLISHED so it shows as finalized in the school's checkup
+  // history, then returns to the Dashboard.
+  const handleReportComplete = async () => {
+    if (isFinalizingReport) return;
+    setIsFinalizingReport(true);
+    try {
+      if (checkupId && schoolId && user) {
+        await updateCheckupStatus(schoolId, checkupId, 'PUBLISHED', user.uid);
+      }
+      setCurrentView('DASHBOARD');
+    } catch (error) {
+      console.error('Error finalizing report:', error);
+      const detail = error instanceof Error ? error.message : String(error);
+      setValidationError(`❌ Could not mark this report complete: ${detail}`);
+    } finally {
+      setIsFinalizingReport(false);
     }
   };
 
@@ -2609,11 +2630,12 @@ HOW TO USE IN DISHA:
               Back to Worries
             </button>
             <button
-              onClick={() => {/* Report generation complete */}}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm"
+              onClick={handleReportComplete}
+              disabled={isFinalizingReport}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm"
             >
               <CheckCircle2 className="w-4 h-4" />
-              Report Complete
+              {isFinalizingReport ? 'Finalizing...' : 'Report Complete'}
             </button>
           </div>
         </div>
