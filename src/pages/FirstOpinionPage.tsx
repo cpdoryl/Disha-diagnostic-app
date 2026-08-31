@@ -104,6 +104,25 @@ const CATEGORIES = [
   { id: 'operations', label: 'Operations & Finance', color: 'text-amber-600 bg-amber-50 border-amber-100', icon: Settings }
 ];
 
+// Short, distinct sub-copy for each challenge card (must never equal the label)
+const CHALLENGE_DESCRIPTIONS: Record<string, string> = {
+  enrollment_decline: 'New admissions trending flat or falling vs. prior years and peer schools.',
+  student_attrition: 'Existing students exiting mid-year to competitor schools or other reasons.',
+  fee_collection_challenges: 'Annual fee realization is below target, with rising dues and defaults.',
+  teacher_attrition: 'Teachers resigning faster than they can be hired, trained, and retained.',
+  staff_capability_gaps: 'Teaching quality or subject-matter depth lagging expected classroom standards.',
+  leadership_capability_gap: 'Middle-management and HOD decision-making inconsistent or slow to act.',
+  academic_quality_decline: 'Board exam results or academic outcomes slipping against past performance.',
+  student_wellbeing_issues: 'Rising signs of student stress, bullying, or emotional safety concerns.',
+  remedial_lag: 'Struggling students not catching up despite remedial or extra-help sessions.',
+  parent_communication_issues: 'Parent queries and complaints going unanswered or resolved too slowly.',
+  competitive_pressure: 'Nearby schools pulling ahead on admissions, pricing, or reputation.',
+  brand_reputation_issues: 'Negative reviews, word-of-mouth, or local perception hurting the brand.',
+  cost_inflation: 'Operating costs (staff, utilities, maintenance) rising faster than revenue.',
+  infrastructure_deficits: 'Classrooms, labs, or campus facilities falling short of expectations.',
+  compliance_regulatory_stress: 'Board affiliation, safety, or statutory compliance requirements at risk.',
+};
+
 // Loading will be done in component state
 
 interface OutcomeFactor {
@@ -442,7 +461,7 @@ export const FirstOpinionPage = () => {
       id: challenge.id,
       category: challenge.category,
       label: challenge.label,
-      description: challenge.label,
+      description: CHALLENGE_DESCRIPTIONS[challenge.id] || challenge.domain,
       probes: challenge.domain,
       dataRequired: challenge.metrics.join(', '),
       questions: challenge.questions.map(q => {
@@ -1631,10 +1650,22 @@ HOW TO USE IN DISHA:
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex items-center justify-end gap-3 pt-2">
+              {selectedChallenges.length < 3 && (
+                <span className="text-xs font-bold text-amber-600">
+                  Select {3 - selectedChallenges.length} more challenge{3 - selectedChallenges.length > 1 ? 's' : ''} ({selectedChallenges.length}/3)
+                </span>
+              )}
               <button
-                onClick={() => setStep(1)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-7 py-3.5 rounded-xl shadow-md transition-all flex items-center gap-2 shadow-[0_4px_14px_rgba(37,99,235,0.25)] hover:translate-x-0.5 text-sm"
+                onClick={() => selectedChallenges.length === 3 && setStep(1)}
+                disabled={selectedChallenges.length !== 3}
+                title={selectedChallenges.length !== 3 ? 'Select exactly 3 challenges to continue' : undefined}
+                className={cn(
+                  "text-white font-bold px-7 py-3.5 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm",
+                  selectedChallenges.length === 3
+                    ? "bg-blue-600 hover:bg-blue-700 shadow-[0_4px_14px_rgba(37,99,235,0.25)] hover:translate-x-0.5"
+                    : "bg-gray-300 cursor-not-allowed"
+                )}
               >
                 Assemble Diagnostic Screening
                 <ArrowRight className="w-4 h-4" />
