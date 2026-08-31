@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import JSZip from 'jszip';
 import { useAppStore } from '../store';
 import { DISHAScoreDashboard } from '../components/DISHAScoreDashboard';
@@ -57,6 +57,7 @@ import { db } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { COMPLETE_SCREENING_QUESTIONS } from '../data/screeningQuestionsData';
 import { CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges } from '../lib/challengeDataRequirements';
+import { computePerceptionGapReport, PerceptionGapEntry } from '../lib/challengeObjectiveScoring';
 import {
   Radar,
   RadarChart,
@@ -412,6 +413,15 @@ export const FirstOpinionPage = () => {
   const [extractedMetrics, setExtractedMetrics] = useState<ExtractedMetrics | null>(null);
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
   const [realInsights, setRealInsights] = useState<DataAnalysisResult | null>(null);
+
+  // Perception Gap: compares each selected challenge's self-reported severity
+  // (from the screening answers) against its objective severity (from the
+  // uploaded Operational Metrics CSV). Additive to the core Health Index —
+  // does not change the S_sub/M_obj/H formula itself.
+  const perceptionGapReport: PerceptionGapEntry[] = useMemo(
+    () => computePerceptionGapReport(selectedChallenges, answers, extractedMetrics?.metricsFound || {}),
+    [selectedChallenges, answers, extractedMetrics]
+  );
 
   // DISHA Score State
   const [dishaScore, setDISHAScore] = useState<DISHAScore | null>(null);
@@ -2172,6 +2182,45 @@ HOW TO USE IN DISHA:
           {dishaScore && (
             <>
               <DISHAScoreDashboard score={dishaScore} />
+
+              {/* PERCEPTION GAP ANALYSIS - per selected challenge */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  Perception Gap Analysis — Per Challenge
+                </h3>
+                <p className="text-xs text-gray-500 -mt-2">
+                  Compares what leadership self-reported for each selected challenge against the objective data uploaded for it (1 = best, 10 = worst on both sides).
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {perceptionGapReport.map(entry => {
+                    const verdictStyle: Record<string, string> = {
+                      ALIGNED: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+                      DELUSIONAL_COMFORT: 'bg-rose-50 border-rose-200 text-rose-800',
+                      HIDDEN_EXCELLENCE: 'bg-blue-50 border-blue-200 text-blue-800',
+                      CONFIRMED_CRISIS: 'bg-orange-50 border-orange-200 text-orange-800',
+                      INSUFFICIENT_DATA: 'bg-gray-50 border-gray-200 text-gray-600'
+                    };
+                    const verdictLabel: Record<string, string> = {
+                      ALIGNED: 'Aligned — perception matches reality',
+                      DELUSIONAL_COMFORT: '⚠ Delusional Comfort — worse than perceived',
+                      HIDDEN_EXCELLENCE: '✓ Hidden Excellence — better than perceived',
+                      CONFIRMED_CRISIS: 'Confirmed Crisis — both agree it is bad',
+                      INSUFFICIENT_DATA: 'Insufficient objective data uploaded'
+                    };
+                    return (
+                      <div key={entry.challengeKey} className={cn('p-4 rounded-xl border space-y-2', verdictStyle[entry.verdict])}>
+                        <p className="font-bold text-sm">{entry.challengeLabel}</p>
+                        <div className="flex justify-between text-xs font-semibold">
+                          <span>Self-reported: {entry.subjectiveWeight ?? '—'}/10</span>
+                          <span>Objective: {entry.objectiveWeight ?? '—'}/10</span>
+                        </div>
+                        <p className="text-[11px] font-bold">{verdictLabel[entry.verdict]}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
               {/* EXTRACTED METRICS & RECOMMENDATIONS */}
               {extractedMetrics && (

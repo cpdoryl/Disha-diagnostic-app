@@ -297,3 +297,96 @@ be meaningfully parsed into real metrics. Until real binary parsing is added
 (or the accepted-formats copy is corrected to say CSV/plain text only), use
 the canonical CSV format above for any test that needs the validation or
 DISHA Score to reflect real data.
+
+---
+
+## Addendum 2 (2026-08-31): Full 455-Combination Test Matrix & Perception Gap Engine
+
+### Full combination test data
+
+`15 choose 3 = 455` possible 3-challenge combinations exist. Every one now
+has a ready-to-upload Operational Metrics CSV in
+`USER_TESTING/first_opinion_testing_data/7_ALL_455_COMBINATIONS/`
+(`combo_001...csv` – `combo_455...csv`, plus `INDEX.csv` mapping combo
+number → filename → the 3 challenge names). Each file begins with a
+`# Challenge Combination: ...` comment line naming what it's for (the
+canonical CSV parser in `fileAnalyzer.ts` skips `#`-prefixed lines before
+locating the `metric_field,value` header, so this doesn't affect parsing).
+
+The rationale for why each of the 30 underlying metrics was chosen, and how
+combinations relate to each other (short answer: they're independent
+unions — see that document for the full explanation, including why we did
+**not** fabricate 455 different "combination-specific" relationships that
+don't exist in the code), is in
+`USER_TESTING/first_opinion_testing_data/DATA_SELECTION_RATIONALE.md`.
+
+### Perception Gap Analysis engine (new)
+
+Prior to this addendum, uploaded challenge-specific metrics were validated
+(is the data complete?) but never actually **used** anywhere in scoring or
+diagnosis — `DiagnosisGenerator.generateDataDrivenDiagnosis` only recognized
+the legacy heuristic `fileType`s (`'Attendance Register'`, `'Staff Data'`,
+etc.) and fell through to a generic Q&A-only diagnosis for the new canonical
+CSV format, silently discarding all the real uploaded values. This
+directly undercut the product's own core pitch (the landing page's
+"Perception Gap Detected" callout, and this document's own §4 Risk Quadrant
+section) — the mechanism that promise depends on didn't exist in code for
+the canonical upload path.
+
+Added `src/lib/challengeObjectiveScoring.ts`:
+- Converts each of the 30 canonical metrics into the same 1-10 severity
+  weight scale already used by `screeningQuestionsData.ts` survey answers
+  (15 of the 30 use bands copied verbatim from that challenge's own
+  question; the other 15 are documented analogous placeholders — see
+  `DATA_SELECTION_RATIONALE.md` §2 for which is which).
+- `computePerceptionGapReport()` compares, per selected challenge, the
+  self-reported severity against the objective severity, and classifies the
+  result using the same high/low split pattern `DISHAScoreCalculator.classifyRiskQuadrant`
+  already uses for S_sub/M_obj (adapted to this 1-10 scale, concern
+  threshold = 5): **Aligned**, **Delusional Comfort** (Blind-Spot Risk /
+  Positive Gap in this doc's §4 terms), **Hidden Excellence** (Reality
+  Better Than Perception / Negative Gap), or **Confirmed Crisis** (both
+  sides agree).
+- This is rendered as a new "Perception Gap Analysis" panel on the First
+  Opinion Report step, additive to the existing DISHA Score Dashboard. It
+  does **not** change the S_sub/M_obj/Health Index formula itself, which
+  remains driven only by the 4 Core Operational Levers as originally
+  specified above.
+
+**Bug caught and fixed during this build**, worth recording: the first
+version of this verdict logic used a gap-threshold check as the first
+branch and only then split by "which side is worse," which left the case
+"both sides agree it's fine, but the numeric gap between them is still >1.5"
+falling through to a mislabeled `CONFIRMED_CRISIS`. Verified via the
+combinatorial test in Addendum 2's testing report before this reached
+production; fixed by switching to a clean, non-overlapping 2×2 split
+(mirrors `classifyRiskQuadrant`'s own pattern) instead of a threshold-then-branch
+scheme. See `8_ENGINE_ACCURACY_TESTING/ENGINE_ACCURACY_AND_TESTING.md` for
+the full before/after test output.
+
+### Accuracy & testing
+
+**There is no valid "% accuracy" figure for this engine against real-world
+outcomes** — no historical dataset exists linking a completed First Opinion
+checkup to a later-confirmed real school outcome, so nothing exists to
+measure predictive accuracy against. Fabricating one would violate this
+project's explicit no-hallucination requirement. What was measured instead
+(full detail, full methodology, and the exact re-runnable script, in
+`USER_TESTING/first_opinion_testing_data/8_ENGINE_ACCURACY_TESTING/ENGINE_ACCURACY_AND_TESTING.md`):
+
+- **100%** of the 30 metric band definitions pass automated structural
+  validation (monotonic direction, valid range, no gaps in coverage).
+- **50%** (15/30) of metric bands are copied verbatim from a real survey
+  question's own weights; the other 50% are documented analogous
+  placeholders pending real-world calibration.
+- Across all 455 combinations with closely-matched self-reporting: **60%**
+  Aligned, 26.7% Confirmed Crisis, 13.3% Delusional Comfort, with an average
+  discretization gap of 0.49 points (max 1.5) — expected behavior given
+  discrete survey options vs. continuous uploaded data, not an error.
+- Adversarial test (leadership always self-reports the rosiest possible
+  answer): **100%** of the objectively-concerning challenge instances (546
+  of 546) were correctly flagged as Delusional Comfort — zero false
+  negatives in this scenario.
+- See that document's §5 for the concrete steps required to turn this into
+  a genuine, defensible accuracy percentage (primarily: real school outcome
+  data over multiple assessment cycles — there is no shortcut around this).
