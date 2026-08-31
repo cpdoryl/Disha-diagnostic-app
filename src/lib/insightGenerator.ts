@@ -6,6 +6,81 @@
 
 import { ParsedData } from './fileParser';
 import { ALL_14_DIMENSIONS, calculateObjectiveScore } from './objectiveDataCalculator';
+import { CORE_OPERATIONAL_METRICS, CHALLENGE_DATA_REQUIREMENTS, MetricRequirement } from './challengeDataRequirements';
+import { METRIC_BAND_DEFINITIONS, scoreRawValueToWeight } from './challengeObjectiveScoring';
+
+/**
+ * Lookup of every one of the 34 real canonical Operational Metrics CSV
+ * fields (4 Core Operational Levers + 30 challenge-specific fields across
+ * all 15 challenges) to its display metadata, so the generic scoring path
+ * below (see analyzeExtractedMetrics) can produce a real finding for
+ * whichever fields were actually uploaded, for any of the 455 possible
+ * 3-challenge combinations - not just the 12 legacy field names in
+ * metricBenchmarks below.
+ */
+const ALL_CANONICAL_METRIC_DEFS: Record<string, MetricRequirement> = (() => {
+  const map: Record<string, MetricRequirement> = {};
+  CORE_OPERATIONAL_METRICS.forEach((m) => { map[m.fieldName] = m; });
+  Object.values(CHALLENGE_DATA_REQUIREMENTS).forEach((req) => {
+    req.requiredMetrics.forEach((m) => { map[m.fieldName] = m; });
+  });
+  return map;
+})();
+
+/** Render a raw metric value with its unit for display (e.g. "78%", "24 hours", "28"). */
+function formatMetricValue(value: number, unit: string): string {
+  if (unit === 'percentage') return `${value}%`;
+  if (unit === 'number' || unit === 'ratio') return `${value}`;
+  return `${value} ${unit}`;
+}
+
+/**
+ * Derive a representative "acceptable" benchmark value for a
+ * METRIC_BAND_DEFINITIONS field, from the band data itself: the raw-value
+ * boundary at which the metric's own 1-10 severity weight crosses the same
+ * "concern" threshold (>5) used by the Perception Gap Analysis. Returns
+ * null if no such boundary exists (all bands the same side of the threshold).
+ */
+function getBenchmarkThreshold(fieldName: string): number | null {
+  const def = METRIC_BAND_DEFINITIONS[fieldName];
+  if (!def) return null;
+  const acceptableBands = def.bands.filter((b) => b.weight <= 5 && isFinite(b.max));
+  if (acceptableBands.length === 0) return null;
+  return def.higherIsBetter
+    ? acceptableBands[0].max
+    : acceptableBands[acceptableBands.length - 1].max;
+}
+
+function genericFinding(
+  displayName: string,
+  value: number,
+  unit: string,
+  status: 'exceeds' | 'meets' | 'below',
+  weight: number
+): string {
+  const shown = formatMetricValue(value, unit);
+  if (status === 'exceeds') {
+    return `${displayName} is at ${shown} - a strong, healthy result (severity ${weight}/10).`;
+  }
+  if (status === 'meets') {
+    return `${displayName} is at ${shown} - within an acceptable range but worth monitoring (severity ${weight}/10).`;
+  }
+  return `${displayName} is at ${shown} - a genuine concern flagged by the uploaded data (severity ${weight}/10).`;
+}
+
+function genericRecommendation(
+  displayName: string,
+  status: 'exceeds' | 'meets' | 'below',
+  description: string
+): string {
+  if (status === 'exceeds') {
+    return `${displayName} is performing well. Maintain current practices and document them as a replicable process.`;
+  }
+  if (status === 'meets') {
+    return `${displayName} is acceptable but has room to improve. ${description}.`;
+  }
+  return `${displayName} needs attention: ${description}. Treat this as a priority area based on the uploaded operational data.`;
+}
 
 export interface RealInsight {
   metric: string;
@@ -274,6 +349,18 @@ function analyzeExtractedMetrics(metrics: Record<string, number | string>) {
           return `${val}% dropout - concerning, implement intervention programs`;
         }
       }
+    },
+    'weekly_planning_hours': {
+      benchmark: 5,
+      name: 'Weekly Planning Time',
+      interpretation: (val, bench) => {
+        const gap = val - bench;
+        if (gap >= 0) {
+          return `${val}h/week planning time - meets recommended lesson-preparation time`;
+        } else {
+          return `${val}h/week - ${Math.abs(gap).toFixed(1)}h short of the recommended ${bench}h weekly planning time`;
+        }
+      }
     }
   };
 
@@ -315,7 +402,43 @@ function analyzeExtractedMetrics(metrics: Record<string, number | string>) {
 
       // Add to findings
       findings.push(`${benchmarkInfo.name}: ${interpretation}`);
+      return;
     }
+
+    // Generic path: any of the 30 real challenge-specific canonical fields
+    // (see METRIC_BAND_DEFINITIONS in challengeObjectiveScoring.ts) that
+    // aren't covered by the legacy metricBenchmarks map above. This is what
+    // makes Key Findings/Recommended Actions actually react to whichever of
+    // the 455 possible 3-challenge combinations was uploaded, instead of
+    // only ever discussing the 3 fields that happen to overlap with the old
+    // 12-field naming scheme.
+    const def = ALL_CANONICAL_METRIC_DEFS[key];
+    const weight = scoreRawValueToWeight(key, value as number | string);
+    if (!def || weight === null) return; // unrecognized or non-numeric field - skip silently, never fabricate
+
+    const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+    const bandDef = METRIC_BAND_DEFINITIONS[key];
+    const benchmark = getBenchmarkThreshold(key);
+    const status: 'exceeds' | 'meets' | 'below' = weight <= 2 ? 'exceeds' : weight <= 5 ? 'meets' : 'below';
+    const gap = benchmark === null
+      ? 0
+      : (bandDef.higherIsBetter ? numValue - benchmark : benchmark - numValue);
+
+    const finding = genericFinding(def.displayName, numValue, def.unit, status, weight);
+
+    insights.push({
+      metric: def.displayName,
+      currentValue: numValue,
+      benchmark: benchmark ?? numValue,
+      status,
+      gap: Math.abs(gap),
+      finding,
+      recommendation: genericRecommendation(def.displayName, status, def.description),
+      priority: determinePriority(status),
+      interpretation: status === 'exceeds' ? 'maintain' : 'improve'
+    });
+
+    findings.push(`${def.displayName}: ${finding}`);
   });
 
   // Generate action items from insights
@@ -386,7 +509,10 @@ function determinePriority(status: string): 'high' | 'medium' | 'low' {
  */
 function assessDataQuality(parsedData: ParsedData): DataAnalysisResult['dataQuality'] {
   const metricsFound = Object.keys(parsedData.extractedMetrics).length;
-  const metricsExpected = 12; // Average expected metrics per file
+  // A complete First Opinion checkup always uploads exactly 4 Core
+  // Operational Levers + 2 metrics per selected challenge x 3 challenges =
+  // 10 canonical fields (see CORE_OPERATIONAL_METRICS / CHALLENGE_DATA_REQUIREMENTS).
+  const metricsExpected = 10;
   const completeness = Math.round((metricsFound / metricsExpected) * 100);
 
   let reliability: 'high' | 'medium' | 'low';
