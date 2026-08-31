@@ -193,8 +193,6 @@ export function getScoreRecommendation(
  */
 function analyzeExtractedMetrics(metrics: Record<string, number | string>) {
   const insights: RealInsight[] = [];
-  const findings: string[] = [];
-  const actionItems: string[] = [];
 
   // Map of metric keys to benchmark values and interpretations
   const metricBenchmarks: Record<string, { benchmark: number; name: string; interpretation: (val: number, bench: number) => string }> = {
@@ -399,9 +397,6 @@ function analyzeExtractedMetrics(metrics: Record<string, number | string>) {
         priority: determinePriority(status),
         interpretation: scoreInterpretation
       });
-
-      // Add to findings
-      findings.push(`${benchmarkInfo.name}: ${interpretation}`);
       return;
     }
 
@@ -437,22 +432,29 @@ function analyzeExtractedMetrics(metrics: Record<string, number | string>) {
       priority: determinePriority(status),
       interpretation: status === 'exceeds' ? 'maintain' : 'improve'
     });
-
-    findings.push(`${def.displayName}: ${finding}`);
   });
 
-  // Generate action items from insights
-  insights.forEach((insight) => {
-    if (insight.priority === 'high') {
-      actionItems.push(
-        `URGENT: ${insight.metric} - ${insight.recommendation}`
-      );
-    } else if (insight.priority === 'medium') {
-      actionItems.push(
-        `Important: ${insight.metric} - ${insight.recommendation}`
-      );
-    }
+  // Findings and action items are ranked by priority (and, within the same
+  // priority, by how far off benchmark the metric is) rather than the raw
+  // object key order metrics happened to be inserted in. Without this, the
+  // 4 Core Operational Levers - always the first 4 keys in every uploaded
+  // metrics object - permanently occupied 4 of the "Top 5" findings slots
+  // for every one of the 455 possible challenge combinations, regardless of
+  // severity, crowding out the challenge-specific metrics the school
+  // actually selected these 3 worries to investigate.
+  const priorityRank: Record<RealInsight['priority'], number> = { high: 0, medium: 1, low: 2 };
+  const ranked = [...insights].sort((a, b) => {
+    const byPriority = priorityRank[a.priority] - priorityRank[b.priority];
+    if (byPriority !== 0) return byPriority;
+    return b.gap - a.gap;
   });
+
+  const findings = ranked.map((insight) => `${insight.metric}: ${insight.finding}`);
+  const actionItems = ranked
+    .filter((insight) => insight.priority === 'high' || insight.priority === 'medium')
+    .map((insight) => insight.priority === 'high'
+      ? `URGENT: ${insight.metric} - ${insight.recommendation}`
+      : `Important: ${insight.metric} - ${insight.recommendation}`);
 
   return {
     insights,
