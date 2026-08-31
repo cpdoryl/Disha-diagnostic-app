@@ -3,7 +3,7 @@
  * Generates real data-driven insights for First Opinion diagnosis
  */
 
-import { validateDataForChallenges } from './challengeDataRequirements';
+import { validateDataForChallenges, CHALLENGE_DATA_REQUIREMENTS } from './challengeDataRequirements';
 
 export interface ExtractedMetrics {
   fileType: string;
@@ -13,6 +13,36 @@ export interface ExtractedMetrics {
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
+/**
+ * Canonical "Operational Metrics CSV" format: a simple two-column CSV,
+ * header "metric_field,value", one row per metric, using the exact
+ * fieldName keys from challengeDataRequirements.ts. This is the only format
+ * this app can reliably validate against per-challenge requirements, since
+ * it uses exact field names instead of guessing from free-form documents.
+ */
+function isCanonicalOperationalMetricsCSV(rows: string[][]): boolean {
+  if (rows.length === 0) return false;
+  const header = rows[0].map(c => c.trim().toLowerCase());
+  return header.length >= 2 && header[0] === 'metric_field' && header[1] === 'value';
+}
+
+function parseCanonicalOperationalMetricsCSV(rows: string[][]): Record<string, number | string> {
+  const metrics: Record<string, number | string> = {};
+  for (let i = 1; i < rows.length; i++) {
+    const [fieldName, rawValue] = rows[i];
+    if (!fieldName) continue;
+    const key = fieldName.trim();
+    const value = (rawValue ?? '').trim();
+    const numeric = Number(value);
+    metrics[key] = value !== '' && !isNaN(numeric) ? numeric : value;
+  }
+  return metrics;
+}
+
+const ALL_KNOWN_FIELD_NAMES = new Set(
+  Object.values(CHALLENGE_DATA_REQUIREMENTS).flatMap(req => req.requiredMetrics.map(m => m.fieldName))
+);
+
 export class FileAnalyzer {
   /**
    * Analyze uploaded file and extract metrics
@@ -20,6 +50,28 @@ export class FileAnalyzer {
   static async analyzeFile(file: File): Promise<ExtractedMetrics> {
     const fileName = file.name.toLowerCase();
     const content = await this.readFile(file);
+
+    // Canonical Operational Metrics CSV takes priority over filename-based
+    // guessing whenever present, since it gives exact, unambiguous field names.
+    const rows = this.parseCSV(content);
+    if (isCanonicalOperationalMetricsCSV(rows)) {
+      const metricsFound = parseCanonicalOperationalMetricsCSV(rows);
+      const recognizedCount = Object.keys(metricsFound).filter(k => ALL_KNOWN_FIELD_NAMES.has(k)).length;
+      const unrecognizedCount = Object.keys(metricsFound).length - recognizedCount;
+      const insights = [
+        `Loaded ${Object.keys(metricsFound).length} operational metric field(s) from the uploaded file.`
+      ];
+      if (unrecognizedCount > 0) {
+        insights.push(`${unrecognizedCount} field(s) in the file did not match any known metric_field name and were ignored for validation.`);
+      }
+      return {
+        fileType: 'Operational Metrics (Canonical CSV)',
+        metricsFound,
+        insights,
+        affectedDomains: [],
+        confidence: recognizedCount > 0 ? 'HIGH' : 'LOW'
+      };
+    }
 
     // Detect file type and parse accordingly
     if (fileName.includes('attendance') || fileName.includes('register') || fileName.includes('roster')) {
@@ -626,6 +678,11 @@ export interface ChallengeValidationResult {
   errorMessage: string;
   challengesCovered: string[];
   challengesUncovered: string[];
+  requiredMetrics: Array<{
+    fieldName: string;
+    description: string;
+    example: string;
+  }>;
 }
 
 /**
@@ -709,7 +766,8 @@ export function validateFileForChallenges(
       recommendations: [],
       errorMessage: '',
       challengesCovered: [],
-      challengesUncovered: []
+      challengesUncovered: [],
+      requiredMetrics: []
     };
   }
 
@@ -727,6 +785,12 @@ export function validateFileForChallenges(
     challengesUncovered.push(...selectedChallengeIds);
   }
 
+  const requiredMetrics = validation.requiredMetrics.map(m => ({
+    fieldName: m.fieldName,
+    description: `${m.displayName} (${m.unit})`,
+    example: m.example
+  }));
+
   return {
     isValid: validation.isValid,
     completeness: validation.completeness,
@@ -740,7 +804,8 @@ export function validateFileForChallenges(
         `To analyze ALL selected challenges, your file must include:\n\n` +
         `${validation.recommendations.join('\n')}`,
     challengesCovered: validation.isValid ? challengesCovered : [],
-    challengesUncovered: validation.isValid ? [] : selectedChallengeIds
+    challengesUncovered: validation.isValid ? [] : selectedChallengeIds,
+    requiredMetrics
   };
 }
 

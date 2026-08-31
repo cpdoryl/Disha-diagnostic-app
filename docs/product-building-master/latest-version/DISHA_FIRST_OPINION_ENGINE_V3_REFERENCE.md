@@ -207,3 +207,93 @@ Gap = S_sub - M_obj (scaled to 0-100 range)
 
 **CPDO Implementation Status:** Document archived and indexed for all future development.
 **Next Step:** Execute Phase 1 implementation (database + core engine).
+
+---
+
+## Addendum (2026-08-31): Operational Data Upload & Validation — As Implemented
+
+This addendum documents the **actual, verified behavior of the deployed
+Screening Intake file-upload step** (`src/pages/FirstOpinionPage.tsx`,
+`src/lib/fileAnalyzer.ts`, `src/lib/challengeDataRequirements.ts`), found and
+fixed during live QA testing. It supersedes any prior format documentation
+for this specific feature — in particular, `USER_TESTING/first_opinion_testing_data/5_DATA_FORMATS/`
+describes a CSV/JSON/XLSX/ZIP/Firestore-import system (8 named multipliers,
+15-record challenge-response JSON, Excel workbooks) that was **never actually
+implemented** in the live upload box. Do not use that folder as a reference
+for this feature; use `USER_TESTING/first_opinion_testing_data/6_OPERATIONAL_METRICS_CSV/`
+instead, which matches the real code.
+
+### Bugs found and fixed (2026-08-31)
+
+1. **Challenge-ID taxonomy mismatch.** `challengeDataRequirements.ts` keyed
+   its 15 entries by strings like `C3_STAFF_TURNOVER`, `C4_ACADEMIC_PERFORMANCE`,
+   describing challenges that do not correspond 1:1 with the real 15-challenge
+   question bank in `screeningQuestionsData.ts` (which is what
+   `selectedChallenges` actually contains, e.g. `enrollment_decline`,
+   `teacher_attrition`). Past `C2`, the two challenge lists diverge entirely.
+   Because of this, per-challenge metric lookups always missed, and
+   `validateFileForChallenges` silently returned `isValid: true` with 0%
+   completeness for every upload, regardless of content. **Fixed:**
+   `challengeDataRequirements.ts` is now keyed by the exact same ids as
+   `screeningQuestionsData.ts`, with 2 required metrics per challenge derived
+   directly from that file's own `metrics` array (so the objective data
+   requested always matches the metric named in that challenge's own
+   questions).
+2. **No real upload format existed.** `FileAnalyzer.analyzeFile` only
+   guessed file type from the filename (e.g. "attendance", "staff", "fee")
+   and parsed loosely with regexes — there was no way to reliably supply
+   exact values for arbitrary metric fields, and it could never actually
+   satisfy the (broken) per-challenge validation above even if fixed.
+   **Fixed:** added a canonical **Operational Metrics CSV** format — a
+   2-column CSV, header `metric_field,value`, one row per metric, using the
+   exact `fieldName`s from `challengeDataRequirements.ts`. This format is
+   detected before any filename-based guessing and produces exact,
+   unambiguous key/value metrics.
+3. **Missing-fields UI would never render its list.** The "Data INCOMPLETE"
+   panel filtered `missingMetrics` (formatted strings like `"❌ Board Exam
+   Pass Rate (board_exam_pass_rate_pct)"`) with `Array.includes(fieldName)`,
+   which requires exact equality and therefore never matched. **Fixed** to
+   use a substring check (`missingMetrics.some(mm => mm.includes(fieldName))`).
+4. **No visibility into what data was actually required.** The upload box
+   said only "attendance, fee collection, staff records, academic results,
+   etc." with no field-level specification, and — since the challenge
+   combination changes every run — a fixed static list would have been
+   wrong for most combinations anyway. **Fixed:** the Screening Intake page
+   now renders a live "Required Data Fields for This Checkup" panel, split
+   into the 4 Core Operational Levers (required on every checkup) and the
+   challenge-specific fields computed dynamically from whichever 3
+   challenges are currently selected.
+
+### Canonical Operational Metrics CSV format
+
+```csv
+metric_field,value
+students_per_classroom,28
+parent_query_response_sla_hours,24
+annual_training_hours,20
+weekly_planning_hours,4
+teacher_turnover_rate_pct,22
+avg_teacher_tenure_years,3.5
+```
+
+- **4 Core Operational Levers** (`CORE_OPERATIONAL_METRICS` in
+  `challengeDataRequirements.ts`) are required on every checkup regardless of
+  challenge selection: `students_per_classroom`, `parent_query_response_sla_hours`,
+  `annual_training_hours`, `weekly_planning_hours`. These directly feed the
+  DISHA Health Score's objective multiplier calculation.
+- **2 challenge-specific fields per challenge** (30 fields across all 15
+  challenges) are additionally required for whichever 3 challenges the user
+  selected on Step 1 — see `USER_TESTING/first_opinion_testing_data/6_OPERATIONAL_METRICS_CSV/README.md`
+  for the full field catalogue and example sample files covering 5
+  representative 3-challenge combinations plus one master file containing
+  all 34 fields (valid for any of the 455 possible 3-challenge combinations).
+
+### Known remaining gap (not yet fixed)
+
+The upload box's copy still advertises "PDF, XLS, DOC, or Phone Camera JPG"
+as accepted formats, but `FileAnalyzer` only ever reads the file as plain
+text (`FileReader.readAsText`) — a genuine binary PDF/XLS/JPG upload will not
+be meaningfully parsed into real metrics. Until real binary parsing is added
+(or the accepted-formats copy is corrected to say CSV/plain text only), use
+the canonical CSV format above for any test that needs the validation or
+DISHA Score to reflect real data.

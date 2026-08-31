@@ -56,6 +56,7 @@ import { collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { COMPLETE_SCREENING_QUESTIONS } from '../data/screeningQuestionsData';
+import { CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges } from '../lib/challengeDataRequirements';
 import {
   Radar,
   RadarChart,
@@ -1902,6 +1903,67 @@ HOW TO USE IN DISHA:
                 })}
               </div>
 
+              {/* Required Data Fields - computed live from the 3 selected challenges */}
+              <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/40 space-y-4">
+                <h4 className="font-extrabold text-xs text-indigo-900 uppercase tracking-widest flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                  Required Data Fields for This Checkup
+                </h4>
+                <p className="text-[11px] text-indigo-800/80 font-medium -mt-2">
+                  Upload a CSV with two columns, header <code className="bg-white px-1 py-0.5 rounded border border-indigo-200 font-mono">metric_field,value</code>, containing one row per field below. The challenge-specific fields change based on which 3 challenges you selected — a different combination needs different data.
+                </p>
+
+                <div>
+                  <p className="text-[11px] font-black text-indigo-700 uppercase tracking-wider mb-1.5">Core Operational Levers (always required)</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[11px] text-left border-collapse">
+                      <thead>
+                        <tr className="text-slate-500 border-b border-indigo-100">
+                          <th className="py-1 pr-3 font-bold">metric_field</th>
+                          <th className="py-1 pr-3 font-bold">What it is</th>
+                          <th className="py-1 font-bold">Example value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {CORE_OPERATIONAL_METRICS.map(m => (
+                          <tr key={m.fieldName} className="border-b border-indigo-50">
+                            <td className="py-1 pr-3 font-mono text-indigo-700">{m.fieldName}</td>
+                            <td className="py-1 pr-3 text-gray-700">{m.displayName} ({m.unit})</td>
+                            <td className="py-1 text-gray-500">{m.example}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-black text-indigo-700 uppercase tracking-wider mb-1.5">
+                    Challenge-Specific Metrics (based on your 3 selected challenges)
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[11px] text-left border-collapse">
+                      <thead>
+                        <tr className="text-slate-500 border-b border-indigo-100">
+                          <th className="py-1 pr-3 font-bold">metric_field</th>
+                          <th className="py-1 pr-3 font-bold">What it is</th>
+                          <th className="py-1 font-bold">Example value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getRequiredMetricsForChallenges(selectedChallenges).map(m => (
+                          <tr key={m.fieldName} className="border-b border-indigo-50">
+                            <td className="py-1 pr-3 font-mono text-indigo-700">{m.fieldName}</td>
+                            <td className="py-1 pr-3 text-gray-700">{m.displayName} ({m.unit})</td>
+                            <td className="py-1 text-gray-500">{m.example}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
               {/* Supporting Document Upload */}
               <div id="file-upload-container" className={`pt-4 border-t-2 space-y-4 ${!uploadedFile ? 'border-rose-300 bg-rose-50/30 p-4 rounded-lg' : 'border-gray-100'}`}>
                 <div>
@@ -1978,7 +2040,7 @@ HOW TO USE IN DISHA:
                                   )}
                                   <p className="text-xs font-semibold text-rose-900 mt-2">Missing:</p>
                                   {fileValidation.requiredMetrics
-                                    .filter(r => fileValidation.missingMetrics.includes(r.fieldName))
+                                    .filter(r => fileValidation.missingMetrics.some(mm => mm.includes(r.fieldName)))
                                     .map((missing, idx) => (
                                       <p key={idx} className="text-xs text-rose-700 ml-2">
                                         • {missing.description}<br/>
