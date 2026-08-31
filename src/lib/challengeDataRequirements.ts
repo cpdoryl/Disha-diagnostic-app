@@ -27,6 +27,36 @@ export interface MetricRequirement {
 }
 
 /**
+ * RTE Act 2009 Schedule - the core physical-infrastructure norms and
+ * standards a recognized school is expected to meet. This is the widely-used
+ * checklist referenced by state RTE recognition/compliance forms (individual
+ * states sometimes add 1-2 local items - a school should defer to its own
+ * state's RTE recognition checklist where it differs from this list).
+ *
+ * infrastructure_quality_score_pct (see infrastructure_deficits below) is
+ * defined as:
+ *   (number of these norms currently met / RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length) * 100
+ * This replaces what was previously an unexplained, self-rated percentage
+ * (see DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md Addendum 3) with a real,
+ * externally-grounded, and independently auditable calculation - any two
+ * people who walk the same campus with this checklist should reach the same
+ * number, which was not true of the old "how good is your infrastructure,
+ * 1-100" framing.
+ */
+export const RTE_INFRASTRUCTURE_NORMS_CHECKLIST: string[] = [
+  'All-weather school building with safe construction',
+  'One classroom per teacher (adequate classrooms for the Pupil-Teacher Ratio)',
+  "An office-cum-store-cum-Head Teacher's room",
+  'Separate toilets for boys and girls',
+  'Safe drinking water facility for every child',
+  'A kitchen for cooking mid-day meal (where the scheme applies to the school)',
+  'A playground',
+  'A library with newspapers, magazines, and story books',
+  'Barrier-free (ramp) access for Children With Special Needs (CWSN)',
+  'Boundary wall/fencing for school safety and security'
+];
+
+/**
  * The 4 CORE operational levers that feed the DISHA Health Score itself
  * (see DISHAScoreCalculator / OperationalMetrics). These are required on
  * EVERY First Opinion checkup regardless of which 3 challenges are selected
@@ -472,9 +502,9 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
       {
         fieldName: 'infrastructure_quality_score_pct',
         displayName: 'Infrastructure Quality Score',
-        description: 'Composite score of classroom, lab and campus facility quality',
+        description: `RTE Act 2009 Schedule compliance rate: count how many of the ${RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length} core infrastructure norms the campus currently meets (all-weather building, adequate classrooms, separate toilets, drinking water, mid-day meal kitchen, playground, library, CWSN ramp access, boundary wall, etc. - see RTE_INFRASTRUCTURE_NORMS_CHECKLIST) and enter (norms met / ${RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length}) x 100. This is a checklist count, not a subjective self-rating.`,
         unit: 'percentage',
-        example: '58',
+        example: '70', // 7 of 10 RTE norms met
         mandatory: true,
         dataType: 'percentage'
       },

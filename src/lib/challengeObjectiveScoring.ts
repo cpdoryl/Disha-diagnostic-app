@@ -163,7 +163,9 @@ export const METRIC_BAND_DEFINITIONS: Record<string, MetricBandDefinition> = {
   },
   // --- infrastructure_deficits ---
   infrastructure_quality_score_pct: {
-    fieldName: 'infrastructure_quality_score_pct', higherIsBetter: true, bandSource: 'authored (q14_1 is a qualitative descriptive scale)', authored: true,
+    fieldName: 'infrastructure_quality_score_pct', higherIsBetter: true,
+    bandSource: 'input redefined 2026-08-31 as an RTE Act 2009 Schedule checklist compliance rate (see RTE_INFRASTRUCTURE_NORMS_CHECKLIST in challengeDataRequirements.ts) - the raw value is now externally grounded and independently auditable, not self-rated. The 25/50/75/90 grading thresholds below remain a product judgment (banded like other satisfaction %), since RTE publishes the norms themselves but not quality-grade cutoffs for how many of them "should" be met.',
+    authored: true,
     bands: [{ max: 25, weight: 10 }, { max: 50, weight: 7 }, { max: 75, weight: 4 }, { max: 90, weight: 2 }, { max: Infinity, weight: 1 }]
   },
   maintenance_backlog_inr: {

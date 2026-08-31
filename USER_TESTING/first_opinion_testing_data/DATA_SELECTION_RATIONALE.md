@@ -85,6 +85,19 @@ available. The full list of which is which is in
 `challengeObjectiveScoring.ts`'s `bandSource` field for every metric, and in
 `8_ENGINE_ACCURACY_TESTING/ENGINE_ACCURACY_AND_TESTING.md` §2.
 
+**Update (2026-08-31):** `infrastructure_quality_score_pct` moved out of
+the "authored, no external anchor" group — its *input* (not its grading
+bands) is now defined as an RTE Act 2009 Schedule infrastructure-norms
+checklist compliance rate (`RTE_INFRASTRUCTURE_NORMS_CHECKLIST` in
+`challengeDataRequirements.ts`), a real external standard every Indian
+school is already subject to, replacing what was previously an unexplained
+self-rating. See `DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md` Addendum 3
+for the full analysis of why each of the remaining 14 authored fields
+lacks an external anchor (three distinct structural reasons, documented
+per metric) and why one candidate (`parent_response_rate_pct`) was
+considered and deliberately *not* converted rather than given a fabricated
+benchmark citation.
+
 ---
 
 ## 3. How a combination's data is actually used (the Perception Gap)

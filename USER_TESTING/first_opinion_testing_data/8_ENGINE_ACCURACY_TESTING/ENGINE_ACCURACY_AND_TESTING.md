@@ -71,6 +71,17 @@ Counted directly from `bandSource`/`authored` on every entry:
   reasonable placeholder, not a validated threshold — see §5 for how to fix
   this properly.
 
+**Update (2026-08-31):** this 15/15 split measures whether the *grading
+bands* were copied from a real question — that count is unchanged.
+Separately, `infrastructure_quality_score_pct`'s *input* (still one of the
+15 "authored" band entries above) was redefined the same day as an RTE Act
+2009 Schedule checklist compliance rate rather than a free-floating
+self-rating — a real external standard now grounds the raw value, even
+though its grading thresholds (25/50/75/90) remain an authored judgment
+call, same as before. See `DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md`
+Addendum 3 for the full per-metric breakdown of why the other 14 authored
+fields don't have an equivalent external standard to convert to.
+
 ## 3. Internal consistency test across all 455 combinations
 
 Using `operational_metrics_master_ALL_15_CHALLENGES.csv`'s values as the

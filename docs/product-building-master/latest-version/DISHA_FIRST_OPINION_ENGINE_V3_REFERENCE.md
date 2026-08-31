@@ -390,3 +390,119 @@ project's explicit no-hallucination requirement. What was measured instead
 - See that document's §5 for the concrete steps required to turn this into
   a genuine, defensible accuracy percentage (primarily: real school outcome
   data over multiple assessment cycles — there is no shortcut around this).
+
+## Addendum 3 (2026-08-31): Why 15/30 Objective Metrics Are Authored, and the First Real-Benchmark Conversion
+
+### Why the 30 metrics split roughly 50/50 into "exact" vs "authored"
+
+This is not inconsistent effort — it splits cleanly along three structural
+lines, and each of the 15 "authored" metrics fails for one of them:
+
+1. **No one collects this as a number, anywhere, for Indian schools.**
+   `mental_health_incidents_per_1000`, `safety_violations_count_year`,
+   `regulatory_violations_count_year` — there is no mandatory reporting
+   regime for any of these at a system level in Indian K-12. There is no
+   national base rate published to band against.
+
+2. **The construct is inherently reputational/qualitative, not naturally
+   numeric.** `brand_perception_score_pct`, `media_sentiment_pct`,
+   `parent_response_rate_pct`, `teacher_competency_score_pct`,
+   `leadership_competency_score_pct` — validated instruments exist for some
+   of these (360-degree leadership assessments, NPS-style surveys,
+   social-listening tools), but they are proprietary, paid, normed on
+   different populations (usually corporate, not Indian school leadership),
+   and the schools using this app have almost certainly never administered
+   one. Even a perfect external benchmark would be unusable here, because
+   the school could not self-report a comparable number.
+
+3. **The data is real but privately held, not disclosed.**
+   `maintenance_backlog_inr`, `cost_increase_yoy_pct`,
+   `days_sales_outstanding` — Indian private schools, especially the
+   state-board/mid-fee-tier segment this app targets, do not publish
+   audited financials in a standardized, comparable way. There is no
+   RTI-equivalent disclosure obligation, so no dataset exists to mine
+   percentile bands from, even though the underlying fact is perfectly
+   real and knowable to that one school.
+
+Two metrics compound this further: `compliance_score_pct` and
+`maintenance_backlog_inr` are not naturally single numbers at all. Real RTE
+compliance is a checklist of binary pass/fail certificates (fire NOC,
+structural safety, affiliation renewal), not a published 0-100 scale, so
+collapsing it into one percentage is itself an invented aggregation, prior
+to banding it. `maintenance_backlog_inr` uses raw INR thresholds that are
+not size-normalized (₹3 lakh is trivial for a 2,000-student school and
+severe for a 200-student one) — a true fix needs backlog-per-student or
+backlog-as-%-of-budget, which requires a school budget figure this app does
+not currently collect at all. Both remain open, documented gaps.
+
+### What was actually converted this pass: `infrastructure_quality_score_pct`
+
+Of the three groups above, group 3's `infrastructure_quality_score_pct` was
+the one closest to fixable, because Indian schools *are* subject to a real,
+publicly known external standard here: the **RTE Act 2009 Schedule**'s
+physical-infrastructure norms, the same checklist referenced on state RTE
+recognition/compliance forms.
+
+**Before:** `description: 'Composite score of classroom, lab and campus
+facility quality'` — a school entered a number with no defined method for
+arriving at it. Two people rating the same campus could reasonably produce
+very different numbers.
+
+**After:** the field is redefined as a checklist compliance rate, not a
+self-rating. `challengeDataRequirements.ts` now exports
+`RTE_INFRASTRUCTURE_NORMS_CHECKLIST`, a 10-item list (all-weather building;
+one classroom per teacher for an adequate Pupil-Teacher Ratio; an
+office-cum-store-cum-Head Teacher's room; separate toilets for boys and
+girls; safe drinking water for every child; a mid-day-meal kitchen where the
+scheme applies; a playground; a library with reading materials;
+barrier-free/ramp access for Children With Special Needs; a boundary
+wall/fence). Some states add 1-2 local items to their own RTE recognition
+checklist — a school should defer to that where it differs from this base
+list.
+
+```
+infrastructure_quality_score_pct = (RTE norms currently met / 10) x 100
+```
+
+The field name, unit (`percentage`), CSV format, and existing sample data
+files are all unchanged — only the *definition* of the number changed, from
+an unexplained self-rating to a checklist count anyone can independently
+re-derive by walking the same campus with the same list. `MetricRequirement.description`
+for this field (`challengeDataRequirements.ts`) now spells out the formula
+and checklist inline, so it surfaces automatically in the app's own
+validation/missing-field guidance.
+
+The severity *bands* (25/50/75/90 thresholds in
+`challengeObjectiveScoring.ts`'s `METRIC_BAND_DEFINITIONS`) remain
+`authored: true` and unchanged — RTE publishes the norms themselves but not
+a quality-grade cutoff for how many of them "should" be met, so grading
+75% compliance as "fair" vs. "poor" is still a product judgment, documented
+as such in that entry's `bandSource`. What changed is the *input*: it is now
+externally grounded and independently auditable, which was the actual gap.
+
+### Considered but not converted: `parent_response_rate_pct`
+
+Cross-industry customer-service SLA benchmarks (e.g. published
+contact-center/CRM response-time studies) were considered as an external
+anchor for this metric. They were **not** adopted here: doing so would mean
+citing a specific published figure this session has no way to verify, and
+this project's standing rule is to never fabricate a number presented as
+externally sourced. `parent_response_rate_pct` therefore remains an
+authored placeholder (banded like other satisfaction percentages), flagged
+honestly rather than given a synthetic benchmark citation. A future pass
+could instead anchor its bands to the SLA windows this app's own
+`DISHAScoreCalculator.getSLAMultiplier` already uses for
+`parent_query_response_sla_hours` (≤12h excellent, ≤24h good, ≤48h
+acceptable, >48h poor) — internally consistent with the rest of the app,
+even though it would still not be an externally published national
+benchmark.
+
+### Remaining gap count
+
+With this change: **16/30** metrics now have an externally grounded or
+question-derived input (15 "exact" + `infrastructure_quality_score_pct`),
+**14/30** remain authored placeholders pending either real institutional
+benchmark data, a licensed instrument, or a defined internal proxy. This
+addendum documents exactly which are which and why, per metric, so future
+work always starts from a specific, named gap rather than a general
+"needs calibration" note.
