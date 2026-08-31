@@ -72,7 +72,7 @@ filename-based routing. It is validated against:
    | cost_inflation | `operating_margin_pct` | 6 |
    | infrastructure_deficits | `infrastructure_quality_score_pct` | 70 (= 7 of 10 RTE Schedule norms met, see below) |
    | infrastructure_deficits | `maintenance_backlog_inr` | 850000 |
-   | compliance_regulatory_stress | `compliance_score_pct` | 80 |
+   | compliance_regulatory_stress | `compliance_score_pct` | 75 (= 6 of 8 core compliance domains met, see below) |
    | compliance_regulatory_stress | `regulatory_violations_count_year` | 1 |
 
 The app itself now shows this same table live, filtered to whichever 3
@@ -89,6 +89,18 @@ infrastructure norms (`RTE_INFRASTRUCTURE_NORMS_CHECKLIST` in
 `challengeDataRequirements.ts`), not a free-floating self-rating — compute
 it as `(norms met / 10) x 100`, so only multiples of 10 are meaningful
 values. See `DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md` Addendum 3.
+
+**Note on `compliance_score_pct` (2026-08-31):** same treatment — this is
+a checklist rate against 8 core, board/state-agnostic regulatory domains
+(`CORE_COMPLIANCE_DOMAINS_CHECKLIST` in `challengeDataRequirements.ts`:
+fire safety NOC, structural safety, RTE/board recognition, POCSO
+child-protection committee, occupancy certificate, sanitation, transport
+safety, no pending show-cause). Compute it as `(domains met / 8) x 100`,
+so only multiples of 12.5 are meaningful values. A school should also
+track its own board's additional affiliation requirements beyond this
+baseline. Both the app's UI (a live checklist on the Screening Intake
+step) and this CSV format compute the same value — the app is
+authoritative; this CSV field exists for testing/scripted uploads.
 
 ## Files in this folder
 

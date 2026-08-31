@@ -506,3 +506,98 @@ benchmark data, a licensed instrument, or a defined internal proxy. This
 addendum documents exactly which are which and why, per metric, so future
 work always starts from a specific, named gap rather than a general
 "needs calibration" note.
+
+### Second pass (2026-08-31, same day): `compliance_score_pct` and five tightened definitions
+
+Re-examined all 14 remaining authored fields individually for whether the
+*input itself* (as opposed to its grading bands) could be moved from
+"self-rated, no defined method" to "objectively computable, independently
+auditable" — the same category of fix as `infrastructure_quality_score_pct`
+above. Two outcomes:
+
+**Converted: `compliance_score_pct`.** Same treatment as the infrastructure
+metric, using a real external standard: `compliance_score_pct` is now a
+checklist compliance rate against 8 core, board/state-agnostic regulatory
+domains every Indian K-12 school is subject to under central law (fire
+safety NOC, structural safety certificate, RTE/board recognition currently
+valid, POCSO Act child-protection committee, municipal occupancy
+certificate, sanitation compliance, school-transport safety under the
+Motor Vehicles Act, and no pending regulatory show-cause notice) —
+`CORE_COMPLIANCE_DOMAINS_CHECKLIST` in `challengeDataRequirements.ts`.
+
+```
+compliance_score_pct = (core compliance domains currently met / 8) x 100
+```
+
+This list is deliberately **narrower** than a full board affiliation
+checklist: CBSE, ICSE, and each State Board's own bye-laws add further
+board-specific requirements, and this session has no way to verify their
+exact clause text without risking a fabricated citation, so only domains
+mandated by central law (applicable regardless of board or state) are
+listed. A school should track its own board's complete checklist in
+addition to this baseline — the field's description makes this explicit.
+The grading bands (50/70/85/95) remain authored and unchanged, same
+reasoning as infrastructure: no regulator publishes a quality-grade cutoff
+for how many domains "should" be met. `regulatory_violations_count_year`
+was left as its own distinct, already-real count (formal violation/show-cause
+notices received in writing) rather than merged into this checklist -
+the two metrics deliberately measure different things per
+`DATA_SELECTION_RATIONALE.md` §2 (broad coverage vs. active, urgent
+notices), and conflating them would have lost that distinction.
+
+An interactive Core Compliance Checklist (matching the RTE Infrastructure
+Checklist UI) was added to the Screening Intake step for the same reason:
+so the school never has to pre-calculate the percentage themselves.
+
+**Tightened, not converted (5 fields):** `days_sales_outstanding`,
+`cost_increase_yoy_pct`, `average_subject_score_pct`, and
+`competitor_win_rate_pct` were never actually *subjective* the way
+infrastructure or compliance were — each is a standard, precisely
+definable formula from data the school's own records already contain
+(DSO and cost inflation are universal accounting ratios; average subject
+score and competitor win rate are direct counts from the mark register and
+admissions CRM respectively). Their descriptions were vague enough to look
+like self-ratings, which was the actual bug. Tightened each to spell out
+the exact formula and source record (e.g. DSO: `(Outstanding Fee
+Receivables / Total Annual Fee Revenue) x 365` from the fee ledger). Their
+grading *bands* remain authored and unchanged — no published Indian
+per-school study exists to benchmark against, only the input definitions
+were the problem, and that's now fixed.
+
+**Confirmed still authored, no fabricated conversion attempted (7
+fields):** `teacher_competency_score_pct`, `leadership_competency_score_pct`,
+`mental_health_incidents_per_1000`, `safety_violations_count_year`,
+`brand_perception_score_pct`, `media_sentiment_pct`,
+`parent_response_rate_pct` — re-examined individually and each still fails
+for the same structural reasons documented above (no Indian reporting
+regime, a reputational construct with no validated instrument this
+population has run, or genuinely no matching real-world instrument). No
+change made; a synthetic benchmark was deliberately not invented for any
+of these.
+
+**Analyzed and explicitly declined: `maintenance_backlog_inr`.**
+Normalizing this by school size (backlog-per-student, since ₹3 lakh is
+trivial for a 2,000-student school and severe for a 200-student one) was
+considered. Rejected for this pass because it would require either (a) a
+new "annual budget" field, which breaks the fixed "exactly 2 metrics per
+challenge, exactly 10 fields per checkup" invariant this entire
+455-combination architecture is built on, or (b) threading `activeSchool.studentCount`
+through the scoring engine to compute backlog-per-student - but even after
+that normalization, the resulting threshold *values* (what counts as a
+"large" backlog-per-student) would still be authored, since no Indian
+per-student maintenance-backlog benchmark study exists to anchor them to.
+The normalization would fix a real crudeness issue without actually
+resolving the "not benchmark-derived" classification, so it was not worth
+the added complexity and risk for this pass - noted here as a specific,
+scoped future item rather than attempted as a half-measure.
+
+**Updated count:** **17/30** metrics now have an externally grounded,
+checklist-derived, or precisely-defined-formula input (the 15 "exact" +
+`infrastructure_quality_score_pct` + `compliance_score_pct`); a further 4
+(`days_sales_outstanding`, `cost_increase_yoy_pct`,
+`average_subject_score_pct`, `competitor_win_rate_pct`) have had their
+input definitions tightened to real, computable formulas even though their
+grading bands remain authored; **9/30** remain fully authored placeholders
+(7 confirmed no-anchor-available + `regulatory_violations_count_year` +
+`maintenance_backlog_inr`, the latter two being real counts/values with
+authored grading bands only).

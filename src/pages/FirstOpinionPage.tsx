@@ -55,7 +55,7 @@ import { collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { COMPLETE_SCREENING_QUESTIONS } from '../data/screeningQuestionsData';
-import { CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges, RTE_INFRASTRUCTURE_NORMS_CHECKLIST } from '../lib/challengeDataRequirements';
+import { CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges, RTE_INFRASTRUCTURE_NORMS_CHECKLIST, CORE_COMPLIANCE_DOMAINS_CHECKLIST } from '../lib/challengeDataRequirements';
 import { computePerceptionGapReport, PerceptionGapEntry } from '../lib/challengeObjectiveScoring';
 import {
   Radar,
@@ -454,6 +454,51 @@ export const FirstOpinionPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [infraScoreFromChecklist, rteChecklistTouched, showInfraChecklist]);
 
+  // Core Compliance Checklist: same pattern as the RTE Infrastructure
+  // Checklist above, for compliance_score_pct when "Compliance & Regulatory
+  // Stress" is selected - see CORE_COMPLIANCE_DOMAINS_CHECKLIST.
+  const [complianceDomainsMet, setComplianceDomainsMet] = useState<boolean[]>(
+    () => new Array(CORE_COMPLIANCE_DOMAINS_CHECKLIST.length).fill(false)
+  );
+  const [complianceChecklistTouched, setComplianceChecklistTouched] = useState(false);
+  const complianceScoreFromChecklist = useMemo(
+    () => Math.round((complianceDomainsMet.filter(Boolean).length / CORE_COMPLIANCE_DOMAINS_CHECKLIST.length) * 100),
+    [complianceDomainsMet]
+  );
+  const showComplianceChecklist = selectedChallenges.includes('compliance_regulatory_stress');
+
+  const toggleComplianceDomain = (index: number) => {
+    setComplianceChecklistTouched(true);
+    setComplianceDomainsMet(prev => prev.map((v, i) => (i === index ? !v : v)));
+  };
+
+  useEffect(() => {
+    if (!showComplianceChecklist || !complianceChecklistTouched || !extractedMetrics) return;
+    if (extractedMetrics.metricsFound['compliance_score_pct'] === complianceScoreFromChecklist) return;
+
+    const merged: ExtractedMetrics = {
+      ...extractedMetrics,
+      metricsFound: { ...extractedMetrics.metricsFound, compliance_score_pct: complianceScoreFromChecklist }
+    };
+    setExtractedMetrics(merged);
+
+    const validation = selectedChallenges.length > 0
+      ? validateFileForChallenges(merged, selectedChallenges)
+      : validateFileMetrics(merged);
+    setFileValidation(validation);
+    if (validation.isValid) setValidationError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [complianceScoreFromChecklist, complianceChecklistTouched, showComplianceChecklist]);
+
+  // Fields whose value is computed from a checklist above rather than typed
+  // into the CSV - used to give correct "how to fix this" guidance in the
+  // three validation-error messages below instead of telling the school to
+  // add a CSV row for a field the checklist already supplies.
+  const CHECKLIST_MANAGED_FIELDS: Record<string, { active: boolean; label: string }> = {
+    infrastructure_quality_score_pct: { active: showInfraChecklist, label: 'RTE Infrastructure Checklist' },
+    compliance_score_pct: { active: showComplianceChecklist, label: 'Core Compliance Checklist' }
+  };
+
   // Perception Gap: compares each selected challenge's self-reported severity
   // (from the screening answers) against its objective severity (from the
   // uploaded Operational Metrics CSV). Additive to the core Health Index —
@@ -830,6 +875,10 @@ HOW TO USE IN DISHA:
       if (showInfraChecklist && rteChecklistTouched) {
         metrics.metricsFound = { ...metrics.metricsFound, infrastructure_quality_score_pct: infraScoreFromChecklist };
       }
+      // Same override for compliance_score_pct via the Core Compliance Checklist.
+      if (showComplianceChecklist && complianceChecklistTouched) {
+        metrics.metricsFound = { ...metrics.metricsFound, compliance_score_pct: complianceScoreFromChecklist };
+      }
       setExtractedMetrics(metrics);
 
       // VALIDATE file contains required metrics for SELECTED CHALLENGES
@@ -954,8 +1003,8 @@ HOW TO USE IN DISHA:
       }
       const missingList = fileValidation.requiredMetrics
         .filter(r => fileValidation.missingMetrics.some(mm => mm.includes(r.fieldName)))
-        .map(m => (m.fieldName === 'infrastructure_quality_score_pct' && showInfraChecklist)
-          ? `• ${m.description} — complete the "RTE Infrastructure Checklist" section below (not a CSV field)`
+        .map(m => CHECKLIST_MANAGED_FIELDS[m.fieldName]?.active
+          ? `• ${m.description} — complete the "${CHECKLIST_MANAGED_FIELDS[m.fieldName].label}" section below (not a CSV field)`
           : `• ${m.description} — expected field name "${m.fieldName}" (example: ${m.example})`)
         .join('\n');
       const completeness = 'completeness' in fileValidation ? fileValidation.completeness : 0;
@@ -1100,7 +1149,7 @@ HOW TO USE IN DISHA:
     // Check if file validation passed
     if (fileValidation && !fileValidation.isValid) {
       setValidationError(
-        `❌ DATA VALIDATION FAILED:\n${fileValidation.errorMessage}\n\nRequired Data Fields for DISHA First Opinion:\n${fileValidation.requiredMetrics.map(m => (m.fieldName === 'infrastructure_quality_score_pct' && showInfraChecklist) ? `• ${m.description} (${m.fieldName}) — computed automatically from the RTE Infrastructure Checklist below` : `• ${m.description} (${m.fieldName}): ${m.example}`).join('\n')}`
+        `❌ DATA VALIDATION FAILED:\n${fileValidation.errorMessage}\n\nRequired Data Fields for DISHA First Opinion:\n${fileValidation.requiredMetrics.map(m => CHECKLIST_MANAGED_FIELDS[m.fieldName]?.active ? `• ${m.description} (${m.fieldName}) — computed automatically from the ${CHECKLIST_MANAGED_FIELDS[m.fieldName].label} below` : `• ${m.description} (${m.fieldName}): ${m.example}`).join('\n')}`
       );
       const elem = document.getElementById('file-upload-container');
       if (elem) {
@@ -2101,6 +2150,47 @@ HOW TO USE IN DISHA:
                 </div>
               )}
 
+              {/* Core Compliance Checklist - same pattern as the RTE
+                  Infrastructure Checklist above, for compliance_score_pct
+                  when "Compliance & Regulatory Stress" is selected. */}
+              {showComplianceChecklist && (
+                <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-extrabold text-xs text-sky-900 uppercase tracking-widest flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
+                      Core Compliance Checklist
+                    </h4>
+                    <span className="text-xs font-black text-sky-700">
+                      {complianceScoreFromChecklist}% ({complianceDomainsMet.filter(Boolean).length}/{CORE_COMPLIANCE_DOMAINS_CHECKLIST.length} domains met)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-sky-800/80 font-medium">
+                    Tick every core, board/state-agnostic regulatory domain this school currently meets.
+                    <code className="bg-white px-1 py-0.5 rounded border border-sky-200 font-mono mx-1">compliance_score_pct</code>
+                    is computed automatically from your answers below — do not add a row for it in the uploaded CSV.
+                    Track any additional board- or state-specific requirements separately.
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {CORE_COMPLIANCE_DOMAINS_CHECKLIST.map((domain, idx) => (
+                      <label key={idx} className="flex items-start gap-2 text-xs text-gray-700 bg-white/70 border border-sky-100 rounded-lg p-2 cursor-pointer hover:border-sky-300">
+                        <input
+                          type="checkbox"
+                          checked={complianceDomainsMet[idx]}
+                          onChange={() => toggleComplianceDomain(idx)}
+                          className="mt-0.5 accent-sky-600"
+                        />
+                        <span>{domain}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {!complianceChecklistTouched && (
+                    <p className="text-[11px] text-amber-700 font-semibold">
+                      ⚠ Not yet completed — tick each domain above (even if none are met) to record this field.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Supporting Document Upload */}
               <div id="file-upload-container" className={`pt-4 border-t-2 space-y-4 ${!uploadedFile ? 'border-rose-300 bg-rose-50/30 p-4 rounded-lg' : 'border-gray-100'}`}>
                 <div>
@@ -2220,8 +2310,8 @@ HOW TO USE IN DISHA:
                                     .filter(r => fileValidation.missingMetrics.some(mm => mm.includes(r.fieldName)))
                                     .map((missing, idx) => (
                                       <p key={idx} className="text-xs text-rose-700 ml-2">
-                                        {missing.fieldName === 'infrastructure_quality_score_pct' && showInfraChecklist ? (
-                                          <>• {missing.description} — complete the <strong>RTE Infrastructure Checklist</strong> section below</>
+                                        {CHECKLIST_MANAGED_FIELDS[missing.fieldName]?.active ? (
+                                          <>• {missing.description} — complete the <strong>{CHECKLIST_MANAGED_FIELDS[missing.fieldName].label}</strong> section below</>
                                         ) : (
                                           <>• {missing.description} — add row <span className="font-mono">{missing.fieldName},&lt;your value&gt;</span></>
                                         )}

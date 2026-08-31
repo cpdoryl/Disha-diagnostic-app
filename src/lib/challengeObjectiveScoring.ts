@@ -174,11 +174,13 @@ export const METRIC_BAND_DEFINITIONS: Record<string, MetricBandDefinition> = {
   },
   // --- compliance_regulatory_stress ---
   compliance_score_pct: {
-    fieldName: 'compliance_score_pct', higherIsBetter: true, bandSource: 'authored (q15_1 is qualitative; banded to mirror its 5 narrative levels)', authored: true,
+    fieldName: 'compliance_score_pct', higherIsBetter: true,
+    bandSource: 'input redefined 2026-08-31 as a core compliance-domain checklist rate (see CORE_COMPLIANCE_DOMAINS_CHECKLIST in challengeDataRequirements.ts: fire safety NOC, structural safety, RTE/board recognition, POCSO child-protection committee, occupancy certificate, sanitation, transport safety, no pending show-cause) - the raw value is now grounded in real, centrally-mandated compliance domains, not self-rated. The 50/70/85/95 grading thresholds remain a product judgment (banded to mirror q15_1\'s 5 narrative levels), since no regulator publishes a quality-grade cutoff for how many domains "should" be met.',
+    authored: true,
     bands: [{ max: 50, weight: 10 }, { max: 70, weight: 7 }, { max: 85, weight: 4 }, { max: 95, weight: 2 }, { max: Infinity, weight: 1 }]
   },
   regulatory_violations_count_year: {
-    fieldName: 'regulatory_violations_count_year', higherIsBetter: false, bandSource: 'authored (q15_2 is qualitative)', authored: true,
+    fieldName: 'regulatory_violations_count_year', higherIsBetter: false, bandSource: 'authored (q15_2 is qualitative; input is a real count of formal violation notices, distinct from the Compliance Score checklist, but no Indian per-school average violation-count study exists to derive grading thresholds from)', authored: true,
     bands: [{ max: 0, weight: 1 }, { max: 1, weight: 3 }, { max: 3, weight: 5 }, { max: 6, weight: 8 }, { max: Infinity, weight: 10 }]
   }
 };

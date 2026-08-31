@@ -98,6 +98,19 @@ per metric) and why one candidate (`parent_response_rate_pct`) was
 considered and deliberately *not* converted rather than given a fabricated
 benchmark citation.
 
+**Second update (2026-08-31, same day):** `compliance_score_pct` was
+converted the same way, against 8 core board/state-agnostic regulatory
+domains (`CORE_COMPLIANCE_DOMAINS_CHECKLIST`). Four more fields
+(`days_sales_outstanding`, `cost_increase_yoy_pct`,
+`average_subject_score_pct`, `competitor_win_rate_pct`) had their vague
+descriptions tightened into precise, standard formulas from the school's
+own real records — they were never actually self-ratings, just
+under-specified. `maintenance_backlog_inr`'s size-normalization was
+analyzed and explicitly declined for now (see Addendum 3's "Analyzed and
+explicitly declined" section for why). Current count: **17/30** externally
+grounded or checklist/formula-defined, **9/30** remain fully authored
+placeholders with no available real anchor.
+
 ---
 
 ## 3. How a combination's data is actually used (the Perception Gap)

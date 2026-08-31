@@ -57,6 +57,31 @@ export const RTE_INFRASTRUCTURE_NORMS_CHECKLIST: string[] = [
 ];
 
 /**
+ * Core, board/state-agnostic regulatory compliance domains every Indian
+ * K-12 school is subject to under central law, regardless of board (CBSE/
+ * ICSE/State) or state-specific bye-laws that may add further requirements
+ * on top of this baseline. compliance_score_pct (see compliance_regulatory_stress
+ * below) is defined as: (domains currently met / CORE_COMPLIANCE_DOMAINS_CHECKLIST.length) * 100.
+ *
+ * Deliberately narrower than a full board-specific affiliation checklist:
+ * CBSE/ICSE/State Board bye-laws vary in their exact clauses and this
+ * session has no way to verify board-specific clause text, so only
+ * genuinely universal, centrally-mandated domains are listed here. A school
+ * should track its own board's full affiliation checklist in addition to
+ * this baseline - see DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md Addendum 3.
+ */
+export const CORE_COMPLIANCE_DOMAINS_CHECKLIST: string[] = [
+  'Valid Fire Safety NOC/Certificate from the state Fire Services Department',
+  'Structural Safety/Stability Certificate for all school buildings',
+  'Currently valid RTE Act recognition certificate or board affiliation, not under show-cause',
+  'Functional Child Protection Policy / Internal Committee under the POCSO Act, 2012',
+  'Valid building/occupancy certificate from the local municipal authority',
+  'Drinking water and sanitation compliant with health department norms',
+  'School transport (if operated) compliant with Motor Vehicles Act school-bus safety norms',
+  'No pending regulatory show-cause notice or suspension from the affiliating board'
+];
+
+/**
  * The 4 CORE operational levers that feed the DISHA Health Score itself
  * (see DISHAScoreCalculator / OperationalMetrics). These are required on
  * EVERY First Opinion checkup regardless of which 3 challenges are selected
@@ -192,7 +217,7 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
       {
         fieldName: 'days_sales_outstanding',
         displayName: 'Days Sales Outstanding (DSO)',
-        description: 'Average days taken to collect a fee installment after it is due',
+        description: 'Standard accounting DSO formula: (Outstanding Fee Receivables / Total Annual Fee Revenue) x 365. A precise figure from the fee ledger, not an estimate.',
         unit: 'days',
         example: '45',
         mandatory: true,
@@ -308,7 +333,7 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
       {
         fieldName: 'average_subject_score_pct',
         displayName: 'Average Subject Score',
-        description: 'Average score across all subjects, all grades',
+        description: 'Mean % score across all subjects and all grades from the most recently completed annual/term exams, from the school\'s own mark register - a real recorded figure, not an estimate.',
         unit: 'percentage',
         example: '71',
         mandatory: true,
@@ -424,7 +449,7 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
       {
         fieldName: 'competitor_win_rate_pct',
         displayName: 'Competitor Win Rate',
-        description: 'Percentage of contested admissions inquiries lost to a named competitor',
+        description: 'From the admissions CRM/inquiry log: of inquiries where a specific named competitor school was mentioned, the % lost to that competitor - a countable ratio, not an estimate.',
         unit: 'percentage',
         example: '30',
         mandatory: true,
@@ -473,7 +498,7 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
       {
         fieldName: 'cost_increase_yoy_pct',
         displayName: 'Cost Increase YoY',
-        description: 'Year-over-year growth in total operating costs',
+        description: 'Standard YoY formula: ((This Year Total Operating Cost - Last Year Total Operating Cost) / Last Year Total Operating Cost) x 100, from the annual expense ledger.',
         unit: 'percentage',
         example: '14',
         mandatory: true,
@@ -531,16 +556,16 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
       {
         fieldName: 'compliance_score_pct',
         displayName: 'Compliance Score',
-        description: 'Percentage of board affiliation / statutory safety requirements currently met',
+        description: `Core regulatory compliance rate: count how many of the ${CORE_COMPLIANCE_DOMAINS_CHECKLIST.length} baseline compliance domains (fire safety NOC, structural safety certificate, RTE/board recognition, POCSO child-protection committee, occupancy certificate, sanitation, transport safety, no pending show-cause - see CORE_COMPLIANCE_DOMAINS_CHECKLIST) are currently met and enter (domains met / ${CORE_COMPLIANCE_DOMAINS_CHECKLIST.length}) x 100. This is a checklist count, not a subjective self-rating - track any additional board/state-specific requirements separately.`,
         unit: 'percentage',
-        example: '80',
+        example: '75', // 6 of 8 domains met
         mandatory: true,
         dataType: 'percentage'
       },
       {
         fieldName: 'regulatory_violations_count_year',
         displayName: 'Regulatory Violations',
-        description: 'Number of regulatory or board-affiliation violations flagged in the past year',
+        description: 'Count of formal violation, non-compliance, or show-cause notices received in writing from any regulator (fire department, board, RTE authority, labor department, municipal authority, etc.) in the past 12 months - a distinct, real count from official correspondence, not derived from the Compliance Score checklist',
         unit: 'count/year',
         example: '1',
         mandatory: true,

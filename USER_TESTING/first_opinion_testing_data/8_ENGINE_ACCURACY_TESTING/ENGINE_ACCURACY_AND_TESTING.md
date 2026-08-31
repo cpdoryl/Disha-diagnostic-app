@@ -78,9 +78,22 @@ Separately, `infrastructure_quality_score_pct`'s *input* (still one of the
 2009 Schedule checklist compliance rate rather than a free-floating
 self-rating — a real external standard now grounds the raw value, even
 though its grading thresholds (25/50/75/90) remain an authored judgment
-call, same as before. See `DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md`
-Addendum 3 for the full per-metric breakdown of why the other 14 authored
-fields don't have an equivalent external standard to convert to.
+call, same as before.
+
+**Second update (2026-08-31, same day):** `compliance_score_pct` converted
+the same way (8 core compliance domains, `CORE_COMPLIANCE_DOMAINS_CHECKLIST`).
+Four more of the 15 authored-band fields (`days_sales_outstanding`,
+`cost_increase_yoy_pct`, `average_subject_score_pct`,
+`competitor_win_rate_pct`) had their descriptions tightened into precise
+standard formulas - they were always real, computable school-record
+figures, just under-specified as if they were self-ratings. The 15/15
+band-provenance split above still measures the same thing (grading bands
+copied from a question, y/n) and is unchanged by this. See
+`DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md` Addendum 3 for the full
+per-metric breakdown, including the 7 fields confirmed to have no
+available real anchor and the 2 (`regulatory_violations_count_year`,
+`maintenance_backlog_inr`) that remain real counts/values with authored
+grading bands only.
 
 ## 3. Internal consistency test across all 455 combinations
 

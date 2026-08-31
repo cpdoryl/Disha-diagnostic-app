@@ -20,7 +20,7 @@ const masterMetrics: Record<string, number> = {
   brand_perception_score_pct: 62, media_sentiment_pct: 55,
   cost_increase_yoy_pct: 14, operating_margin_pct: 6,
   infrastructure_quality_score_pct: 70, maintenance_backlog_inr: 850000,
-  compliance_score_pct: 80, regulatory_violations_count_year: 1
+  compliance_score_pct: 75, regulatory_violations_count_year: 1
 };
 
 const ids = Object.keys(CHALLENGE_DATA_REQUIREMENTS);
