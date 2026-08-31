@@ -55,7 +55,7 @@ import { collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { COMPLETE_SCREENING_QUESTIONS } from '../data/screeningQuestionsData';
-import { CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges } from '../lib/challengeDataRequirements';
+import { CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges, RTE_INFRASTRUCTURE_NORMS_CHECKLIST } from '../lib/challengeDataRequirements';
 import { computePerceptionGapReport, PerceptionGapEntry } from '../lib/challengeObjectiveScoring';
 import {
   Radar,
@@ -411,6 +411,48 @@ export const FirstOpinionPage = () => {
   const [extractedMetrics, setExtractedMetrics] = useState<ExtractedMetrics | null>(null);
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
   const [realInsights, setRealInsights] = useState<DataAnalysisResult | null>(null);
+
+  // RTE Infrastructure Checklist: when "Infrastructure Deficits" is one of
+  // the 3 selected challenges, infrastructure_quality_score_pct is computed
+  // from this checklist (RTE Act 2009 Schedule norms - see
+  // challengeDataRequirements.ts) rather than trusted as a pre-calculated
+  // number typed into the uploaded CSV, so the school never has to do the
+  // arithmetic themselves and the result is independently auditable.
+  const [rteNormsMet, setRteNormsMet] = useState<boolean[]>(
+    () => new Array(RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length).fill(false)
+  );
+  const [rteChecklistTouched, setRteChecklistTouched] = useState(false);
+  const infraScoreFromChecklist = useMemo(
+    () => Math.round((rteNormsMet.filter(Boolean).length / RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length) * 100),
+    [rteNormsMet]
+  );
+  const showInfraChecklist = selectedChallenges.includes('infrastructure_deficits');
+
+  const toggleRteNorm = (index: number) => {
+    setRteChecklistTouched(true);
+    setRteNormsMet(prev => prev.map((v, i) => (i === index ? !v : v)));
+  };
+
+  // Re-validate whenever the checklist changes AFTER a file is already
+  // uploaded (the upload-time path in analyzeUploadedFile handles the
+  // reverse order - checklist ticked, then file uploaded).
+  useEffect(() => {
+    if (!showInfraChecklist || !rteChecklistTouched || !extractedMetrics) return;
+    if (extractedMetrics.metricsFound['infrastructure_quality_score_pct'] === infraScoreFromChecklist) return;
+
+    const merged: ExtractedMetrics = {
+      ...extractedMetrics,
+      metricsFound: { ...extractedMetrics.metricsFound, infrastructure_quality_score_pct: infraScoreFromChecklist }
+    };
+    setExtractedMetrics(merged);
+
+    const validation = selectedChallenges.length > 0
+      ? validateFileForChallenges(merged, selectedChallenges)
+      : validateFileMetrics(merged);
+    setFileValidation(validation);
+    if (validation.isValid) setValidationError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infraScoreFromChecklist, rteChecklistTouched, showInfraChecklist]);
 
   // Perception Gap: compares each selected challenge's self-reported severity
   // (from the screening answers) against its objective severity (from the
@@ -780,6 +822,14 @@ HOW TO USE IN DISHA:
     setIsAnalyzingFile(true);
     try {
       const metrics = await FileAnalyzer.analyzeFile(file);
+
+      // If "Infrastructure Deficits" is selected and the RTE checklist below
+      // was already filled in before this upload, the checklist is the
+      // authoritative source for infrastructure_quality_score_pct - override
+      // whatever the CSV also happened to contain for that one field.
+      if (showInfraChecklist && rteChecklistTouched) {
+        metrics.metricsFound = { ...metrics.metricsFound, infrastructure_quality_score_pct: infraScoreFromChecklist };
+      }
       setExtractedMetrics(metrics);
 
       // VALIDATE file contains required metrics for SELECTED CHALLENGES
@@ -904,7 +954,9 @@ HOW TO USE IN DISHA:
       }
       const missingList = fileValidation.requiredMetrics
         .filter(r => fileValidation.missingMetrics.some(mm => mm.includes(r.fieldName)))
-        .map(m => `• ${m.description} — expected field name "${m.fieldName}" (example: ${m.example})`)
+        .map(m => (m.fieldName === 'infrastructure_quality_score_pct' && showInfraChecklist)
+          ? `• ${m.description} — complete the "RTE Infrastructure Checklist" section below (not a CSV field)`
+          : `• ${m.description} — expected field name "${m.fieldName}" (example: ${m.example})`)
         .join('\n');
       const completeness = 'completeness' in fileValidation ? fileValidation.completeness : 0;
       setValidationError(
@@ -1048,7 +1100,7 @@ HOW TO USE IN DISHA:
     // Check if file validation passed
     if (fileValidation && !fileValidation.isValid) {
       setValidationError(
-        `❌ DATA VALIDATION FAILED:\n${fileValidation.errorMessage}\n\nRequired Data Fields for DISHA First Opinion:\n${fileValidation.requiredMetrics.map(m => `• ${m.description} (${m.fieldName}): ${m.example}`).join('\n')}`
+        `❌ DATA VALIDATION FAILED:\n${fileValidation.errorMessage}\n\nRequired Data Fields for DISHA First Opinion:\n${fileValidation.requiredMetrics.map(m => (m.fieldName === 'infrastructure_quality_score_pct' && showInfraChecklist) ? `• ${m.description} (${m.fieldName}) — computed automatically from the RTE Infrastructure Checklist below` : `• ${m.description} (${m.fieldName}): ${m.example}`).join('\n')}`
       );
       const elem = document.getElementById('file-upload-container');
       if (elem) {
@@ -2007,6 +2059,48 @@ HOW TO USE IN DISHA:
                 </div>
               </div>
 
+              {/* RTE Infrastructure Checklist - only when Infrastructure Deficits is selected.
+                  infrastructure_quality_score_pct is computed HERE, from a real external
+                  standard (RTE Act 2009 Schedule norms), instead of being typed into the CSV
+                  as a pre-calculated, self-rated percentage - see
+                  DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md Addendum 3. */}
+              {showInfraChecklist && (
+                <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-extrabold text-xs text-emerald-900 uppercase tracking-widest flex items-center gap-1.5">
+                      <HeartPulse className="w-3.5 h-3.5 text-emerald-600" />
+                      RTE Infrastructure Checklist
+                    </h4>
+                    <span className="text-xs font-black text-emerald-700">
+                      {infraScoreFromChecklist}% ({rteNormsMet.filter(Boolean).length}/{RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length} norms met)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800/80 font-medium">
+                    Tick every RTE Act 2009 Schedule infrastructure norm this campus currently meets.
+                    <code className="bg-white px-1 py-0.5 rounded border border-emerald-200 font-mono mx-1">infrastructure_quality_score_pct</code>
+                    is computed automatically from your answers below — do not add a row for it in the uploaded CSV.
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {RTE_INFRASTRUCTURE_NORMS_CHECKLIST.map((norm, idx) => (
+                      <label key={idx} className="flex items-start gap-2 text-xs text-gray-700 bg-white/70 border border-emerald-100 rounded-lg p-2 cursor-pointer hover:border-emerald-300">
+                        <input
+                          type="checkbox"
+                          checked={rteNormsMet[idx]}
+                          onChange={() => toggleRteNorm(idx)}
+                          className="mt-0.5 accent-emerald-600"
+                        />
+                        <span>{norm}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {!rteChecklistTouched && (
+                    <p className="text-[11px] text-amber-700 font-semibold">
+                      ⚠ Not yet completed — tick each norm above (even if none are met) to record this field.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Supporting Document Upload */}
               <div id="file-upload-container" className={`pt-4 border-t-2 space-y-4 ${!uploadedFile ? 'border-rose-300 bg-rose-50/30 p-4 rounded-lg' : 'border-gray-100'}`}>
                 <div>
@@ -2126,7 +2220,11 @@ HOW TO USE IN DISHA:
                                     .filter(r => fileValidation.missingMetrics.some(mm => mm.includes(r.fieldName)))
                                     .map((missing, idx) => (
                                       <p key={idx} className="text-xs text-rose-700 ml-2">
-                                        • {missing.description} — add row <span className="font-mono">{missing.fieldName},&lt;your value&gt;</span>
+                                        {missing.fieldName === 'infrastructure_quality_score_pct' && showInfraChecklist ? (
+                                          <>• {missing.description} — complete the <strong>RTE Infrastructure Checklist</strong> section below</>
+                                        ) : (
+                                          <>• {missing.description} — add row <span className="font-mono">{missing.fieldName},&lt;your value&gt;</span></>
+                                        )}
                                       </p>
                                     ))}
                                 </div>
