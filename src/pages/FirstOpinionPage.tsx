@@ -886,6 +886,12 @@ HOW TO USE IN DISHA:
     }
 
     if (fileValidation && !fileValidation.isValid) {
+      if (extractedMetrics?.fileType === 'UNREADABLE_BINARY_FILE') {
+        setValidationError(fileValidation.errorMessage);
+        const elem = document.getElementById('file-upload-container');
+        if (elem) elem.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
       const missingList = fileValidation.requiredMetrics
         .filter(r => fileValidation.missingMetrics.some(mm => mm.includes(r.fieldName)))
         .map(m => `• ${m.description} — expected field name "${m.fieldName}" (example: ${m.example})`)
@@ -2060,6 +2066,17 @@ HOW TO USE IN DISHA:
                                   ))}
                                 </div>
                               </>
+                            ) : extractedMetrics?.fileType === 'UNREADABLE_BINARY_FILE' ? (
+                              <div className="mt-2 space-y-2 bg-rose-50 p-3 rounded border border-rose-200 text-left">
+                                <p className="text-xs text-rose-800 font-bold">❌ Wrong file format — this is not a data problem</p>
+                                <p className="text-xs text-rose-700">{extractedMetrics.unreadableReason}</p>
+                                <p className="text-xs text-rose-900 font-semibold mt-1">How to fix:</p>
+                                <ol className="text-xs text-rose-700 list-decimal list-inside space-y-0.5">
+                                  <li>Open the file in Excel or Google Sheets</li>
+                                  <li>Excel: File → Save As → "CSV (Comma delimited) (*.csv)". Google Sheets: File → Download → "Comma Separated Values (.csv)"</li>
+                                  <li>Upload the resulting .csv file instead</li>
+                                </ol>
+                              </div>
                             ) : (
                               <>
                                 <p className="text-xs text-rose-600 font-bold">❌ Data INCOMPLETE! Missing required fields.</p>

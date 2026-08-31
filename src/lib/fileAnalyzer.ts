@@ -3,7 +3,7 @@
  * Generates real data-driven insights for First Opinion diagnosis
  */
 
-import { validateDataForChallenges, CHALLENGE_DATA_REQUIREMENTS } from './challengeDataRequirements';
+import { validateDataForChallenges, CHALLENGE_DATA_REQUIREMENTS, getRequiredMetricsForChallenges } from './challengeDataRequirements';
 
 export interface ExtractedMetrics {
   fileType: string;
@@ -11,6 +11,46 @@ export interface ExtractedMetrics {
   insights: string[];
   affectedDomains: string[];
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  /** Set when the uploaded file could not be read as text at all (e.g. a
+   * genuine binary .xlsx/.docx/.pdf/image was uploaded) — callers should
+   * show this as a file-format problem, not a "data missing" problem. */
+  unreadableReason?: string;
+}
+
+/**
+ * Detects whether FileReader.readAsText produced real text or binary
+ * garbage. This app only ever parses plain text/CSV — a genuine .xlsx,
+ * .docx, .pdf, or image file read this way will not contain a real header
+ * or real values, and would otherwise be misreported as "all fields missing"
+ * (a data problem) rather than "wrong file type" (a format problem).
+ */
+function detectUnreadableBinary(content: string): string | null {
+  const head = content.slice(0, 8);
+  if (head.startsWith('PK')) {
+    return 'This looks like a native Microsoft Office file (.xlsx, .docx, .pptx) or a ZIP archive, which is stored in binary format.';
+  }
+  if (head.startsWith('%PDF')) {
+    return 'This looks like a PDF file, which is stored in binary format.';
+  }
+  if (head.startsWith('\xFF\xD8\xFF') || head.startsWith('\x89PNG')) {
+    return 'This looks like an image file (JPG/PNG), which contains no readable text.';
+  }
+  // Heuristic: real CSV/text should be almost entirely printable ASCII/UTF-8
+  // text with normal whitespace. Binary content read as text tends to be
+  // full of the Unicode replacement character or raw control bytes.
+  const sample = content.slice(0, 2000);
+  if (sample.length > 0) {
+    let suspicious = 0;
+    for (let i = 0; i < sample.length; i++) {
+      const code = sample.charCodeAt(i);
+      const isNormalWhitespace = code === 9 || code === 10 || code === 13;
+      if (code === 0xFFFD || (code < 32 && !isNormalWhitespace)) suspicious++;
+    }
+    if (suspicious / sample.length > 0.05) {
+      return 'This file contains mostly non-text (binary) content that could not be read as CSV.';
+    }
+  }
+  return null;
 }
 
 /**
@@ -62,6 +102,24 @@ export class FileAnalyzer {
   static async analyzeFile(file: File): Promise<ExtractedMetrics> {
     const fileName = file.name.toLowerCase();
     const content = await this.readFile(file);
+
+    // Check FIRST whether this is actually readable text at all. A genuine
+    // binary .xlsx/.docx/.pdf/image uploaded here would otherwise fall
+    // through every parser below and be reported as "0 fields found" -
+    // which looks exactly like a data-completeness problem when it is
+    // really a file-format problem, and misleads the user into thinking
+    // their real data is missing when the file was simply never readable.
+    const unreadableReason = detectUnreadableBinary(content);
+    if (unreadableReason) {
+      return {
+        fileType: 'UNREADABLE_BINARY_FILE',
+        metricsFound: {},
+        insights: [`Could not read "${file.name}" as text: ${unreadableReason}`],
+        affectedDomains: [],
+        confidence: 'LOW',
+        unreadableReason
+      };
+    }
 
     // Canonical Operational Metrics CSV takes priority over filename-based
     // guessing whenever present, since it gives exact, unambiguous field names.
@@ -768,6 +826,41 @@ export function validateFileForChallenges(
   extractedMetrics: ExtractedMetrics,
   selectedChallengeIds: string[]
 ): ChallengeValidationResult {
+  // A genuinely unreadable (binary) upload is a FILE-FORMAT problem, not a
+  // data-completeness problem - report it as such instead of "every field
+  // is missing", which is technically true but misdiagnoses the real cause.
+  if (extractedMetrics.fileType === 'UNREADABLE_BINARY_FILE') {
+    const requiredMetrics = getRequiredMetricsForChallenges(selectedChallengeIds)
+      .map(m => ({
+        fieldName: m.fieldName,
+        description: `${m.displayName} (${m.unit})`,
+        example: m.example
+      }));
+    return {
+      isValid: false,
+      completeness: 0,
+      missingMetrics: [],
+      foundMetrics: [],
+      recommendations: [
+        'Open the file and re-save/export it as a plain CSV (comma-separated values), not a native .xlsx/.docx/.pdf/image file.',
+        'In Excel: File → Save As → choose "CSV (Comma delimited) (*.csv)".',
+        'In Google Sheets: File → Download → "Comma Separated Values (.csv)".',
+        'Then re-upload the resulting .csv file — do not upload the original file again.'
+      ],
+      errorMessage:
+        `❌ FILE FORMAT NOT SUPPORTED — this is not a data problem, it's a file-format problem.\n\n` +
+        `${extractedMetrics.unreadableReason || 'The uploaded file could not be read as text.'}\n\n` +
+        `This app can only read plain CSV text files for operational data, not native Excel/Word/PDF/image files.\n\n` +
+        `HOW TO FIX:\n` +
+        `1. Open the file in Excel or Google Sheets.\n` +
+        `2. Use "Save As" / "Download" and choose CSV (Comma delimited) format.\n` +
+        `3. Re-upload the resulting .csv file.`,
+      challengesCovered: [],
+      challengesUncovered: selectedChallengeIds,
+      requiredMetrics
+    };
+  }
+
   // If no challenges selected, accept all data
   if (!selectedChallengeIds || selectedChallengeIds.length === 0) {
     return {
