@@ -433,7 +433,7 @@ export const FirstOpinionPage = () => {
   });
 
   // File validation state
-  const [fileValidation, setFileValidation] = useState<ValidationResult | null>(null);
+  const [fileValidation, setFileValidation] = useState<ValidationResult | ChallengeValidationResult | null>(null);
 
   // UI Loading/Transition states
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -877,6 +877,30 @@ HOW TO USE IN DISHA:
       setValidationError(
         '⚠️ REQUIRED: Upload supporting data document first. Upload operational data (attendance, fee collection, staff records, etc.) to enable data-driven First Opinion analysis.'
       );
+      return;
+    }
+
+    if (isAnalyzingFile) {
+      setValidationError('⏳ Still analyzing your uploaded file — please wait a moment and try again.');
+      return;
+    }
+
+    if (fileValidation && !fileValidation.isValid) {
+      const missingList = fileValidation.requiredMetrics
+        .filter(r => fileValidation.missingMetrics.some(mm => mm.includes(r.fieldName)))
+        .map(m => `• ${m.description} — expected field name "${m.fieldName}" (example: ${m.example})`)
+        .join('\n');
+      const completeness = 'completeness' in fileValidation ? fileValidation.completeness : 0;
+      setValidationError(
+        `❌ UPLOADED FILE DOES NOT MATCH YOUR SELECTED CHALLENGES (${completeness}% complete).\n\n` +
+        `The following required field(s) were not found in your file:\n${missingList}\n\n` +
+        `HOW TO FIX: Re-check your CSV — it must have the header "metric_field,value" with one row per field, ` +
+        `and the field names above spelled exactly as shown (case-sensitive). Add the missing rows with real values, ` +
+        `save the file, then upload it again here. The report cannot be generated until every required field for your ` +
+        `3 selected challenges is present — this keeps the DISHA Score and Perception Gap Analysis accurate to real data.`
+      );
+      const elem = document.getElementById('file-upload-container');
+      if (elem) elem.scrollIntoView({ behavior: 'smooth' });
       return;
     }
 
@@ -2115,20 +2139,25 @@ HOW TO USE IN DISHA:
 
               <button
                 onClick={handleSaveCheckupToFirestore}
-                disabled={isSubmittingToFirestore || isProcessing || !uploadedFile}
+                disabled={isSubmittingToFirestore || isProcessing || isAnalyzingFile || !uploadedFile || (fileValidation ? !fileValidation.isValid : false)}
                 className={`font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm ${
-                  !uploadedFile
+                  !uploadedFile || isAnalyzingFile || (fileValidation && !fileValidation.isValid)
                     ? 'bg-gray-400 text-gray-600 cursor-not-allowed opacity-60'
                     : 'bg-blue-600 hover:bg-blue-700 text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]'
                 }`}
-                title={!uploadedFile ? '⚠️ Please upload a data file first' : ''}
+                title={
+                  !uploadedFile ? '⚠️ Please upload a data file first'
+                  : isAnalyzingFile ? '⏳ Still analyzing your file'
+                  : fileValidation && !fileValidation.isValid ? '❌ Uploaded file is missing required data — fix and re-upload'
+                  : ''
+                }
               >
                 {isSubmittingToFirestore ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Saving to Database...
                   </>
-                ) : isProcessing ? (
+                ) : isProcessing || isAnalyzingFile ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Running Intake Scan...
@@ -2136,6 +2165,10 @@ HOW TO USE IN DISHA:
                 ) : !uploadedFile ? (
                   <>
                     📁 Upload Data File First
+                  </>
+                ) : fileValidation && !fileValidation.isValid ? (
+                  <>
+                    ❌ Fix Data File First
                   </>
                 ) : (
                   <>
