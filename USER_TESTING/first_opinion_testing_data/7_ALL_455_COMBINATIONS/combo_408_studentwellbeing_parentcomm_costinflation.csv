@@ -1,0 +1,12 @@
+# Challenge Combination: Student Wellbeing Issues + Parent Communication Issues + Cost Inflation
+metric_field,value
+students_per_classroom,28
+parent_query_response_sla_hours,24
+annual_training_hours,20
+weekly_planning_hours,4
+mental_health_incidents_per_1000,12
+safety_violations_count_year,5
+parent_satisfaction_score_pct,58
+parent_response_rate_pct,65
+cost_increase_yoy_pct,14
+operating_margin_pct,6

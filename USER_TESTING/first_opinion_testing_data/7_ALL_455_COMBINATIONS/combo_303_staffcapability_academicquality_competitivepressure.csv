@@ -1,0 +1,12 @@
+# Challenge Combination: Staff Capability Gaps + Academic Quality Decline + Competitive Pressure
+metric_field,value
+students_per_classroom,28
+parent_query_response_sla_hours,24
+annual_training_hours,20
+weekly_planning_hours,4
+teacher_competency_score_pct,68
+professional_qualification_pct,74
+board_exam_pass_rate_pct,87
+average_subject_score_pct,71
+market_share_loss_pct,5
+competitor_win_rate_pct,30

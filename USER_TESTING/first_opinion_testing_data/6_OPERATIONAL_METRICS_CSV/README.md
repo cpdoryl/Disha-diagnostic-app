@@ -99,9 +99,20 @@ selected 3 challenges need) to demonstrate that **different challenge
 combinations require different data** — uploading `combo_1...csv` while you
 have Cost Inflation / Infrastructure / Brand selected on-screen will
 correctly show as INCOMPLETE, because it's missing those challenges' fields.
-There are 455 possible 3-challenge combinations in total (15 choose 3); the
-validation logic is fully dynamic and handles all of them, these 5 files are
-representative examples, not an exhaustive set.
+
+## Full matrix: all 455 combinations
+
+`15 choose 3 = 455` possible 3-challenge combinations exist. Every single one
+now has its own ready-to-upload file in
+`../7_ALL_455_COMBINATIONS/` (`combo_001_...csv` through `combo_455_...csv`,
+plus `INDEX.csv` mapping combo number → filename → the 3 challenge names).
+Each file starts with a `# Challenge Combination: ...` comment line naming
+the exact combination it's for — the app's file parser skips `#`-prefixed
+lines automatically, so this doesn't affect validation.
+
+To test any combination you've selected in the app: open `INDEX.csv`, find
+the row whose 3 challenge names match your current selection, and upload
+that row's `filename`.
 
 ## Uploading
 

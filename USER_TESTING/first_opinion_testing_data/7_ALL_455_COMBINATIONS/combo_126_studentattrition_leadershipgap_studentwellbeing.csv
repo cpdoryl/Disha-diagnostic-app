@@ -1,0 +1,12 @@
+# Challenge Combination: Student Attrition + Leadership Capability Gap + Student Wellbeing Issues
+metric_field,value
+students_per_classroom,28
+parent_query_response_sla_hours,24
+annual_training_hours,20
+weekly_planning_hours,4
+midyear_dropout_rate_pct,6
+outflow_to_competitors_pct,4
+leadership_competency_score_pct,60
+principal_vp_experience_years,5
+mental_health_incidents_per_1000,12
+safety_violations_count_year,5

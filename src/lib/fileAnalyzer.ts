@@ -20,17 +20,29 @@ export interface ExtractedMetrics {
  * this app can reliably validate against per-challenge requirements, since
  * it uses exact field names instead of guessing from free-form documents.
  */
+// Sample/template files may carry leading "#" comment lines (e.g. to note
+// which challenge combination the file is built for) before the real header.
+function stripLeadingCommentRows(rows: string[][]): string[][] {
+  let start = 0;
+  while (start < rows.length && (rows[start][0] || '').trim().startsWith('#')) {
+    start++;
+  }
+  return rows.slice(start);
+}
+
 function isCanonicalOperationalMetricsCSV(rows: string[][]): boolean {
-  if (rows.length === 0) return false;
-  const header = rows[0].map(c => c.trim().toLowerCase());
+  const dataRows = stripLeadingCommentRows(rows);
+  if (dataRows.length === 0) return false;
+  const header = dataRows[0].map(c => c.trim().toLowerCase());
   return header.length >= 2 && header[0] === 'metric_field' && header[1] === 'value';
 }
 
 function parseCanonicalOperationalMetricsCSV(rows: string[][]): Record<string, number | string> {
+  const dataRows = stripLeadingCommentRows(rows);
   const metrics: Record<string, number | string> = {};
-  for (let i = 1; i < rows.length; i++) {
-    const [fieldName, rawValue] = rows[i];
-    if (!fieldName) continue;
+  for (let i = 1; i < dataRows.length; i++) {
+    const [fieldName, rawValue] = dataRows[i];
+    if (!fieldName || fieldName.trim().startsWith('#')) continue;
     const key = fieldName.trim();
     const value = (rawValue ?? '').trim();
     const numeric = Number(value);
