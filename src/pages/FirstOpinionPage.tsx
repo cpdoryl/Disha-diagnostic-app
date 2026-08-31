@@ -2056,7 +2056,35 @@ HOW TO USE IN DISHA:
                         <p className="text-sm font-bold text-gray-900">{uploadedFileName}</p>
                         {isAnalyzingFile ? (
                           <p className="text-xs text-blue-600 font-bold">🔍 Analyzing data metrics...</p>
-                        ) : fileValidation ? (
+                        ) : extractedMetrics && extractedMetrics.fileType !== 'UNREADABLE_BINARY_FILE' && Object.keys(extractedMetrics.metricsFound).length > 0 ? (
+                          <div className="mt-2 bg-slate-50 border border-slate-200 rounded-lg p-3 text-left">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                              Exactly What We Read From Your File — verify this matches what you entered
+                            </p>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs text-left border-collapse">
+                                <thead>
+                                  <tr className="text-slate-500 border-b border-slate-200">
+                                    <th className="py-1 pr-3 font-bold">metric_field (as read)</th>
+                                    <th className="py-1 font-bold">Value captured</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Object.entries(extractedMetrics.metricsFound).map(([field, value]) => (
+                                    <tr key={field} className="border-b border-slate-100">
+                                      <td className="py-1 pr-3 font-mono text-slate-700">{field}</td>
+                                      <td className={cn('py-1 font-bold', String(value).trim() === '' ? 'text-rose-500 italic' : 'text-slate-900')}>
+                                        {String(value).trim() === '' ? '(blank value)' : String(value)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {isAnalyzingFile ? null : fileValidation ? (
                           <>
                             {fileValidation.isValid ? (
                               <>
@@ -2090,13 +2118,12 @@ HOW TO USE IN DISHA:
                                       ))}
                                     </>
                                   )}
-                                  <p className="text-xs font-semibold text-rose-900 mt-2">Missing:</p>
+                                  <p className="text-xs font-semibold text-rose-900 mt-2">Missing — not found in your file:</p>
                                   {fileValidation.requiredMetrics
                                     .filter(r => fileValidation.missingMetrics.some(mm => mm.includes(r.fieldName)))
                                     .map((missing, idx) => (
                                       <p key={idx} className="text-xs text-rose-700 ml-2">
-                                        • {missing.description}<br/>
-                                        <span className="text-gray-600 italic">{missing.example}</span>
+                                        • {missing.description} — add row <span className="font-mono">{missing.fieldName},&lt;your value&gt;</span>
                                       </p>
                                     ))}
                                 </div>
