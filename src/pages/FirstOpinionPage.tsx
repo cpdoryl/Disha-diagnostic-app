@@ -992,7 +992,8 @@ HOW TO USE IN DISHA:
 
     } catch (error) {
       console.error('Error saving checkup:', error);
-      setValidationError('Failed to save checkup. Please try again.');
+      const detail = error instanceof Error ? error.message : String(error);
+      setValidationError(`❌ Failed to save checkup: ${detail}\n\nThis is a save/permissions error, not a problem with your answers or uploaded data — please report this exact message if it persists.`);
     } finally {
       // Reset submit state after a delay
       setTimeout(() => setIsSubmittingToFirestore(false), 2000);
@@ -1844,8 +1845,8 @@ HOW TO USE IN DISHA:
                 <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-200 text-rose-800 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
                   <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <p className="font-extrabold text-sm text-rose-900">Compulsory Questions Unanswered</p>
-                    <p className="text-xs font-semibold text-rose-700 leading-relaxed">
+                    <p className="font-extrabold text-sm text-rose-900">Action Required</p>
+                    <p className="text-xs font-semibold text-rose-700 leading-relaxed whitespace-pre-line">
                       {validationError}
                     </p>
                   </div>
