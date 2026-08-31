@@ -381,7 +381,7 @@ export const FirstOpinionPage = () => {
   console.log('🔴 FIRST OPINION ENGINE LOADED - This is the latest version');
   const { activeSchool } = useAppStore();
   const [user] = useAuthState(auth);
-  const schoolId = activeSchool?.id || 'default-school';
+  const schoolId = activeSchool?.id || '';
   
   // Layout stages:
   // 0: Select Symptoms (Challenge Menu)
@@ -848,8 +848,16 @@ HOW TO USE IN DISHA:
 
   // FIRESTORE SAVE & CLOUD FUNCTION HANDLER
   const handleSaveCheckupToFirestore = async () => {
-    if (!user || !schoolId) {
+    if (!user) {
       alert('Authentication required. Please log in.');
+      return;
+    }
+
+    if (!activeSchool || !schoolId) {
+      setValidationError(
+        '⚠️ No school profile selected. Please select or create a school profile from the sidebar before running a First Opinion checkup.'
+      );
+      setStep(0);
       return;
     }
 
@@ -1650,19 +1658,31 @@ HOW TO USE IN DISHA:
               </div>
             </div>
 
+            {!activeSchool && (
+              <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-200 text-rose-800 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-extrabold text-sm text-rose-900">No School Profile Selected</p>
+                  <p className="text-xs font-semibold text-rose-700 leading-relaxed">
+                    A First Opinion checkup must be linked to a specific school. Please select an existing school, or create a new school profile, from the school dropdown in the left sidebar before continuing.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-3 pt-2">
-              {selectedChallenges.length < 3 && (
+              {activeSchool && selectedChallenges.length < 3 && (
                 <span className="text-xs font-bold text-amber-600">
                   Select {3 - selectedChallenges.length} more challenge{3 - selectedChallenges.length > 1 ? 's' : ''} ({selectedChallenges.length}/3)
                 </span>
               )}
               <button
-                onClick={() => selectedChallenges.length === 3 && setStep(1)}
-                disabled={selectedChallenges.length !== 3}
-                title={selectedChallenges.length !== 3 ? 'Select exactly 3 challenges to continue' : undefined}
+                onClick={() => activeSchool && selectedChallenges.length === 3 && setStep(1)}
+                disabled={!activeSchool || selectedChallenges.length !== 3}
+                title={!activeSchool ? 'Select or create a school profile first' : selectedChallenges.length !== 3 ? 'Select exactly 3 challenges to continue' : undefined}
                 className={cn(
                   "text-white font-bold px-7 py-3.5 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm",
-                  selectedChallenges.length === 3
+                  activeSchool && selectedChallenges.length === 3
                     ? "bg-blue-600 hover:bg-blue-700 shadow-[0_4px_14px_rgba(37,99,235,0.25)] hover:translate-x-0.5"
                     : "bg-gray-300 cursor-not-allowed"
                 )}
@@ -1790,48 +1810,42 @@ HOW TO USE IN DISHA:
                 </div>
               )}
 
-              {/* Minimal School Profile Baseline */}
+              {/* School Profile Baseline - read-only, sourced directly from the active school profile */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
                 <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5 text-slate-500" />
                   School Profile Baseline (Sector Benchmarking)
                 </h4>
+                <p className="text-[11px] text-slate-500 font-medium -mt-2">
+                  Pulled from the active school profile — edit the school profile from the sidebar to change these.
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-bold text-gray-700">
                   <div className="space-y-1.5">
-                    <label className="text-gray-500">Affiliation Board</label>
-                    <select value={board} onChange={(e) => setBoard(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      <option value="CBSE">CBSE (Central Board)</option>
-                      <option value="ICSE">ICSE / ISC</option>
-                      <option value="State">State Board</option>
-                      <option value="IB/IGCSE">IB / IGCSE International</option>
-                    </select>
+                    <label className="text-gray-500 block">Affiliation Board</label>
+                    <div className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
+                      {activeSchool?.board || 'Not set in school profile'}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-gray-500">Student Body Size</label>
-                    <select value={schoolSize} onChange={(e) => setSchoolSize(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      <option value="Small (< 500 students)">Small (Under 500 students)</option>
-                      <option value="Medium (500 - 1500 students)">Medium (500 to 1500 students)</option>
-                      <option value="Large (1500+ students)">Large (Above 1500 students)</option>
-                    </select>
+                    <label className="text-gray-500 block">Student Body Size</label>
+                    <div className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
+                      {activeSchool?.studentCount || 'Not set in school profile'}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-gray-500">Annual Fee Band</label>
-                    <select value={feeBand} onChange={(e) => setFeeBand(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      <option value="Low (< ₹25k per year)">Low (Under ₹25k per year)</option>
-                      <option value="Medium (₹25k - ₹75k per year)">Medium (₹25k to ₹75k per year)</option>
-                      <option value="High (₹75k+ per year)">High (Above ₹75k per year)</option>
-                    </select>
+                    <label className="text-gray-500 block">Annual Fee Band</label>
+                    <div className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
+                      {activeSchool?.feeBand || 'Not set in school profile'}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-gray-500">City / Location Tier</label>
-                    <select value={cityTier} onChange={(e) => setCityTier(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      <option value="Tier 1 (Metro)">Tier 1 (Metros: Delhi, Mumbai, Bangalore)</option>
-                      <option value="Tier 2 (Capital / Large Cities)">Tier 2 (State Capitals / Industrial Cities)</option>
-                      <option value="Tier 3 (District Towns)">Tier 3 (District Towns / Semirural)</option>
-                    </select>
+                    <label className="text-gray-500 block">City / Location Tier</label>
+                    <div className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
+                      {activeSchool?.tier || 'Not set in school profile'}
+                    </div>
                   </div>
                 </div>
               </div>
