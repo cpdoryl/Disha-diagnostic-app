@@ -93,9 +93,18 @@ service cloud.firestore {
         allow update: if request.auth != null;
         allow delete: if request.auth != null;
 
+        // FIXED (2026-09-01): "if true" meant literally anyone, signed in or
+        // not, could overwrite another school's saved report - including
+        // both the dishaScore/perceptionGap/realInsights AND its
+        // inputsChecksum together, so a forged pair would still pass
+        // reportIntegrity.ts's own consistency check (it only proves the
+        // stored analysis is internally self-consistent, not that Firestore
+        // wasn't tampered with from outside the app). Tightened to
+        // "signed in", matching every other write rule in this file after
+        // the same custom-claims gap noted above checkups/{checkupId}.
         match /analysis/{analysisId} {
           allow read: if true;
-          allow create, update: if true;
+          allow create, update: if request.auth != null;
           allow delete: if request.auth != null;
         }
       }
