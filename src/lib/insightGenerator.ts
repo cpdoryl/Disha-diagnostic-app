@@ -51,6 +51,24 @@ function getBenchmarkThreshold(fieldName: string): number | null {
     : acceptableBands[acceptableBands.length - 1].max;
 }
 
+/**
+ * Rank insights by severity: highest priority first, then by how far off
+ * benchmark within the same priority. Used everywhere a report surfaces a
+ * short "most urgent" list (Key Findings, Recommended Actions, and the
+ * overall assessment headline) so they always agree with each other,
+ * instead of each independently picking from the raw metrics-object
+ * insertion order (which always puts the 4 Core Operational Levers first,
+ * regardless of actual severity).
+ */
+function rankBySeverity(insights: RealInsight[]): RealInsight[] {
+  const priorityRank: Record<RealInsight['priority'], number> = { high: 0, medium: 1, low: 2 };
+  return [...insights].sort((a, b) => {
+    const byPriority = priorityRank[a.priority] - priorityRank[b.priority];
+    if (byPriority !== 0) return byPriority;
+    return b.gap - a.gap;
+  });
+}
+
 function genericFinding(
   displayName: string,
   value: number,
@@ -442,12 +460,7 @@ function analyzeExtractedMetrics(metrics: Record<string, number | string>) {
   // for every one of the 455 possible challenge combinations, regardless of
   // severity, crowding out the challenge-specific metrics the school
   // actually selected these 3 worries to investigate.
-  const priorityRank: Record<RealInsight['priority'], number> = { high: 0, medium: 1, low: 2 };
-  const ranked = [...insights].sort((a, b) => {
-    const byPriority = priorityRank[a.priority] - priorityRank[b.priority];
-    if (byPriority !== 0) return byPriority;
-    return b.gap - a.gap;
-  });
+  const ranked = rankBySeverity(insights);
 
   const findings = ranked.map((insight) => `${insight.metric}: ${insight.finding}`);
   const actionItems = ranked
@@ -549,12 +562,20 @@ function generateOverallAssessment(
     return 'Insufficient data for analysis. Upload operational data files for deeper insights.';
   }
 
+  // Ranked the same way as Key Findings/Recommended Actions (priority, then
+  // gap size) so the headline names the SAME top-priority metrics those
+  // panels lead with, instead of independently picking the first 2 "below"
+  // items in raw metrics-object order (which always meant the 4 Core
+  // Operational Levers, never the challenge-specific metrics actually
+  // driving the worst severity).
+  const ranked = rankBySeverity(analysis.insights);
+
   if (belowCount > totalInsights / 2) {
-    return `⚠️ Critical: ${belowCount} areas below target. Immediate action required on ${analysis.insights.filter(i => i.status === 'below').map(i => i.metric).slice(0, 2).join(', ')}.`;
+    return `⚠️ Critical: ${belowCount} areas below target. Immediate action required on ${ranked.filter(i => i.status === 'below').map(i => i.metric).slice(0, 2).join(', ')}.`;
   }
 
   if (exceedingCount > totalInsights / 2) {
-    return `✅ Strong Performance: ${exceedingCount} areas exceeding benchmarks. Focus on ${analysis.insights.filter(i => i.status === 'below').map(i => i.metric).join(', ') || 'maintaining excellence'}.`;
+    return `✅ Strong Performance: ${exceedingCount} areas exceeding benchmarks. Focus on ${ranked.filter(i => i.status === 'below').map(i => i.metric).join(', ') || 'maintaining excellence'}.`;
   }
 
   return `⚖️ Balanced Profile: ${exceedingCount} areas strong, ${belowCount} areas needing attention. Strategic focus on identified gaps recommended.`;
