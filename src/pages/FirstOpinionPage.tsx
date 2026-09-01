@@ -13,6 +13,7 @@ import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGene
 import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
 import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
 import { saveCheckupToFirestore, subscribeToCheckupAnalysis, updateCheckupStatus, saveCheckupAnalysis, getCheckupAnalysisOnce, getSchoolCheckups } from '../lib/checkupService';
+import { generateFirstOpinionReportPdf, AnsweredQuestionDetail } from '../lib/firstOpinionReportPdf';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
 import {
@@ -530,6 +531,7 @@ export const FirstOpinionPage = () => {
   const [checkupId, setCheckupId] = useState<string | null>(null);
   const [firestoreCheckupData, setFirestoreCheckupData] = useState<any>(null);
   const [isFinalizingReport, setIsFinalizingReport] = useState<boolean>(false);
+  const [isDownloadingReport, setIsDownloadingReport] = useState<boolean>(false);
 
   // Past Reports: lets a school reopen a previously computed First Opinion
   // report instead of it only existing in memory until the tab closes.
@@ -1208,6 +1210,63 @@ HOW TO USE IN DISHA:
       setValidationError(`❌ Could not mark this report complete: ${detail}`);
     } finally {
       setIsFinalizingReport(false);
+    }
+  };
+
+  // "Download Full Report (PDF)" - builds the same PDF for a freshly
+  // computed report or a reopened past one (loadPastCheckup restores the
+  // exact same state this reads from), so nothing extra needs to be saved
+  // to the database just to make downloading work later.
+  const handleDownloadReport = async () => {
+    if (!dishaScore || !realInsights || isDownloadingReport) return;
+    setIsDownloadingReport(true);
+    try {
+      const challengeLabels: Record<string, string> = {};
+      selectedChallenges.forEach((ck) => {
+        challengeLabels[ck] = challenges.find((c) => c.id === ck)?.label || ck;
+      });
+
+      const answeredQuestions: AnsweredQuestionDetail[] = [];
+      selectedChallenges.forEach((ck) => {
+        const cObj = challenges.find((c) => c.id === ck);
+        if (!cObj) return;
+        cObj.questions.forEach((q) => {
+          const selectedValue = answers[q.id];
+          const option = q.options?.find((opt) => opt.value === selectedValue);
+          if (!option) return;
+          answeredQuestions.push({
+            questionId: q.id,
+            challengeKey: ck,
+            challengeLabel: challengeLabels[ck],
+            questionLabel: q.label,
+            selectedOptionLabel: option.label,
+            weight: option.weight
+          });
+        });
+      });
+
+      await generateFirstOpinionReportPdf({
+        referenceId: currentReferenceId || `FO-${checkupId?.slice(0, 8) || 'DRAFT'}`,
+        schoolName: activeSchool?.name || 'Unknown School',
+        board,
+        city: activeSchool?.city || '-',
+        cityTier,
+        feeBand,
+        generatedAt: new Date(),
+        selectedChallenges,
+        challengeLabels,
+        answeredQuestions,
+        dishaScore,
+        realInsights,
+        perceptionGap: perceptionGapReport,
+        extractedMetricsFound: extractedMetrics?.metricsFound || {}
+      });
+    } catch (error) {
+      console.error('Error generating PDF report:', error);
+      const detail = error instanceof Error ? error.message : String(error);
+      setValidationError(`❌ Could not generate the PDF report: ${detail}`);
+    } finally {
+      setIsDownloadingReport(false);
     }
   };
 
@@ -2874,14 +2933,25 @@ HOW TO USE IN DISHA:
             >
               Back to Worries
             </button>
-            <button
-              onClick={handleReportComplete}
-              disabled={isFinalizingReport}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              {isFinalizingReport ? 'Finalizing...' : 'Report Complete'}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleDownloadReport}
+                disabled={isDownloadingReport || !dishaScore}
+                title="Full report + Annexure (calculation detail, benchmark references) as PDF"
+                className="bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 disabled:opacity-60 disabled:cursor-not-allowed font-bold px-5 py-3 rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm"
+              >
+                <Download className="w-4 h-4" />
+                {isDownloadingReport ? 'Building PDF...' : 'Download Full Report (PDF)'}
+              </button>
+              <button
+                onClick={handleReportComplete}
+                disabled={isFinalizingReport}
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {isFinalizingReport ? 'Finalizing...' : 'Report Complete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
