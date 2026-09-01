@@ -40,6 +40,13 @@ export interface AnsweredQuestionDetail {
   weight: number;
 }
 
+/** A chart rasterized from its on-screen Recharts component (via html2canvas by the caller) so the PDF, which has no live DOM, can still embed the same visual the user sees. */
+export interface ReportChartImage {
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
 export interface FirstOpinionReportPdfInput {
   referenceId: string;
   schoolName: string;
@@ -55,6 +62,11 @@ export interface FirstOpinionReportPdfInput {
   realInsights: DataAnalysisResult;
   perceptionGap: PerceptionGapEntry[];
   extractedMetricsFound: Record<string, number | string>;
+  /** Optional: on-screen chart snapshots. When omitted (e.g. capture failed), the PDF still prints the equivalent data as tables/text - it never simply drops a chart section, per the "without deleting any part" report requirement. */
+  charts?: {
+    leversBar?: ReportChartImage | null;
+    perceptionRadar?: ReportChartImage | null;
+  };
 }
 
 /**
@@ -177,6 +189,35 @@ export async function generateFirstOpinionReportPdf(input: FirstOpinionReportPdf
     y = (doc as any).lastAutoTable.finalY + 8;
   };
 
+  // Draws a rasterized on-screen chart (title + bordered image + caption),
+  // measuring it up front so the whole block moves to the next page together
+  // rather than splitting an image across a page break. Capped at 85mm tall
+  // so a wide/short chart doesn't dominate the page.
+  const chart = (title: string, img: ReportChartImage, caption: string) => {
+    const maxWidth = pageWidth - marginX * 2;
+    const aspect = img.height / img.width;
+    let imgWidth = maxWidth;
+    let imgHeight = imgWidth * aspect;
+    const maxImgHeight = 85;
+    if (imgHeight > maxImgHeight) {
+      imgHeight = maxImgHeight;
+      imgWidth = imgHeight / aspect;
+    }
+    checkPageBreak(imgHeight + 16);
+    doc.setFontSize(10.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(sanitizePdfText(title), marginX, y);
+    y += 6;
+    const x = marginX + (maxWidth - imgWidth) / 2;
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.2);
+    doc.rect(x, y, imgWidth, imgHeight);
+    doc.addImage(img.dataUrl, 'PNG', x, y, imgWidth, imgHeight, undefined, 'FAST');
+    y += imgHeight + 4;
+    paragraph(caption, { size: 8.3, color: [90, 90, 90] });
+  };
+
   // ============================================================
   // LETTERHEAD (first page)
   // ============================================================
@@ -256,6 +297,14 @@ export async function generateFirstOpinionReportPdf(input: FirstOpinionReportPdf
     ]
   );
 
+  if (input.charts?.leversBar) {
+    chart(
+      'Visual: Core Operational Levers vs Ideal Benchmark',
+      input.charts.leversBar,
+      'Each bar is that lever\'s multiplier expressed as a % of the "Ideal" (100%) threshold from the table above. Green meets/beats Ideal, blue is Good, amber is Acceptable but taxing, red is Poor. Because M_obj multiplies all four together rather than averaging them, the single lowest (reddest) bar has an outsized effect on the Health Index - it is usually the highest-leverage fix.'
+    );
+  }
+
   sectionTitle('Perception Gap Analysis - Per Selected Challenge', {
     subtitle: 'Self-reported severity (from the screening questionnaire) vs. objective severity (from uploaded operational data), both on a 1 (healthy) to 10 (severe) scale. A challenge is treated as "a real concern" once its severity exceeds 5.'
   });
@@ -268,6 +317,14 @@ export async function generateFirstOpinionReportPdf(input: FirstOpinionReportPdf
       VERDICT_LABEL[g.verdict] || g.verdict
     ])
   );
+
+  if (input.charts?.perceptionRadar) {
+    chart(
+      'Visual: Perception vs Reality - Radar View',
+      input.charts.perceptionRadar,
+      'One axis per selected challenge; the indigo shape is what leadership self-reported, the red shape is what the uploaded data shows, both on a 1 (healthy) to 10 (severe) scale. Where the shapes nearly overlap, perception matches reality (Aligned). Where red reaches further out than indigo, the real situation is worse than believed (Delusional Comfort) - the pattern most likely to cause a surprise crisis. Where indigo reaches further than red, the school may be under-crediting a real strength (Hidden Excellence). A vertex sitting at the centre on either shape means that side had insufficient data to score - see the table above for which.'
+    );
+  }
 
   sectionTitle('Data-Driven Insights from Operational Metrics');
   paragraph(input.realInsights.overallAssessment, { size: 9.5, color: [30, 41, 59] });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import JSZip from 'jszip';
 import { useAppStore } from '../store';
 import { DISHAScoreDashboard } from '../components/DISHAScoreDashboard';
@@ -13,7 +13,7 @@ import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGene
 import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
 import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
 import { saveCheckupToFirestore, subscribeToCheckupAnalysis, updateCheckupStatus, saveCheckupAnalysis, getCheckupAnalysisOnce, getSchoolCheckups } from '../lib/checkupService';
-import { generateFirstOpinionReportPdf, AnsweredQuestionDetail } from '../lib/firstOpinionReportPdf';
+import { generateFirstOpinionReportPdf, AnsweredQuestionDetail, ReportChartImage } from '../lib/firstOpinionReportPdf';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
 import {
@@ -72,7 +72,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend
+  Legend,
+  ReferenceLine,
+  Cell
 } from 'recharts';
 
 // Define structures for our 15 challenges
@@ -381,6 +383,14 @@ const OUTCOMES: OutcomeItem[] = [
   }
 ];
 
+/** Rasterizes an on-screen Recharts container (via its ref) to a PNG data URL for embedding in the downloadable PDF. Same pattern already used by DiagnosticReport.tsx's PDF export. */
+async function captureChartImage(el: HTMLElement | null): Promise<ReportChartImage | null> {
+  if (!el) return null;
+  const { default: html2canvas } = await import('html2canvas');
+  const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', logging: false });
+  return { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height };
+}
+
 export const FirstOpinionPage = () => {
   const { activeSchool, setCurrentView } = useAppStore();
   const [user] = useAuthState(auth);
@@ -510,8 +520,46 @@ export const FirstOpinionPage = () => {
     [selectedChallenges, answers, extractedMetrics]
   );
 
+  // Refs to the on-screen chart containers below (Step 2), so the PDF
+  // download can rasterize the exact same charts the user is looking at
+  // rather than re-rendering a second, potentially-diverging version.
+  const leversChartRef = useRef<HTMLDivElement>(null);
+  const radarChartRef = useRef<HTMLDivElement>(null);
+
+  // Perception vs Reality radar data: one axis per selected challenge, two
+  // series (self-reported vs data-derived severity), both 1 (healthy) to 10
+  // (severe). A missing side (insufficient uploaded data) plots as 0 rather
+  // than being omitted, since a radar axis can't be dropped per-series -
+  // the on-screen caption calls this out explicitly.
+  const radarChartData = useMemo(
+    () =>
+      perceptionGapReport.map((g) => ({
+        challenge: g.challengeLabel,
+        'Self-Perceived Severity': g.subjectiveWeight ?? 0,
+        'Data-Driven Severity': g.objectiveWeight ?? 0
+      })),
+    [perceptionGapReport]
+  );
+
+  const getLeverBarColor = (pct: number) => (pct >= 100 ? '#059669' : pct >= 85 ? '#2563eb' : pct >= 70 ? '#d97706' : '#dc2626');
+
   // DISHA Score State
   const [dishaScore, setDISHAScore] = useState<DISHAScore | null>(null);
+
+  // Core Operational Levers as % of their "Ideal" (1.0x+) benchmark
+  // multiplier, so all four sit on one comparable 0-110% scale for the chart.
+  const leversChartData = useMemo(
+    () =>
+      dishaScore
+        ? [
+            { lever: 'Student-Teacher Ratio', pct: Math.round(dishaScore.m_str * 100) },
+            { lever: 'Parent Response SLA', pct: Math.round(dishaScore.m_sla * 100) },
+            { lever: 'Annual Training', pct: Math.round(dishaScore.m_train * 100) },
+            { lever: 'Weekly Planning', pct: Math.round(dishaScore.m_plan * 100) }
+          ]
+        : [],
+    [dishaScore]
+  );
   const [operationalMetrics, setOperationalMetrics] = useState<OperationalMetrics>({
     studentTeacherRatio: 28,
     parentResponseSLA: 24,
@@ -1245,6 +1293,11 @@ HOW TO USE IN DISHA:
         });
       });
 
+      const [leversChartImage, radarChartImage] = await Promise.all([
+        captureChartImage(leversChartRef.current),
+        captureChartImage(radarChartRef.current)
+      ]);
+
       await generateFirstOpinionReportPdf({
         referenceId: currentReferenceId || `FO-${checkupId?.slice(0, 8) || 'DRAFT'}`,
         schoolName: activeSchool?.name || 'Unknown School',
@@ -1259,7 +1312,8 @@ HOW TO USE IN DISHA:
         dishaScore,
         realInsights,
         perceptionGap: perceptionGapReport,
-        extractedMetricsFound: extractedMetrics?.metricsFound || {}
+        extractedMetricsFound: extractedMetrics?.metricsFound || {},
+        charts: { leversBar: leversChartImage, perceptionRadar: radarChartImage }
       });
     } catch (error) {
       console.error('Error generating PDF report:', error);
@@ -2777,6 +2831,41 @@ HOW TO USE IN DISHA:
             <>
               <DISHAScoreDashboard score={dishaScore} />
 
+              {/* CORE OPERATIONAL LEVERS - VISUAL BREAKDOWN */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                  Core Operational Levers — Objective Health Breakdown
+                </h3>
+                <p className="text-xs text-gray-500 -mt-2">
+                  Each lever's raw value is converted into a benchmark-based multiplier, shown here as a % of the "Ideal" (100%) threshold. All four multiply together to form the Operational Reality score (M_obj).
+                </p>
+                <div ref={leversChartRef} className="bg-white">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={leversChartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="lever" tick={{ fontSize: 11 }} />
+                      <YAxis unit="%" domain={[0, 110]} tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v: number) => [`${v}%`, 'vs. Ideal Benchmark']} />
+                      <ReferenceLine
+                        y={100}
+                        stroke="#059669"
+                        strokeDasharray="4 4"
+                        label={{ value: 'Ideal (100%)', position: 'insideTopRight', fontSize: 10, fill: '#059669' }}
+                      />
+                      <Bar dataKey="pct" name="% of Ideal Benchmark" radius={[6, 6, 0, 0]}>
+                        {leversChartData.map((entry, idx) => (
+                          <Cell key={idx} fill={getLeverBarColor(entry.pct)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3 leading-relaxed">
+                  <strong>How to read this:</strong> A bar reaching the dashed 100% line means that lever meets or beats the "Ideal" benchmark band (Student-Teacher Ratio ≤ 20:1, Parent Response SLA ≤ 12 hours, Annual Training ≥ 25 hours, Weekly Planning ≥ 5 hours). Green = Ideal, blue = Good, amber = Acceptable but taxing, red = Poor and needs urgent attention. Because M_obj is the <em>product</em> of all four multipliers (not an average), one weak lever drags the whole Operational Reality score down disproportionately — fixing the lowest bar first typically has the biggest impact on the overall Health Index.
+                </p>
+              </div>
+
               {/* PERCEPTION GAP ANALYSIS - per selected challenge */}
               <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -2814,6 +2903,33 @@ HOW TO USE IN DISHA:
                     );
                   })}
                 </div>
+              </div>
+
+              {/* PERCEPTION VS REALITY - RADAR CHART */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-indigo-600" />
+                  Perception vs Reality — Radar View
+                </h3>
+                <p className="text-xs text-gray-500 -mt-2">
+                  Plots leadership's self-reported severity against the objective, data-derived severity for each selected challenge (1 = healthy, 10 = severe). The further apart the two shapes, the bigger the perception gap.
+                </p>
+                <div ref={radarChartRef} className="bg-white">
+                  <ResponsiveContainer width="100%" height={320}>
+                    <RadarChart data={radarChartData} outerRadius="72%">
+                      <PolarGrid stroke="#e5e7eb" />
+                      <PolarAngleAxis dataKey="challenge" tick={{ fontSize: 11, fill: '#374151' }} />
+                      <PolarRadiusAxis angle={90} domain={[0, 10]} tick={{ fontSize: 10 }} />
+                      <Radar name="Self-Perceived Severity" dataKey="Self-Perceived Severity" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.35} />
+                      <Radar name="Data-Driven Severity" dataKey="Data-Driven Severity" stroke="#dc2626" fill="#dc2626" fillOpacity={0.25} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v: number) => [`${v}/10`, '']} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3 leading-relaxed">
+                  <strong>How to read this:</strong> Where the indigo (Self-Perceived) and red (Data-Driven) shapes nearly overlap, perception matches reality (<em>Aligned</em>). Where the red shape reaches further out than indigo, the real situation is worse than leadership believes (<em>Delusional Comfort</em>) — the pattern most likely to cause a surprise crisis. Where indigo reaches further than red, the school may be under-crediting a real strength (<em>Hidden Excellence</em>). A challenge sitting at the centre (0) on either line means that side had insufficient data to score — see the cards above for which one and why.
+                </p>
               </div>
 
               {/* EXTRACTED METRICS & RECOMMENDATIONS */}
