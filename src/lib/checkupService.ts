@@ -56,6 +56,15 @@ export interface CheckupAnalysis {
   extractedMetricsFound: Record<string, number | string>;
   extractedFileType: string;
   generatedAt: any;
+  /**
+   * SHA-256 hash of the raw inputs (selectedChallenges, answers,
+   * extractedMetricsFound) this report was computed from - see
+   * reportIntegrity.ts's computeInputsChecksum(). Optional because reports
+   * saved before this field existed won't have one; reportIntegrity.ts's
+   * verifyCheckupAnalysis() treats that case as "not_recorded" rather than
+   * a mismatch.
+   */
+  inputsChecksum?: string;
 }
 
 /**

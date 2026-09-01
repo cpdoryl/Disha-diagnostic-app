@@ -28,6 +28,10 @@ jobs:
         run: npm install --legacy-peer-deps --no-audit
         timeout-minutes: 15
 
+      - name: Run test suite
+        run: npm run test:run
+        timeout-minutes: 10
+
       - name: Build React app with Vite
         run: npx vite build
         timeout-minutes: 10

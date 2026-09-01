@@ -14,6 +14,7 @@ import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dis
 import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
 import { saveCheckupToFirestore, subscribeToCheckupAnalysis, updateCheckupStatus, saveCheckupAnalysis, getCheckupAnalysisOnce, getSchoolCheckups } from '../lib/checkupService';
 import { generateFirstOpinionReportPdf, AnsweredQuestionDetail, ReportChartImage } from '../lib/firstOpinionReportPdf';
+import { computeInputsChecksum, verifyCheckupAnalysis, VerificationResult } from '../lib/reportIntegrity';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
 import {
@@ -580,6 +581,14 @@ export const FirstOpinionPage = () => {
   const [firestoreCheckupData, setFirestoreCheckupData] = useState<any>(null);
   const [isFinalizingReport, setIsFinalizingReport] = useState<boolean>(false);
   const [isDownloadingReport, setIsDownloadingReport] = useState<boolean>(false);
+  // The SHA-256 checksum of this report's raw inputs, once known - set
+  // right after a fresh save computes one (runLocalDiagnosticCalculation)
+  // or when a past report is reopened (loadPastCheckup restores the one
+  // that was stored with it). Undefined for a report saved before this
+  // feature existed, or one not yet saved at all.
+  const [currentInputsChecksum, setCurrentInputsChecksum] = useState<string | undefined>(undefined);
+  const [isVerifyingReport, setIsVerifyingReport] = useState<boolean>(false);
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
 
   // Past Reports: lets a school reopen a previously computed First Opinion
   // report instead of it only existing in memory until the tab closes.
@@ -655,6 +664,8 @@ export const FirstOpinionPage = () => {
       setRealInsights(analysis.realInsights);
       setCheckupId(checkup.id);
       setCurrentReferenceId(checkup.referenceId || null);
+      setCurrentInputsChecksum(analysis.inputsChecksum);
+      setVerificationResult(null);
       setShowPastReportsModal(false);
       setStep(2);
     } catch (err) {
@@ -1293,9 +1304,14 @@ HOW TO USE IN DISHA:
         });
       });
 
-      const [leversChartImage, radarChartImage] = await Promise.all([
+      const [leversChartImage, radarChartImage, inputsChecksum] = await Promise.all([
         captureChartImage(leversChartRef.current),
-        captureChartImage(radarChartRef.current)
+        captureChartImage(radarChartRef.current),
+        computeInputsChecksum({
+          selectedChallenges,
+          answers,
+          extractedMetricsFound: extractedMetrics?.metricsFound || {}
+        })
       ]);
 
       await generateFirstOpinionReportPdf({
@@ -1313,6 +1329,7 @@ HOW TO USE IN DISHA:
         realInsights,
         perceptionGap: perceptionGapReport,
         extractedMetricsFound: extractedMetrics?.metricsFound || {},
+        inputsChecksum,
         charts: { leversBar: leversChartImage, perceptionRadar: radarChartImage }
       });
     } catch (error) {
@@ -1321,6 +1338,40 @@ HOW TO USE IN DISHA:
       setValidationError(`❌ Could not generate the PDF report: ${detail}`);
     } finally {
       setIsDownloadingReport(false);
+    }
+  };
+
+  // "Verify Report Integrity" - proves this report is not a black box: it
+  // re-runs the ENTIRE calculation pipeline (DISHA Score, Perception Gap,
+  // Data-Driven Insights) from nothing but the currently-held raw inputs
+  // (never trusting the already-computed dishaScore/realInsights state) and
+  // diffs the fresh result against what is on screen/was saved. A match
+  // proves the report is reproducible and the engine has not silently
+  // drifted since this report was generated; a mismatch names exactly what
+  // changed. See reportIntegrity.ts.
+  const handleVerifyReport = async () => {
+    if (!dishaScore || !realInsights || isVerifyingReport) return;
+    setIsVerifyingReport(true);
+    setVerificationResult(null);
+    try {
+      const result = await verifyCheckupAnalysis({
+        dishaScore,
+        realInsights,
+        perceptionGap: perceptionGapReport,
+        selectedChallenges,
+        answers,
+        extractedMetricsFound: extractedMetrics?.metricsFound || {},
+        extractedFileType: extractedMetrics?.fileType || 'csv',
+        generatedAt: null,
+        inputsChecksum: currentInputsChecksum
+      });
+      setVerificationResult(result);
+    } catch (error) {
+      console.error('Error verifying report:', error);
+      const detail = error instanceof Error ? error.message : String(error);
+      setValidationError(`❌ Could not verify this report: ${detail}`);
+    } finally {
+      setIsVerifyingReport(false);
     }
   };
 
@@ -1356,15 +1407,28 @@ HOW TO USE IN DISHA:
     // Insights) so it can be reopened later via "Past Reports" - previously
     // this only ever existed in this tab's memory and was lost on refresh.
     if (realInsights && extractedMetrics) {
-      saveCheckupAnalysis(schoolId, savedCheckupId, {
-        dishaScore: score,
-        realInsights,
-        perceptionGap: perceptionGapReport,
+      // The checksum is over the raw inputs only (never the computed
+      // dishaScore/insights) - it's the thing a school can independently
+      // recompute by hand from their own original submission to prove
+      // nothing was altered afterward. See reportIntegrity.ts.
+      computeInputsChecksum({
         selectedChallenges,
         answers,
-        extractedMetricsFound: extractedMetrics.metricsFound,
-        extractedFileType: extractedMetrics.fileType
+        extractedMetricsFound: extractedMetrics.metricsFound
       })
+        .then((inputsChecksum) => {
+          setCurrentInputsChecksum(inputsChecksum);
+          return saveCheckupAnalysis(schoolId, savedCheckupId, {
+            dishaScore: score,
+            realInsights,
+            perceptionGap: perceptionGapReport,
+            selectedChallenges,
+            answers,
+            extractedMetricsFound: extractedMetrics.metricsFound,
+            extractedFileType: extractedMetrics.fileType,
+            inputsChecksum
+          });
+        })
         .then(() => updateCheckupStatus(schoolId, savedCheckupId, 'ANALYZED', user?.uid || 'unknown'))
         .catch(err => console.error('Error saving checkup analysis:', err));
     }
@@ -2831,6 +2895,44 @@ HOW TO USE IN DISHA:
             <>
               <DISHAScoreDashboard score={dishaScore} />
 
+              {/* VERIFY REPORT INTEGRITY - result banner */}
+              {verificationResult && (
+                <div
+                  className={cn(
+                    'p-5 rounded-2xl border-2 space-y-2',
+                    verificationResult.verified ? 'bg-emerald-50 border-emerald-300' : 'bg-rose-50 border-rose-300'
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    {verificationResult.verified ? (
+                      <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <ShieldAlert className="w-5 h-5 text-rose-600" />
+                    )}
+                    <p className={cn('font-bold text-sm', verificationResult.verified ? 'text-emerald-900' : 'text-rose-900')}>
+                      {verificationResult.verified
+                        ? 'Verified — recomputed independently from the raw inputs and it matches this report exactly.'
+                        : 'Not verified — the recomputed result differs from this report.'}
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-600 pl-7">
+                    Every number above was just re-derived from scratch (DISHA Score, Perception Gap, Data-Driven Insights) using only the recorded screening answers and uploaded metrics — never by re-reading the stored score itself — and compared field by field.
+                  </p>
+                  {verificationResult.checksumMatches === 'not_recorded' && (
+                    <p className="text-xs text-amber-700 pl-7">
+                      Note: this report predates the input-checksum feature, so its raw inputs cannot be checksum-verified — only the recomputation match above applies. Its live checksum is <span className="font-mono">{verificationResult.recomputedChecksum.slice(0, 16)}…</span>
+                    </p>
+                  )}
+                  {verificationResult.mismatches.length > 0 && (
+                    <ul className="text-xs text-rose-800 pl-7 list-disc list-inside space-y-1">
+                      {verificationResult.mismatches.map((m, i) => (
+                        <li key={i}>{m}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
               {/* CORE OPERATIONAL LEVERS - VISUAL BREAKDOWN */}
               <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -3050,6 +3152,15 @@ HOW TO USE IN DISHA:
               Back to Worries
             </button>
             <div className="flex items-center gap-3">
+              <button
+                onClick={handleVerifyReport}
+                disabled={isVerifyingReport || !dishaScore}
+                title="Recomputes the entire score from the raw inputs and diffs it against this report - proves nothing was added or drifted"
+                className="bg-white border-2 border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed font-bold px-5 py-3 rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                {isVerifyingReport ? 'Verifying...' : 'Verify Report Integrity'}
+              </button>
               <button
                 onClick={handleDownloadReport}
                 disabled={isDownloadingReport || !dishaScore}

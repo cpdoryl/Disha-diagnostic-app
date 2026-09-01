@@ -62,6 +62,8 @@ export interface FirstOpinionReportPdfInput {
   realInsights: DataAnalysisResult;
   perceptionGap: PerceptionGapEntry[];
   extractedMetricsFound: Record<string, number | string>;
+  /** SHA-256 hash of the raw inputs (see reportIntegrity.ts's computeInputsChecksum) - printed so anyone can independently hash the same raw values (Annexure I) and confirm they match, without trusting this app's own claim that nothing was altered. Optional only so a caller without it (unexpected) still gets a full report rather than a crash. */
+  inputsChecksum?: string;
   /** Optional: on-screen chart snapshots. When omitted (e.g. capture failed), the PDF still prints the equivalent data as tables/text - it never simply drops a chart section, per the "without deleting any part" report requirement. */
   charts?: {
     leversBar?: ReportChartImage | null;
@@ -245,7 +247,17 @@ export async function generateFirstOpinionReportPdf(input: FirstOpinionReportPdf
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
   doc.text('School First Opinion Report', marginX, y);
-  y += 8;
+  y += 6;
+  if (input.inputsChecksum) {
+    doc.setFontSize(7);
+    doc.setFont('courier', 'normal');
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Input Checksum (SHA-256): ${input.inputsChecksum}  -  see Annexure I for how to verify`, marginX, y);
+    doc.setFont('helvetica', 'normal');
+    y += 6;
+  } else {
+    y += 2;
+  }
 
   table(
     ['School', 'Board', 'City / Tier', 'Fee Band'],
@@ -361,6 +373,17 @@ export async function generateFirstOpinionReportPdf(input: FirstOpinionReportPdf
 
   // --- Annexure I: Raw inputs received ---
   sectionTitle('Annexure I - Raw Inputs Received');
+
+  if (input.inputsChecksum) {
+    paragraph(
+      `Input Checksum (SHA-256): ${input.inputsChecksum}`,
+      { size: 8, color: [55, 65, 81] }
+    );
+    paragraph(
+      'This is a cryptographic fingerprint of every raw value in tables I.1 and I.2 below (the selected challenges, every answered question, and every uploaded/checklist-derived metric) - and nothing else. It changes if even one answer or one metric value is different, and is otherwise identical no matter when or how many times it is recomputed. Anyone can independently verify this report was not altered after submission: reproduce the canonical (sorted-key) JSON of {selectedChallenges, answers, extractedMetricsFound} exactly as recorded in this annexure and hash it with SHA-256 - a match proves these are the untouched original inputs.',
+      { size: 8, color: [90, 90, 90] }
+    );
+  }
 
   paragraph('I.1 Screening Questionnaire Answers', { size: 9.5, color: [15, 23, 42] });
   table(
