@@ -12,7 +12,7 @@ import FileAnalyzer, {
 import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGenerator';
 import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
 import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
-import { saveCheckupToFirestore, subscribeToCheckupAnalysis, updateCheckupStatus } from '../lib/checkupService';
+import { saveCheckupToFirestore, subscribeToCheckupAnalysis, updateCheckupStatus, saveCheckupAnalysis, getCheckupAnalysisOnce, getSchoolCheckups } from '../lib/checkupService';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
 import {
@@ -529,6 +529,67 @@ export const FirstOpinionPage = () => {
   const [checkupId, setCheckupId] = useState<string | null>(null);
   const [firestoreCheckupData, setFirestoreCheckupData] = useState<any>(null);
   const [isFinalizingReport, setIsFinalizingReport] = useState<boolean>(false);
+
+  // Past Reports: lets a school reopen a previously computed First Opinion
+  // report instead of it only existing in memory until the tab closes.
+  const [pastCheckups, setPastCheckups] = useState<any[]>([]);
+  const [isLoadingPastCheckups, setIsLoadingPastCheckups] = useState<boolean>(false);
+  const [loadingPastCheckupId, setLoadingPastCheckupId] = useState<string | null>(null);
+  const [pastReportError, setPastReportError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!schoolId) {
+      setPastCheckups([]);
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingPastCheckups(true);
+    getSchoolCheckups(schoolId)
+      .then((all) => {
+        if (cancelled) return;
+        setPastCheckups(
+          all
+            .filter((c) => c.checkupType === 'FirstOpinion' && c.status !== 'DELETED')
+            .slice(0, 8)
+        );
+      })
+      .catch((err) => console.error('Error loading past checkups:', err))
+      .finally(() => { if (!cancelled) setIsLoadingPastCheckups(false); });
+    return () => { cancelled = true; };
+  }, [schoolId]);
+
+  const loadPastCheckup = async (checkup: any) => {
+    setPastReportError(null);
+    setLoadingPastCheckupId(checkup.id);
+    try {
+      const analysis = await getCheckupAnalysisOnce(schoolId, checkup.id);
+      if (!analysis) {
+        setPastReportError(
+          `"${checkup.id}" has no saved report (submitted before this feature existed, or its analysis save failed). Its raw survey answers and uploaded data are still safely stored.`
+        );
+        return;
+      }
+      setSelectedChallenges(analysis.selectedChallenges || checkup.selectedChallenges || []);
+      setAnswers(analysis.answers || {});
+      setExtractedMetrics({
+        fileType: analysis.extractedFileType || 'csv',
+        metricsFound: analysis.extractedMetricsFound || {},
+        insights: [],
+        affectedDomains: [],
+        confidence: 'HIGH'
+      });
+      setDISHAScore(analysis.dishaScore);
+      setRealInsights(analysis.realInsights);
+      setCheckupId(checkup.id);
+      setStep(2);
+    } catch (err) {
+      console.error('Error loading past checkup:', err);
+      const detail = err instanceof Error ? err.message : String(err);
+      setPastReportError(`Could not load this report: ${detail}`);
+    } finally {
+      setLoadingPastCheckupId(null);
+    }
+  };
 
   // Active Root Cause node
   const [activeRootNode, setActiveRootNode] = useState<string>('workload');
@@ -1086,7 +1147,7 @@ HOW TO USE IN DISHA:
       // to the local calculation, which independently implements the same
       // documented S_sub/M_obj/Health Index formula (dishaScoreCalculator.ts)
       // and was always the code path that actually ran in practice.
-      runLocalDiagnosticCalculation();
+      runLocalDiagnosticCalculation(savedCheckupId);
 
       // Navigate to results step
       setTimeout(() => {
@@ -1125,7 +1186,7 @@ HOW TO USE IN DISHA:
   };
 
   // Helper function to run diagnostic calculation locally
-  const runLocalDiagnosticCalculation = () => {
+  const runLocalDiagnosticCalculation = (savedCheckupId: string) => {
     const required = getRequiredQuestions();
     const answersArray = required.map(q => {
       const selectedOptionValue = answers[q.id];
@@ -1151,6 +1212,23 @@ HOW TO USE IN DISHA:
     setDiagnosisResult(diagnosis);
 
     console.log('✓ Local diagnostic calculation complete');
+
+    // Persist the computed report (Health Index, Perception Gap, Data-Driven
+    // Insights) so it can be reopened later via "Past Reports" - previously
+    // this only ever existed in this tab's memory and was lost on refresh.
+    if (realInsights && extractedMetrics) {
+      saveCheckupAnalysis(schoolId, savedCheckupId, {
+        dishaScore: score,
+        realInsights,
+        perceptionGap: perceptionGapReport,
+        selectedChallenges,
+        answers,
+        extractedMetricsFound: extractedMetrics.metricsFound,
+        extractedFileType: extractedMetrics.fileType
+      })
+        .then(() => updateCheckupStatus(schoolId, savedCheckupId, 'ANALYZED', user?.uid || 'unknown'))
+        .catch(err => console.error('Error saving checkup analysis:', err));
+    }
   };
 
   // DIAGNOSTIC ENGING CALCULATION
@@ -1904,6 +1982,46 @@ HOW TO USE IN DISHA:
                 )}
               </div>
             </div>
+
+            {activeSchool && (
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3 text-xs">
+                <h5 className="font-bold text-gray-800 uppercase tracking-widest text-[10px] flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                  Past Reports
+                </h5>
+                {isLoadingPastCheckups ? (
+                  <p className="text-gray-400 italic">Loading...</p>
+                ) : pastCheckups.length === 0 ? (
+                  <p className="text-gray-500 italic">No previous First Opinion checkups for this school yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {pastCheckups.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => loadPastCheckup(c)}
+                        disabled={loadingPastCheckupId === c.id}
+                        className="w-full text-left p-2.5 rounded-lg border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50/40 transition-all disabled:opacity-50"
+                      >
+                        <p className="font-bold text-gray-800">
+                          {(c.selectedChallenges || []).length > 0
+                            ? c.selectedChallenges.join(', ')
+                            : 'First Opinion Checkup'}
+                        </p>
+                        <p className="text-gray-400 mt-0.5 flex items-center justify-between">
+                          <span>{c.createdAt?.toDate?.()?.toLocaleDateString?.() || 'Recent'}</span>
+                          <span className="font-semibold text-indigo-500">
+                            {loadingPastCheckupId === c.id ? 'Loading...' : `Status: ${c.status || 'SUBMITTED'}`}
+                          </span>
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {pastReportError && (
+                  <p className="text-rose-600 font-semibold pt-1 border-t border-gray-100">{pastReportError}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -18,6 +18,9 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { logAuditEvent } from './auditService';
+import { DISHAScore } from './dishaScoreCalculator';
+import { DataAnalysisResult } from './insightGenerator';
+import { PerceptionGapEntry } from './challengeObjectiveScoring';
 
 export interface CheckupData {
   surveyInput: Record<string, any>;
@@ -31,17 +34,26 @@ export interface CheckupData {
   uploadedFileName?: string;
 }
 
+/**
+ * The actual computed First Opinion report (Health Index, quadrant,
+ * Perception Gap, Data-Driven Insights), plus the exact inputs it was
+ * computed from - saved so a past report can be reopened and re-rendered
+ * exactly as it looked, without re-running the survey or re-uploading data.
+ *
+ * REPLACES an earlier interface (layer1_SubjectiveScores, layer2_ObjectiveMetrics,
+ * etc.) that mirrored the analyzeCheckup Cloud Function's intended output -
+ * that function is never invoked by this app (see saveCheckupToFirestore's
+ * doc comment), so nothing ever wrote that shape; this one matches what
+ * FirstOpinionPage.tsx's runLocalDiagnosticCalculation actually computes.
+ */
 export interface CheckupAnalysis {
-  layer1_SubjectiveScores: Record<string, any>;
-  layer1_Summary: Record<string, any>;
-  layer2_ObjectiveMetrics: Record<string, any>;
-  layer2_AggregatedObjectiveIndex: Record<string, any>;
-  layer3_HealthIndex: Record<string, any>;
-  gapAnalysis: Record<string, any>;
-  rootCauseAnalysis: Record<string, any>;
-  professionalAnalysis: Record<string, any>;
-  recommendations: Record<string, any>;
-  impactProjections: Record<string, any>;
+  dishaScore: DISHAScore;
+  realInsights: DataAnalysisResult;
+  perceptionGap: PerceptionGapEntry[];
+  selectedChallenges: string[];
+  answers: Record<string, string>;
+  extractedMetricsFound: Record<string, number | string>;
+  extractedFileType: string;
   generatedAt: any;
 }
 
@@ -173,6 +185,51 @@ export const subscribeToCheckupAnalysis = (
 };
 
 /**
+ * Save the computed First Opinion report for a checkup, so it can be
+ * reopened later ("Past Reports") instead of only existing in this
+ * browser tab's memory until it's closed. Writes to the same
+ * schools/{schoolId}/checkups/{checkupId}/analysis/current path
+ * subscribeToCheckupAnalysis already listens on, so any open tab
+ * for this checkup updates in real time too.
+ */
+export const saveCheckupAnalysis = async (
+  schoolId: string,
+  checkupId: string,
+  analysis: Omit<CheckupAnalysis, 'generatedAt'>
+): Promise<void> => {
+  try {
+    const analysisRef = doc(db, 'schools', schoolId, 'checkups', checkupId, 'analysis', 'current');
+    await setDoc(analysisRef, {
+      ...analysis,
+      generatedAt: serverTimestamp()
+    });
+    console.log(`✓ Checkup analysis saved for ${checkupId}`);
+  } catch (error) {
+    console.error('Error saving checkup analysis:', error);
+    throw error;
+  }
+};
+
+/**
+ * One-shot fetch of a checkup's saved analysis (for reopening a past
+ * report). Returns null if this checkup was submitted before this feature
+ * existed, or its analysis save failed.
+ */
+export const getCheckupAnalysisOnce = async (
+  schoolId: string,
+  checkupId: string
+): Promise<CheckupAnalysis | null> => {
+  try {
+    const analysisRef = doc(db, 'schools', schoolId, 'checkups', checkupId, 'analysis', 'current');
+    const snapshot = await getDoc(analysisRef);
+    return snapshot.exists() ? (snapshot.data() as CheckupAnalysis) : null;
+  } catch (error) {
+    console.error('Error fetching checkup analysis:', error);
+    throw error;
+  }
+};
+
+/**
  * Update checkup status
  */
 export const updateCheckupStatus = async (
@@ -203,50 +260,6 @@ export const updateCheckupStatus = async (
     console.error('Error updating checkup status:', error);
     throw error;
   }
-};
-
-/**
- * Get checkup analysis with retry logic (waits for Cloud Function to complete)
- */
-export const waitForCheckupAnalysis = async (
-  schoolId: string,
-  checkupId: string,
-  maxRetries: number = 30, // 30 seconds
-  retryInterval: number = 1000 // 1 second
-): Promise<CheckupAnalysis | null> => {
-  let retries = 0;
-
-  while (retries < maxRetries) {
-    try {
-      const analysisRef = doc(
-        db,
-        'schools',
-        schoolId,
-        'checkups',
-        checkupId,
-        'analysis',
-        'current'
-      );
-      const snapshot = await getDoc(analysisRef);
-
-      if (snapshot.exists()) {
-        console.log('✓ Analysis ready');
-        return snapshot.data() as CheckupAnalysis;
-      }
-
-      retries++;
-      if (retries < maxRetries) {
-        console.log(`Waiting for analysis... (${retries}/${maxRetries})`);
-        await new Promise((resolve) => setTimeout(resolve, retryInterval));
-      }
-    } catch (error) {
-      console.error('Error checking analysis:', error);
-      throw error;
-    }
-  }
-
-  console.error('Checkup analysis timeout - Cloud Function may not have completed');
-  return null;
 };
 
 /**
