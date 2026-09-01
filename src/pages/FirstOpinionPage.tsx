@@ -589,6 +589,19 @@ export const FirstOpinionPage = () => {
   const [currentInputsChecksum, setCurrentInputsChecksum] = useState<string | undefined>(undefined);
   const [isVerifyingReport, setIsVerifyingReport] = useState<boolean>(false);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+  // The recompute itself is near-instant (pure local math), and the detailed
+  // result banner renders up near the DISHA Score Dashboard at the TOP of
+  // the report - far from the "Verify Report Integrity" button in the
+  // footer. Without this, clicking the button appeared to do nothing at
+  // all: the state changed correctly, but the only visible change was off
+  // the bottom of the viewport. Scroll the banner into view the moment a
+  // result lands so the click always has a visible effect.
+  const verificationBannerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (verificationResult && verificationBannerRef.current) {
+      verificationBannerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [verificationResult]);
 
   // Past Reports: lets a school reopen a previously computed First Opinion
   // report instead of it only existing in memory until the tab closes.
@@ -2898,8 +2911,9 @@ HOW TO USE IN DISHA:
               {/* VERIFY REPORT INTEGRITY - result banner */}
               {verificationResult && (
                 <div
+                  ref={verificationBannerRef}
                   className={cn(
-                    'p-5 rounded-2xl border-2 space-y-2',
+                    'p-5 rounded-2xl border-2 space-y-2 scroll-mt-6',
                     verificationResult.verified ? 'bg-emerald-50 border-emerald-300' : 'bg-rose-50 border-rose-300'
                   )}
                 >
@@ -3161,6 +3175,19 @@ HOW TO USE IN DISHA:
                 <ShieldCheck className="w-4 h-4" />
                 {isVerifyingReport ? 'Verifying...' : 'Verify Report Integrity'}
               </button>
+              {verificationResult && (
+                <button
+                  onClick={() => verificationBannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  title="Jump to the full verification result at the top of this report"
+                  className={cn(
+                    'font-bold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5',
+                    verificationResult.verified ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                  )}
+                >
+                  {verificationResult.verified ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
+                  {verificationResult.verified ? 'Verified' : 'Not verified'} - see details ↑
+                </button>
+              )}
               <button
                 onClick={handleDownloadReport}
                 disabled={isDownloadingReport || !dishaScore}
