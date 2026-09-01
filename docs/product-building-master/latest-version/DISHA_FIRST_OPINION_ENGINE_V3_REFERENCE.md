@@ -638,7 +638,7 @@ of this specification living side by side:
 | M_obj formula | Plain product of exactly **4** multipliers: `m_obj = m_str × m_sla × m_train × m_plan` (`getSTRMultiplier`/`getSLAMultiplier`/`getTrainingMultiplier`/`getPlanningMultiplier`) | **Geometric mean of 8** multipliers: `m_obj = (m1×m2×...×m8)^(1/8)` (`calculateMobj`, whose own doc-comment literally quotes this spec's §2 rationale) — matches this document's §2/§3 exactly |
 | S_sub formula | Flat average: `100 - (sum of ALL answered questions' weights / total possible × 100)` — every question counts equally regardless of which challenge it belongs to | Per-challenge weighted: `S_sub = 100 × Σ(W_i × health_i)`, `W_i` defaulting to `0.08` per challenge (`calculateSsub`) — matches this document's §2 exactly |
 | Predictive/trend layer | None. Single-cycle only. | `earlyWarningRules.ts` implements the exact 4 flags from this document's §7 (Diverging Trend, Multiplier Freefall, Compounding-Weight, False Recovery); `historicalAnalysis.ts` implements multi-cycle trend storage |
-| Test coverage | 122 new tests added 2026-09-01 (Addendum 7) + the existing suite | Has its own pre-existing test suite (`calculations.test.ts`, `earlyWarningRules.test.ts`, `historicalAnalysis.test.ts`, `integration.test.ts`, `responseService.test.ts`, `seedData.test.ts` — all passing) |
+| Test coverage | 66 new tests added 2026-09-01 (Addendum 7) + 15 more the same day (range validation) + the existing suite = 81 new tests total | Has its own pre-existing test suite (`calculations.test.ts`, `earlyWarningRules.test.ts`, `historicalAnalysis.test.ts`, `integration.test.ts`, `responseService.test.ts`, `seedData.test.ts` — all passing) |
 
 Put plainly: **the more spec-faithful engine already exists, is tested,
 and has been sitting unused.** The simpler engine is what every school
@@ -828,9 +828,11 @@ field that didn't exist yet.
 
 ### CI-gated regression test suite
 
-122 new tests were added across `dishaScoreCalculator.test.ts`,
+66 new tests were added across `dishaScoreCalculator.test.ts`,
 `challengeObjectiveScoring.test.ts`, `insightGenerator.test.ts`, and
-`reportIntegrity.test.ts` — every multiplier band boundary, the Delusion
+`reportIntegrity.test.ts` (plus another 15 in `metricRangeValidation.test.ts`,
+documented below under "Two gaps found and fixed" - 81 in total this day) —
+every multiplier band boundary, the Delusion
 Penalty rule, all 4 Perception Gap verdicts computed from real
 `screeningQuestionsData.ts` weights (not invented numbers), the severity-
 ranking fix from Addendum 2, and an explicit determinism test per module
