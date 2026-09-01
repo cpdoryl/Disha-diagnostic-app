@@ -4,7 +4,7 @@
  */
 
 import * as XLSXLib from 'xlsx';
-import { validateDataForChallenges, CHALLENGE_DATA_REQUIREMENTS, CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges } from './challengeDataRequirements';
+import { validateDataForChallenges, CHALLENGE_DATA_REQUIREMENTS, CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges, validateMetricRanges, OutOfRangeMetric } from './challengeDataRequirements';
 
 // pdfjs-dist (~1.3MB with its worker) is only loaded on demand, the first
 // time a user actually uploads a PDF, instead of being pulled into every
@@ -900,6 +900,19 @@ export interface ValidationResult {
     description: string;
     example: string;
   }>;
+  /** Uploaded values that parsed as numbers but fall outside their field's plausible range (see MetricRequirement.validRange) - a stray minus sign, an extra zero, a % over 100. Empty when every present value is plausible. */
+  outOfRangeMetrics: OutOfRangeMetric[];
+}
+
+function formatOutOfRangeMessage(violations: OutOfRangeMetric[]): string {
+  const lines = violations.map(
+    (v) => `• ${v.displayName}: uploaded value ${v.value} is outside the plausible range (${v.min} to ${v.max})`
+  );
+  return (
+    `❌ IMPLAUSIBLE VALUE(S) DETECTED - this looks like a data-entry error, not real operational data:\n\n` +
+    `${lines.join('\n')}\n\n` +
+    `HOW TO FIX: Double-check these values in your source file for a typo, a missing/extra digit, a wrong sign, or a unit mismatch (e.g. entering a fraction like 0.28 instead of a percentage like 28), then re-upload.`
+  );
 }
 
 export interface ChallengeValidationResult {
@@ -916,6 +929,7 @@ export interface ChallengeValidationResult {
     description: string;
     example: string;
   }>;
+  outOfRangeMetrics: OutOfRangeMetric[];
 }
 
 /**
@@ -958,10 +972,11 @@ export function validateFileMetrics(extractedMetrics: ExtractedMetrics): Validat
     }
   });
 
-  const isValid = missingMetrics.length === 0;
+  const outOfRangeMetrics = validateMetricRanges(metricsFound);
+  const isValid = missingMetrics.length === 0 && outOfRangeMetrics.length === 0;
 
   let errorMessage = '';
-  if (!isValid) {
+  if (missingMetrics.length > 0) {
     errorMessage = `❌ Missing ${missingMetrics.length} required data field(s). Your file must include:\n\n`;
     missingMetrics.forEach(metric => {
       const required = requiredMetrics.find(r => r.fieldName === metric);
@@ -971,13 +986,17 @@ export function validateFileMetrics(extractedMetrics: ExtractedMetrics): Validat
     });
     errorMessage += `\nPlease upload a file containing these operational metrics.`;
   }
+  if (outOfRangeMetrics.length > 0) {
+    errorMessage += (errorMessage ? '\n\n' : '') + formatOutOfRangeMessage(outOfRangeMetrics);
+  }
 
   return {
     isValid,
     missingMetrics,
     foundMetrics: foundMetricsNames,
     errorMessage,
-    requiredMetrics
+    requiredMetrics,
+    outOfRangeMetrics
   };
 }
 
@@ -1018,22 +1037,27 @@ export function validateFileForChallenges(
         `header and one field per row (see the Required Data Fields table above), then re-upload.`,
       challengesCovered: [],
       challengesUncovered: selectedChallengeIds,
-      requiredMetrics
+      requiredMetrics,
+      outOfRangeMetrics: []
     };
   }
 
-  // If no challenges selected, accept all data
+  // If no challenges selected, accept all data - but still flag any
+  // uploaded value that is numerically implausible, since that error
+  // exists independent of which challenges get selected afterward.
   if (!selectedChallengeIds || selectedChallengeIds.length === 0) {
+    const outOfRangeMetrics = validateMetricRanges(extractedMetrics.metricsFound);
     return {
-      isValid: true,
+      isValid: outOfRangeMetrics.length === 0,
       completeness: 100,
       missingMetrics: [],
       foundMetrics: Object.keys(extractedMetrics.metricsFound).map(k => `✅ ${k}`),
       recommendations: [],
-      errorMessage: '',
+      errorMessage: outOfRangeMetrics.length > 0 ? formatOutOfRangeMessage(outOfRangeMetrics) : '',
       challengesCovered: [],
       challengesUncovered: [],
-      requiredMetrics: []
+      requiredMetrics: [],
+      outOfRangeMetrics
     };
   }
 
@@ -1042,12 +1066,14 @@ export function validateFileForChallenges(
     extractedMetrics.metricsFound,
     selectedChallengeIds
   );
+  const outOfRangeMetrics = validateMetricRanges(extractedMetrics.metricsFound);
+  const isValid = validation.isValid && outOfRangeMetrics.length === 0;
 
   // Determine which challenges can be analyzed
   const challengesCovered = selectedChallengeIds;
   const challengesUncovered: string[] = [];
 
-  if (validation.missingMetrics.length > 0) {
+  if (!isValid) {
     challengesUncovered.push(...selectedChallengeIds);
   }
 
@@ -1057,21 +1083,29 @@ export function validateFileForChallenges(
     example: m.example
   }));
 
+  let errorMessage = '';
+  if (!validation.isValid) {
+    errorMessage =
+      `❌ Data INCOMPLETE for selected challenges!\n\n${validation.missingMetrics.join('\n')}\n\n` +
+      `Your file covers ${validation.completeness}% of required data.\n\n` +
+      `To analyze ALL selected challenges, your file must include:\n\n` +
+      `${validation.recommendations.join('\n')}`;
+  }
+  if (outOfRangeMetrics.length > 0) {
+    errorMessage += (errorMessage ? '\n\n' : '') + formatOutOfRangeMessage(outOfRangeMetrics);
+  }
+
   return {
-    isValid: validation.isValid,
+    isValid,
     completeness: validation.completeness,
     missingMetrics: validation.missingMetrics,
     foundMetrics: validation.foundMetrics,
     recommendations: validation.recommendations,
-    errorMessage: validation.isValid
-      ? ''
-      : `❌ Data INCOMPLETE for selected challenges!\n\n${validation.missingMetrics.join('\n')}\n\n` +
-        `Your file covers ${validation.completeness}% of required data.\n\n` +
-        `To analyze ALL selected challenges, your file must include:\n\n` +
-        `${validation.recommendations.join('\n')}`,
-    challengesCovered: validation.isValid ? challengesCovered : [],
-    challengesUncovered: validation.isValid ? [] : selectedChallengeIds,
-    requiredMetrics
+    errorMessage,
+    challengesCovered: isValid ? challengesCovered : [],
+    challengesUncovered: isValid ? [] : selectedChallengeIds,
+    requiredMetrics,
+    outOfRangeMetrics
   };
 }
 

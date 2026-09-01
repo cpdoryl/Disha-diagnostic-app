@@ -24,6 +24,19 @@ export interface MetricRequirement {
   example: string;
   mandatory: boolean;
   dataType: 'number' | 'percentage' | 'count' | 'hours' | 'ratio' | 'currency';
+  /**
+   * A generously wide "is this even physically plausible" bound, not a
+   * scoring band (see METRIC_BAND_DEFINITIONS in challengeObjectiveScoring.ts
+   * for the actual severity thresholds). Presence-only validation
+   * (validateDataForChallenges) never checked whether an uploaded number
+   * made sense at all - a negative student-teacher ratio or a 250% pass
+   * rate would previously be accepted as-is and silently scored as if it
+   * were a real, if extreme, result. validateMetricRanges() below is the
+   * one place these bounds are enforced. Chosen to be wide enough that no
+   * genuine outlier value should ever be rejected - only clear data-entry
+   * errors (a stray minus sign, a percentage over 100, a unit mismatch).
+   */
+  validRange: { min: number; max: number };
 }
 
 /**
@@ -95,7 +108,8 @@ export const CORE_OPERATIONAL_METRICS: MetricRequirement[] = [
     unit: 'ratio',
     example: '28',
     mandatory: true,
-    dataType: 'ratio'
+    dataType: 'ratio',
+    validRange: { min: 1, max: 100 }
   },
   {
     fieldName: 'parent_query_response_sla_hours',
@@ -104,7 +118,8 @@ export const CORE_OPERATIONAL_METRICS: MetricRequirement[] = [
     unit: 'hours',
     example: '24',
     mandatory: true,
-    dataType: 'hours'
+    dataType: 'hours',
+    validRange: { min: 0, max: 720 }
   },
   {
     fieldName: 'annual_training_hours',
@@ -113,7 +128,8 @@ export const CORE_OPERATIONAL_METRICS: MetricRequirement[] = [
     unit: 'hours',
     example: '20',
     mandatory: true,
-    dataType: 'hours'
+    dataType: 'hours',
+    validRange: { min: 0, max: 500 }
   },
   {
     fieldName: 'weekly_planning_hours',
@@ -122,7 +138,8 @@ export const CORE_OPERATIONAL_METRICS: MetricRequirement[] = [
     unit: 'hours',
     example: '4',
     mandatory: true,
-    dataType: 'hours'
+    dataType: 'hours',
+    validRange: { min: 0, max: 80 }
   }
 ];
 
@@ -154,7 +171,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '-8',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: -100, max: 300 }
       },
       {
         fieldName: 'student_retention_rate_pct',
@@ -163,7 +181,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '78',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
     optionalMetrics: [],
@@ -183,7 +202,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '6',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'outflow_to_competitors_pct',
@@ -192,7 +212,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '4',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
     optionalMetrics: [],
@@ -212,7 +233,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '86',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'days_sales_outstanding',
@@ -221,7 +243,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'days',
         example: '45',
         mandatory: true,
-        dataType: 'number'
+        dataType: 'number',
+        validRange: { min: 0, max: 730 }
       }
     ],
     optionalMetrics: [],
@@ -241,7 +264,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '22',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'avg_teacher_tenure_years',
@@ -250,7 +274,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'years',
         example: '3.5',
         mandatory: true,
-        dataType: 'number'
+        dataType: 'number',
+        validRange: { min: 0, max: 50 }
       }
     ],
     optionalMetrics: [],
@@ -270,7 +295,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '68',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'professional_qualification_pct',
@@ -279,7 +305,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '74',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
     optionalMetrics: [],
@@ -299,7 +326,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '60',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'principal_vp_experience_years',
@@ -308,7 +336,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'years',
         example: '5',
         mandatory: true,
-        dataType: 'number'
+        dataType: 'number',
+        validRange: { min: 0, max: 60 }
       }
     ],
     optionalMetrics: [],
@@ -328,7 +357,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '87',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'average_subject_score_pct',
@@ -337,7 +367,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '71',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
     optionalMetrics: [],
@@ -357,7 +388,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'per 1000 students',
         example: '12',
         mandatory: true,
-        dataType: 'ratio'
+        dataType: 'ratio',
+        validRange: { min: 0, max: 1000 }
       },
       {
         fieldName: 'safety_violations_count_year',
@@ -366,7 +398,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'count/year',
         example: '5',
         mandatory: true,
-        dataType: 'count'
+        dataType: 'count',
+        validRange: { min: 0, max: 1000 }
       }
     ],
     optionalMetrics: [],
@@ -386,7 +419,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '35',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'improvement_rate_pct',
@@ -395,7 +429,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '48',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
     optionalMetrics: [],
@@ -415,7 +450,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '58',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'parent_response_rate_pct',
@@ -424,7 +460,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '65',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
     optionalMetrics: [],
@@ -444,7 +481,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '5',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: -100, max: 100 }
       },
       {
         fieldName: 'competitor_win_rate_pct',
@@ -453,7 +491,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '30',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
     optionalMetrics: [],
@@ -473,7 +512,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '62',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'media_sentiment_pct',
@@ -482,7 +522,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '55',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
     optionalMetrics: [],
@@ -502,7 +543,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '14',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: -100, max: 300 }
       },
       {
         fieldName: 'operating_margin_pct',
@@ -511,7 +553,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '6',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: -200, max: 100 }
       }
     ],
     optionalMetrics: [],
@@ -531,7 +574,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '70', // 7 of 10 RTE norms met
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'maintenance_backlog_inr',
@@ -540,7 +584,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'INR',
         example: '850000',
         mandatory: true,
-        dataType: 'currency'
+        dataType: 'currency',
+        validRange: { min: 0, max: 100000000 }
       }
     ],
     optionalMetrics: [],
@@ -560,7 +605,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'percentage',
         example: '75', // 6 of 8 domains met
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'regulatory_violations_count_year',
@@ -569,7 +615,8 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         unit: 'count/year',
         example: '1',
         mandatory: true,
-        dataType: 'count'
+        dataType: 'count',
+        validRange: { min: 0, max: 1000 }
       }
     ],
     optionalMetrics: [],
@@ -662,6 +709,56 @@ export function validateDataForChallenges(
     recommendations,
     requiredMetrics
   };
+}
+
+/**
+ * Every canonical metric definition (4 Core Operational Levers + 30
+ * challenge-specific fields), keyed by fieldName, for lookups that need a
+ * field's full metadata (including validRange) regardless of which
+ * challenge it came from.
+ */
+const ALL_METRIC_DEFINITIONS: Record<string, MetricRequirement> = (() => {
+  const map: Record<string, MetricRequirement> = {};
+  CORE_OPERATIONAL_METRICS.forEach((m) => { map[m.fieldName] = m; });
+  Object.values(CHALLENGE_DATA_REQUIREMENTS).forEach((req) => {
+    req.requiredMetrics.forEach((m) => { map[m.fieldName] = m; });
+  });
+  return map;
+})();
+
+export interface OutOfRangeMetric {
+  fieldName: string;
+  displayName: string;
+  value: number;
+  min: number;
+  max: number;
+}
+
+/**
+ * Sanity-checks every uploaded numeric value against its field's validRange
+ * - catching data-entry errors (a negative percentage, a stray extra zero,
+ * a unit mismatch) that the presence-only check in validateDataForChallenges
+ * would silently accept and pass straight into the scoring engine. Only
+ * checks fields this app actually recognizes and that parsed as numeric -
+ * an unrecognized field name or a non-numeric value is a different problem,
+ * already handled elsewhere (ALL_KNOWN_FIELD_NAMES / scoreRawValueToWeight
+ * both already skip those rather than guessing at a fabricated range).
+ */
+export function validateMetricRanges(
+  uploadedMetrics: Record<string, number | string>
+): OutOfRangeMetric[] {
+  const violations: OutOfRangeMetric[] = [];
+  Object.entries(uploadedMetrics).forEach(([fieldName, rawValue]) => {
+    const def = ALL_METRIC_DEFINITIONS[fieldName];
+    if (!def) return;
+    const value = typeof rawValue === 'number' ? rawValue : parseFloat(String(rawValue));
+    if (isNaN(value)) return;
+    const { min, max } = def.validRange;
+    if (value < min || value > max) {
+      violations.push({ fieldName, displayName: def.displayName, value, min, max });
+    }
+  });
+  return violations;
 }
 
 export default CHALLENGE_DATA_REQUIREMENTS;
