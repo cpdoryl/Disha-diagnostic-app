@@ -49,7 +49,8 @@ import {
   Target,
   Check,
   Download,
-  Lock
+  Lock,
+  X
 } from 'lucide-react';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -532,10 +533,19 @@ export const FirstOpinionPage = () => {
 
   // Past Reports: lets a school reopen a previously computed First Opinion
   // report instead of it only existing in memory until the tab closes.
+  // Each checkup carries a human-readable FO-YYYYMMDD-NN reference number
+  // (checkupService.ts's generateCheckupReferenceId) so multiple reports
+  // submitted the same day are distinguishable at a glance, and so a
+  // specific report can be traced back to later by that number alone.
+  const [currentReferenceId, setCurrentReferenceId] = useState<string | null>(null);
   const [pastCheckups, setPastCheckups] = useState<any[]>([]);
   const [isLoadingPastCheckups, setIsLoadingPastCheckups] = useState<boolean>(false);
   const [loadingPastCheckupId, setLoadingPastCheckupId] = useState<string | null>(null);
   const [pastReportError, setPastReportError] = useState<string | null>(null);
+  const [showPastReportsModal, setShowPastReportsModal] = useState<boolean>(false);
+  const [pastReportsSearch, setPastReportsSearch] = useState<string>('');
+  const [pastReportsChallengeFilter, setPastReportsChallengeFilter] = useState<string>('ALL');
+  const [pastReportsStatusFilter, setPastReportsStatusFilter] = useState<string>('ALL');
 
   useEffect(() => {
     if (!schoolId) {
@@ -547,16 +557,29 @@ export const FirstOpinionPage = () => {
     getSchoolCheckups(schoolId)
       .then((all) => {
         if (cancelled) return;
-        setPastCheckups(
-          all
-            .filter((c) => c.checkupType === 'FirstOpinion' && c.status !== 'DELETED')
-            .slice(0, 8)
-        );
+        setPastCheckups(all.filter((c) => c.checkupType === 'FirstOpinion' && c.status !== 'DELETED'));
       })
       .catch((err) => console.error('Error loading past checkups:', err))
       .finally(() => { if (!cancelled) setIsLoadingPastCheckups(false); });
     return () => { cancelled = true; };
   }, [schoolId]);
+
+  // Every challenge that appears in at least one past checkup, for the
+  // "filter by challenge" dropdown - only shows options that are actually
+  // meaningful for this school's history rather than always all 15.
+  const pastReportsAvailableChallenges = useMemo(() => {
+    const set = new Set<string>();
+    pastCheckups.forEach((c) => (c.selectedChallenges || []).forEach((ck: string) => set.add(ck)));
+    return Array.from(set);
+  }, [pastCheckups]);
+
+  const filteredPastCheckups = useMemo(() => {
+    const search = pastReportsSearch.trim().toLowerCase();
+    return pastCheckups
+      .filter((c) => !search || (c.referenceId || c.id).toLowerCase().includes(search))
+      .filter((c) => pastReportsChallengeFilter === 'ALL' || (c.selectedChallenges || []).includes(pastReportsChallengeFilter))
+      .filter((c) => pastReportsStatusFilter === 'ALL' || (c.status || 'SUBMITTED') === pastReportsStatusFilter);
+  }, [pastCheckups, pastReportsSearch, pastReportsChallengeFilter, pastReportsStatusFilter]);
 
   const loadPastCheckup = async (checkup: any) => {
     setPastReportError(null);
@@ -565,7 +588,7 @@ export const FirstOpinionPage = () => {
       const analysis = await getCheckupAnalysisOnce(schoolId, checkup.id);
       if (!analysis) {
         setPastReportError(
-          `"${checkup.id}" has no saved report (submitted before this feature existed, or its analysis save failed). Its raw survey answers and uploaded data are still safely stored.`
+          `"${checkup.referenceId || checkup.id}" has no saved report (submitted before this feature existed, or its analysis save failed). Its raw survey answers and uploaded data are still safely stored.`
         );
         return;
       }
@@ -581,6 +604,8 @@ export const FirstOpinionPage = () => {
       setDISHAScore(analysis.dishaScore);
       setRealInsights(analysis.realInsights);
       setCheckupId(checkup.id);
+      setCurrentReferenceId(checkup.referenceId || null);
+      setShowPastReportsModal(false);
       setStep(2);
     } catch (err) {
       console.error('Error loading past checkup:', err);
@@ -1115,7 +1140,7 @@ HOW TO USE IN DISHA:
       console.log('📊 Operational Metrics:', checkupOperationalMetrics);
 
       // Save to Firestore
-      const savedCheckupId = await saveCheckupToFirestore(schoolId, {
+      const { id: savedCheckupId, referenceId: savedReferenceId } = await saveCheckupToFirestore(schoolId, {
         surveyInput: surveyInput,
         operationalMetricsUploaded: checkupOperationalMetrics,
         createdBy: user.uid,
@@ -1128,7 +1153,8 @@ HOW TO USE IN DISHA:
       });
 
       setCheckupId(savedCheckupId);
-      console.log('✓ Checkup saved to Firestore:', savedCheckupId);
+      setCurrentReferenceId(savedReferenceId);
+      console.log('✓ Checkup saved to Firestore:', savedCheckupId, savedReferenceId);
 
       // NOTE: saveCheckupToFirestore() (checkupService.ts) already logs a
       // CHECKUP_SUBMITTED audit event internally - a second explicit call
@@ -1807,9 +1833,17 @@ HOW TO USE IN DISHA:
           <h2 className="text-3xl font-bold tracking-tight text-gray-900">School First Opinion Engine</h2>
           <p className="text-gray-500 mt-1 font-medium">An annual school diagnostic first opinion, run in simple language by an app instead of an auditor.</p>
         </div>
-        <div className="flex items-center gap-2 bg-indigo-50 px-3.5 py-1.5 rounded-full border border-indigo-100 text-xs font-bold text-indigo-700 w-fit">
-          <Clock className="w-4 h-4 text-indigo-500" />
-          <span>Completed in 1 sitting</span>
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex items-center gap-2 bg-indigo-50 px-3.5 py-1.5 rounded-full border border-indigo-100 text-xs font-bold text-indigo-700 w-fit">
+            <Clock className="w-4 h-4 text-indigo-500" />
+            <span>Completed in 1 sitting</span>
+          </div>
+          {step === 2 && currentReferenceId && (
+            <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-gray-500" title="Unique reference number - use this to find this exact report again later">
+              <FileText className="w-3 h-3" />
+              {currentReferenceId}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1994,34 +2028,127 @@ HOW TO USE IN DISHA:
                 ) : pastCheckups.length === 0 ? (
                   <p className="text-gray-500 italic">No previous First Opinion checkups for this school yet.</p>
                 ) : (
-                  <div className="space-y-2">
-                    {pastCheckups.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => loadPastCheckup(c)}
-                        disabled={loadingPastCheckupId === c.id}
-                        className="w-full text-left p-2.5 rounded-lg border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50/40 transition-all disabled:opacity-50"
-                      >
-                        <p className="font-bold text-gray-800">
-                          {(c.selectedChallenges || []).length > 0
-                            ? c.selectedChallenges.join(', ')
-                            : 'First Opinion Checkup'}
-                        </p>
-                        <p className="text-gray-400 mt-0.5 flex items-center justify-between">
-                          <span>{c.createdAt?.toDate?.()?.toLocaleDateString?.() || 'Recent'}</span>
-                          <span className="font-semibold text-indigo-500">
-                            {loadingPastCheckupId === c.id ? 'Loading...' : `Status: ${c.status || 'SUBMITTED'}`}
-                          </span>
-                        </p>
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <p className="text-gray-500">
+                      <span className="font-bold text-gray-900">{pastCheckups.length}</span> checkup{pastCheckups.length === 1 ? '' : 's'} on record for this school.
+                    </p>
+                    <button
+                      onClick={() => setShowPastReportsModal(true)}
+                      className="w-full text-center py-2 rounded-lg bg-indigo-50 text-indigo-700 font-bold hover:bg-indigo-100 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Search className="w-3.5 h-3.5" />
+                      Browse & Reopen Reports
+                    </button>
+                  </>
                 )}
                 {pastReportError && (
                   <p className="text-rose-600 font-semibold pt-1 border-t border-gray-100">{pastReportError}</p>
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* PAST REPORTS MODAL: search/filter across every past checkup for
+          this school by reference number, challenge, or status, then
+          reopen its saved report. See loadPastCheckup(). */}
+      {showPastReportsModal && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowPastReportsModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-500" />
+                  Past First Opinion Reports
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {activeSchool?.name} &bull; {filteredPastCheckups.length} of {pastCheckups.length} shown
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPastReportsModal(false)}
+                className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 border-b border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={pastReportsSearch}
+                  onChange={(e) => setPastReportsSearch(e.target.value)}
+                  placeholder="Search by reference no. (FO-...)"
+                  className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-gray-200 focus:border-indigo-400 focus:outline-none"
+                />
+              </div>
+              <select
+                value={pastReportsChallengeFilter}
+                onChange={(e) => setPastReportsChallengeFilter(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-gray-200 focus:border-indigo-400 focus:outline-none bg-white"
+              >
+                <option value="ALL">All challenges</option>
+                {pastReportsAvailableChallenges.map((ck) => (
+                  <option key={ck} value={ck}>{challenges.find((c) => c.id === ck)?.label || ck}</option>
+                ))}
+              </select>
+              <select
+                value={pastReportsStatusFilter}
+                onChange={(e) => setPastReportsStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-gray-200 focus:border-indigo-400 focus:outline-none bg-white"
+              >
+                <option value="ALL">All statuses</option>
+                <option value="SUBMITTED">Submitted</option>
+                <option value="ANALYZED">Analyzed</option>
+                <option value="PUBLISHED">Published</option>
+              </select>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-5 space-y-2">
+              {filteredPastCheckups.length === 0 ? (
+                <p className="text-sm text-gray-500 italic text-center py-8">No reports match these filters.</p>
+              ) : (
+                filteredPastCheckups.map((c) => {
+                  const statusStyle: Record<string, string> = {
+                    SUBMITTED: 'bg-gray-100 text-gray-600',
+                    ANALYZED: 'bg-emerald-100 text-emerald-700',
+                    PUBLISHED: 'bg-indigo-100 text-indigo-700'
+                  };
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => loadPastCheckup(c)}
+                      disabled={loadingPastCheckupId === c.id}
+                      className="w-full text-left p-3.5 rounded-xl border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50/40 transition-all disabled:opacity-50 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-indigo-600 text-sm">{c.referenceId || `#${c.id.slice(0, 8)}`}</span>
+                          <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold uppercase', statusStyle[c.status || 'SUBMITTED'])}>
+                            {loadingPastCheckupId === c.id ? 'Loading...' : (c.status || 'SUBMITTED')}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1 truncate">
+                          {(c.selectedChallenges || []).map((ck: string) => challenges.find((ch) => ch.id === ck)?.label || ck).join(' + ') || 'First Opinion Checkup'}
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-gray-400 font-semibold shrink-0">
+                        {c.createdAt?.toDate?.()?.toLocaleDateString?.('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) || 'Recent'}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       )}

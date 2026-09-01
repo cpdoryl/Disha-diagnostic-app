@@ -14,6 +14,7 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  runTransaction,
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -58,6 +59,29 @@ export interface CheckupAnalysis {
 }
 
 /**
+ * Generates a human-readable, unique, traceable reference number for a
+ * checkup: FO-YYYYMMDD-NN, where NN is a per-school, per-day sequence
+ * (01, 02, ...) so two reports submitted the same day for the same school
+ * are distinguishable at a glance, instead of only by their opaque
+ * Firestore document ID. Uses a Firestore transaction on a small counter
+ * document so the sequence number is race-condition-safe even if two
+ * submissions happen at the same moment.
+ */
+const generateCheckupReferenceId = async (schoolId: string): Promise<string> => {
+  const dateKey = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+  const counterRef = doc(db, 'schools', schoolId, 'checkupCounters', dateKey);
+
+  const seq = await runTransaction(db, async (tx) => {
+    const snap = await tx.get(counterRef);
+    const next = (snap.exists() ? (snap.data().count as number) || 0 : 0) + 1;
+    tx.set(counterRef, { count: next, updatedAt: serverTimestamp() }, { merge: true });
+    return next;
+  });
+
+  return `FO-${dateKey}-${String(seq).padStart(2, '0')}`;
+};
+
+/**
  * Save checkup data to Firestore
  *
  * NOTE: this does NOT trigger any Cloud Function analysis. The
@@ -70,12 +94,24 @@ export interface CheckupAnalysis {
 export const saveCheckupToFirestore = async (
   schoolId: string,
   checkupData: CheckupData
-): Promise<string> => {
+): Promise<{ id: string; referenceId: string }> => {
   try {
     const checkupRef = doc(collection(db, 'schools', schoolId, 'checkups'));
 
+    // Never let a reference-number generation hiccup block the actual save -
+    // fall back to a timestamp-based reference so this remains a secondary,
+    // best-effort feature rather than a new point of failure.
+    let referenceId: string;
+    try {
+      referenceId = await generateCheckupReferenceId(schoolId);
+    } catch (refError) {
+      console.error('Error generating checkup reference ID, using fallback:', refError);
+      referenceId = `FO-${Date.now()}`;
+    }
+
     await setDoc(checkupRef, {
       checkupType: 'FirstOpinion',
+      referenceId,
       status: 'SUBMITTED',
       surveyInput: checkupData.surveyInput,
       operationalMetricsUploaded: checkupData.operationalMetricsUploaded,
@@ -90,7 +126,7 @@ export const saveCheckupToFirestore = async (
       updatedAt: serverTimestamp()
     });
 
-    console.log(`✓ Checkup saved: ${checkupRef.id}`);
+    console.log(`✓ Checkup saved: ${checkupRef.id} (${referenceId})`);
 
     // Log audit event
     await logAuditEvent(
@@ -101,7 +137,7 @@ export const saveCheckupToFirestore = async (
       checkupData.createdBy
     );
 
-    return checkupRef.id;
+    return { id: checkupRef.id, referenceId };
   } catch (error) {
     console.error('Error saving checkup:', error);
     throw error;

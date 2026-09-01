@@ -100,6 +100,15 @@ service cloud.firestore {
         }
       }
 
+      // Per-day sequence counters backing each checkup's human-readable
+      // FO-YYYYMMDD-NN reference number (checkupService.ts's
+      // generateCheckupReferenceId). Written inside a Firestore transaction
+      // at submit time, so both read (to see the current count) and write
+      // (to increment it) are needed by any signed-in user.
+      match /checkupCounters/{dateKey} {
+        allow read, write: if request.auth != null;
+      }
+
       // ====== REPORTS SUBCOLLECTION (STAGE 2) ======
 
       match /reports/{reportId} {
