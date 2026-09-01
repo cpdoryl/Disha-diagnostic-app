@@ -23,11 +23,20 @@ This is the authoritative reference document for the DISHA First Opinion Engine 
 
 ## Implementation Status
 
+**Updated 2026-09-01 (see Addendum 4 for the full reconciliation).** The
+status below was accurate when this document was first saved
+(2026-08-22) but had not been kept current as of Addendum 3 — Phase 1-3
+are now substantially live in production, not "in progress," and the
+engine that shipped is a **deliberately simplified reinterpretation** of
+this document's original formulas, not a literal implementation of them.
+Read Addendum 4 before trusting any formula in the "Key Deliverables"
+section below at face value against the live app.
+
 - ✅ Document saved and indexed
-- ⏳ Phase 1: Core Engine & Data Model (In Progress)
-- ⏳ Phase 2: API & Calculation Layer
-- ⏳ Phase 3: Reporting & Visualization
-- ⏳ Phase 4: Predictive & Trend Analysis
+- ✅ Phase 1: Core Engine & Data Model — **live**, but simplified vs. spec (4 multipliers not 8, plain product not geometric mean, unweighted S_sub not per-challenge-weighted — see Addendum 4)
+- ✅ Phase 2: API & Calculation Layer — **live**, but as client-side TypeScript functions called directly from the page (`dishaScoreCalculator.ts`, `challengeObjectiveScoring.ts`, `insightGenerator.ts`), not the GraphQL/REST API layer originally envisioned; no Cloud Function is actually invoked for scoring (see Addendum 4)
+- ✅ Phase 3: Reporting & Visualization — **live**: DISHA Score Dashboard, Perception Gap Analysis, Data-Driven Insights, 2 charts (radar + bar), a downloadable PDF with a full transparency Annexure, and a searchable Past Reports browser (see Addenda 5 and 6) — structured differently from the original §6 report-section list (no "Trajectory" or 14-Dimension-mapped "Recommendation" section; see Addendum 4)
+- ❌ Phase 4: Predictive & Trend Analysis — **not live**. A fully-built, spec-faithful implementation of this phase exists in the codebase (`src/lib/firstOpinion/earlyWarningRules.ts`, `historicalAnalysis.ts`, and matching UI components) but is not wired into any route any user can reach — see Addendum 4, "The dead branch."
 
 ## Key Deliverables from v3
 
@@ -601,3 +610,282 @@ grading bands remain authored; **9/30** remain fully authored placeholders
 (7 confirmed no-anchor-available + `regulatory_violations_count_year` +
 `maintenance_backlog_inr`, the latter two being real counts/values with
 authored grading bands only).
+
+---
+
+## Addendum 4 (2026-09-01): CPO Review — Specification vs. Deployed Reality
+
+*Prepared acting as Chief Product Development Officer, reviewing the
+original v3 specification above against what is actually running in
+production today. This addendum exists because Addenda 1-3 documented
+real, valuable fixes but never stepped back to answer the more basic
+question this role exists to ask: does the live engine still implement the
+formulas this document opens with at all? The honest answer is no, not
+literally — and that has been true since the engine now used in
+production (`src/lib/dishaScoreCalculator.ts`) was first written, not as a
+regression introduced during any of the Addendum 1-3 fixes.*
+
+### Finding 1: two First Opinion engines exist in this codebase; only one is reachable
+
+There are, in fact, **two separate, independently-built implementations**
+of this specification living side by side:
+
+| | **Live engine** (what every real user runs) | **Dormant engine** (built, tested, never wired in) |
+|---|---|---|
+| Entry point | `src/pages/FirstOpinionPage.tsx` → `case 'FIRST_OPINION'` in `src/App.tsx` | `src/components/FirstOpinion/*` (Dashboard, ChallengeResponseForm, Reports/TrendAnalysis, Reports/AnomalyReport, Charts/HealthForecast, etc.) — **not referenced by any `case` in `App.tsx`, not reachable from any button or URL** |
+| Calculation core | `src/lib/dishaScoreCalculator.ts` | `src/lib/firstOpinion/calculations.ts` |
+| Data model | `schools/{id}/checkups/{id}` (Firestore) | `schools/{id}/assessmentCycles/{id}/challengeResponses` + `/multipliers` + `/computed` (Firestore — see `firestore-security-rules.txt`'s "FIRST OPINION ENGINE v3" section, which secures this collection tree even though nothing writes to it from a live page) |
+| M_obj formula | Plain product of exactly **4** multipliers: `m_obj = m_str × m_sla × m_train × m_plan` (`getSTRMultiplier`/`getSLAMultiplier`/`getTrainingMultiplier`/`getPlanningMultiplier`) | **Geometric mean of 8** multipliers: `m_obj = (m1×m2×...×m8)^(1/8)` (`calculateMobj`, whose own doc-comment literally quotes this spec's §2 rationale) — matches this document's §2/§3 exactly |
+| S_sub formula | Flat average: `100 - (sum of ALL answered questions' weights / total possible × 100)` — every question counts equally regardless of which challenge it belongs to | Per-challenge weighted: `S_sub = 100 × Σ(W_i × health_i)`, `W_i` defaulting to `0.08` per challenge (`calculateSsub`) — matches this document's §2 exactly |
+| Predictive/trend layer | None. Single-cycle only. | `earlyWarningRules.ts` implements the exact 4 flags from this document's §7 (Diverging Trend, Multiplier Freefall, Compounding-Weight, False Recovery); `historicalAnalysis.ts` implements multi-cycle trend storage |
+| Test coverage | 122 new tests added 2026-09-01 (Addendum 7) + the existing suite | Has its own pre-existing test suite (`calculations.test.ts`, `earlyWarningRules.test.ts`, `historicalAnalysis.test.ts`, `integration.test.ts`, `responseService.test.ts`, `seedData.test.ts` — all passing) |
+
+Put plainly: **the more spec-faithful engine already exists, is tested,
+and has been sitting unused.** The simpler engine is what every school
+using the live app has actually been scored by. Neither fact was
+previously written down anywhere in this document.
+
+### Finding 2: the Risk Quadrant model the live engine actually uses is richer than — and different from — §4 above
+
+§4 above describes 3 quadrants from a single Gap value. The live engine's
+`DISHAScoreCalculator.classifyRiskQuadrant` computes two independent axes
+instead: the color/`riskLevel` badge (GREEN/YELLOW/ORANGE/RED,
+EXCELLENT/CONCERNING/AT_RISK/CRITICAL) purely from the Health Index
+crossing 70/50/30, and a separate 5-way quadrant *name* (`ELITE
+EQUILIBRIUM`, `ALIGNED - MIXED HEALTH`, `CRITICAL COLLAPSE`, `DELUSIONAL
+COMFORT`, `HIDDEN EXCELLENCE`) from the Gap = S_sub − M_obj×100 crossing
+±10. This is a **fix**, not a regression: an earlier version of this exact
+function derived the color from S_sub and M_obj independently crossing
+their own separate thresholds, which could disagree with the Health Index
+band shown right next to it on screen (documented in the function's own
+2026-08-31 code comment) — that bug is what produced today's two-axis
+model. It is real, tested (`dishaScoreCalculator.test.ts`), and correct,
+but it is not what §4 describes, and no prior version of this document
+said so.
+
+### Finding 3: Refinement 4 (Fact-vs-Perception tagging) was never built; a different mechanism achieves a related goal
+
+The live engine has no per-question FACT/PERCEPTION tag or auto-validation
+against uploaded data at the *question* level, as §"Question
+Classification" above describes. What exists instead (Addendum 2's
+Perception Gap Analysis engine) compares self-report against uploaded data
+at the *challenge* level — averaging a challenge's answered questions
+against the average of its 2 canonical objective metrics — which serves a
+similar transparency goal through a coarser, already-shipped mechanism.
+This is worth keeping as-is (it works, it's tested, it's simpler to
+reason about) rather than backfilling literal per-question tagging.
+
+### Recommendation
+
+Do not attempt to reconcile the two engines by editing one to match the
+other under time pressure — they encode two real, different design
+decisions (weighted vs. unweighted severity; product vs. geometric-mean
+multiplier aggregation) that deserve a deliberate choice, not a silent
+merge. Three honest options, in order of effort:
+
+1. **Formally retire the dormant engine.** Delete `src/lib/firstOpinion/`,
+   `src/components/FirstOpinion/`, `functions/src/firstOpinion/`, and the
+   `assessmentCycles` Firestore rules once a maintainer confirms nothing
+   external depends on them. Lowest effort, removes ~7,500 lines of dead
+   code and the confusion of two "correct-looking" answers to "how does
+   scoring work" existing in the same repo.
+2. **Migrate the live engine onto the dormant one's formulas** (8
+   multipliers, geometric mean, weighted S_sub, trend/early-warning) —
+   the larger, spec-faithful rebuild, requiring new UI for 4 additional
+   multiplier inputs, a decision on per-challenge weights, and a
+   multi-cycle data model the live `checkups` collection doesn't have.
+3. **Leave both as-is but make the divergence a documented, permanent
+   product decision** (e.g. "v3-lite" vs. a future "v4") rather than an
+   accidental one — at minimum, rename `src/lib/firstOpinion/` to make
+   clear it is not what `FirstOpinionPage.tsx` runs, so a future
+   contributor doesn't lose time debugging the wrong file.
+
+No option was implemented as part of this addendum — this is a product
+decision for a human owner to make, not one to make unilaterally while
+acting as CPO. This document's job is to make sure it's an informed one.
+
+---
+
+## Addendum 5 (2026-09-01): Persistence, Traceability & the Past Reports Browser
+
+Prior to this addendum, a computed First Opinion report existed only in
+the browser tab's memory — closing the tab lost it, and there was no way
+to tell two checkups for the same school apart except by an opaque
+Firestore document ID.
+
+### Human-readable, traceable reference numbers
+
+`checkupService.ts`'s `generateCheckupReferenceId()` produces
+`FO-YYYYMMDD-NN` (e.g. `FO-20260901-03`), where `NN` is a per-school,
+per-day sequence generated inside a Firestore transaction against a small
+`schools/{id}/checkupCounters/{dateKey}` counter document — race-safe if
+two submissions land in the same second. A reference-generation failure
+never blocks the actual save; it falls back to `FO-{timestamp}` so this
+stays a secondary, best-effort feature rather than a new point of failure.
+
+### Saved, reopenable reports
+
+`saveCheckupAnalysis()` writes the full computed report — `dishaScore`,
+`realInsights`, `perceptionGap`, plus the exact `selectedChallenges`,
+`answers`, and `extractedMetricsFound` it was computed from — to
+`schools/{schoolId}/checkups/{checkupId}/analysis/current`.
+`getCheckupAnalysisOnce()` and `loadPastCheckup()` (in
+`FirstOpinionPage.tsx`) restore all of that state exactly, so reopening a
+past report and downloading its PDF or clicking Verify Report Integrity
+behaves identically to a report computed in the same session.
+
+### Past Reports browser
+
+A modal (`showPastReportsModal` state in `FirstOpinionPage.tsx`) lists
+every non-deleted `FirstOpinion` checkup for the active school, with
+search-by-reference-number and filter-by-challenge/status. Backed by
+`getSchoolCheckups()`, which currently fetches the full list with no page
+limit — flagged in the prior testing pass as a scaling concern once a
+school accumulates hundreds of checkups, not yet a problem at today's
+volume.
+
+---
+
+## Addendum 6 (2026-09-01): Downloadable Report, Visual Analytics & Inline Benchmarks
+
+### Full-transparency PDF export
+
+`src/lib/firstOpinionReportPdf.ts` (jsPDF + jspdf-autotable) generates a
+letterhead-branded ("RYL Neuroacademy Private Limited") PDF on demand from
+the same `CheckupAnalysis` data already persisted per Addendum 5 —
+deliberately **not** stored as a rendered file anywhere, so "download a
+past report" always regenerates from the one source of truth rather than
+risking a second, staleness-prone copy. Two parts:
+
+- **Part A** mirrors every on-screen Step 2 section, with benchmark bands
+  now printed inline next to every figure (e.g. the exact Ideal/Good/
+  Fair/Poor Student-Teacher Ratio thresholds next to the multiplier they
+  produced) so no number appears without the standard it's being judged
+  against.
+- **Part B ("Annexure")** is a 4-section full transparency pack: every raw
+  input received (I), a complete hand-calculation walkthrough of every
+  formula layer including the full, untruncated per-metric insights table
+  (II), a Benchmark Reference Library tagging every band Exact vs.
+  Authored with its provenance note (III, drawing directly on Addendum 3's
+  work), and a methodology page (IV).
+
+A real Unicode/font rendering bug (jsPDF's built-in Helvetica silently
+mismeasuring ⚠/✓/❌/≤/≥/→ characters already present in this app's own
+generated strings, causing later text to overlap into unreadable garble)
+was caught and fixed (`sanitizePdfText()`) before this shipped, verified by
+generating a real PDF end-to-end and independently re-extracting its text
+with `pdfjs-dist` rather than trusting a code read-through alone.
+
+### Visual analytics: perception vs. reality, made literally visible
+
+Two Recharts visualizations were added to the on-screen report (and
+rasterized via `html2canvas` into the same PDF, so nothing on screen is
+left out of the printable version):
+
+1. **Core Operational Levers bar chart** — the 4 multiplier inputs shown
+   as a % of their "Ideal" (100%) threshold, color-coded by band, with a
+   reference line at 100%.
+2. **Perception vs. Reality radar chart** — one axis per selected
+   challenge (always exactly 3), two overlaid series (self-reported vs.
+   data-derived severity, both 1-10) — the Perception Gap Analysis from
+   Addendum 2, now visible at a glance instead of only readable from text
+   cards.
+
+Both charts carry a plain-language "how to read this" interpretation
+directly underneath, consistent with the "no black box" principle applied
+to the benchmark numbers.
+
+---
+
+## Addendum 7 (2026-09-01): Trust & Quality Infrastructure
+
+*The direct answer to "how do we know this app always gives precise,
+accurate results and isn't adding anything from itself, with proof of
+repeatability."*
+
+### Input checksum
+
+`src/lib/reportIntegrity.ts`'s `computeInputsChecksum()` hashes a
+canonical (sorted-key) JSON serialization of a report's raw inputs only —
+selected challenges, screening answers, uploaded metrics, never the
+computed outputs — with SHA-256, via the standard Web Crypto API. Printed
+on the PDF letterhead and explained in full in Annexure I, so a school can
+independently re-hash their own original submission and prove nothing was
+altered afterward, without taking the app's word for it.
+
+### "Verify Report Integrity"
+
+A button that re-runs the entire calculation pipeline (`recomputeDishaScore`,
+`recomputePerceptionGap`, `recomputeRealInsights`) from nothing but a
+report's recorded raw inputs — never by re-reading the already-computed
+values — and diffs the fresh result against what's stored, field by field.
+A match proves the report is genuinely reproducible; a mismatch names
+exactly what differs (a stale checksum, a drifted score, a changed
+insight). Ships with 19 tests covering a genuine report verifying clean, a
+tampered score being caught, a stale checksum being caught, and a
+pre-checksum-era report correctly *not* being penalized for lacking a
+field that didn't exist yet.
+
+### CI-gated regression test suite
+
+122 new tests were added across `dishaScoreCalculator.test.ts`,
+`challengeObjectiveScoring.test.ts`, `insightGenerator.test.ts`, and
+`reportIntegrity.test.ts` — every multiplier band boundary, the Delusion
+Penalty rule, all 4 Perception Gap verdicts computed from real
+`screeningQuestionsData.ts` weights (not invented numbers), the severity-
+ranking fix from Addendum 2, and an explicit determinism test per module
+(identical input run 5× must produce byte-identical output). `npm run
+test:run` is now a required step in `.github/workflows/test-and-deploy.yml`,
+before the build — previously `vitest` was a devDependency doing nothing
+in CI, so a broken calculation could ship without anything catching it.
+
+### Endurance test
+
+A one-off but reproducible script exercised the full live pipeline
+(`recomputeDishaScore` → `recomputePerceptionGap` → `recomputeRealInsights`
+→ checksum → `verifyCheckupAnalysis`) across **all 455 possible
+3-challenge combinations × 8 severity/data-completeness archetypes each ×
+3 repeated passes = 10,920 total scenario runs**. Result: **0 failures** —
+no crash, no NaN/undefined leakage, every Health Index stayed in [0,100],
+every risk-quadrant color agreed with its own Health Index band, every
+checksum self-verified, no performance degradation or memory leak across
+passes.
+
+### Two gaps found and fixed by this same review
+
+1. **Security:** `schools/{id}/checkups/{id}/analysis/{id}` allowed
+   `create, update: if true` — literally anyone, unauthenticated, could
+   overwrite another school's saved report, including forging a fake score
+   **and** a matching checksum together (which would have passed Verify
+   Report Integrity as fully "Verified" — that check only proves internal
+   self-consistency, not that Firestore wasn't tampered with from
+   outside the app). Tightened to `request.auth != null`, deployed.
+2. **Input sanity validation:** presence-only validation
+   (`validateDataForChallenges`) accepted any numeric value for a field, so
+   a negative Student-Teacher Ratio or a 250% Board Exam Pass Rate would
+   silently score as if it were real data. Every one of the 34 canonical
+   metric fields now carries a `validRange` (`challengeDataRequirements.ts`),
+   checked by `validateMetricRanges()` at both upload-validation gates —
+   wide enough to never reject a genuine outlier, tight enough to catch a
+   stray minus sign or an extra zero. 15 new tests.
+
+### Global error boundary
+
+Previously, any single uncaught exception anywhere in the render tree
+white-screened the entire app with no way back but a manual refresh.
+`src/components/ErrorBoundary.tsx`, wrapping `<App/>` in `main.tsx`, now
+shows a plain "Something went wrong" card with a reload button instead.
+
+### What live browser end-to-end testing could and couldn't confirm
+
+An attempt was made to drive the live login → questionnaire → upload →
+report → PDF → verify flow with Playwright against a local dev server
+connected to the real production Firebase project. The calculation-engine
+testing above (unit tests, endurance test) completed successfully. The
+interactive browser flow could not be completed in this specific sandboxed
+session due to a network-proxy/TLS-handshake incompatibility between
+Chromium and this environment's outbound relay — confirmed to be an
+environment limitation, not an application bug, since the same Firebase
+API calls succeeded via `curl` through the identical proxy. This remains
+open: either a manual click-through or a retry from an unconstrained
+network is still needed to close out interactive UI testing end-to-end.
