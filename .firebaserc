@@ -5,8 +5,9 @@
   "targets": {
     "disha-diagnostics": {
       "hosting": {
-        "default": ["disha-diagnostics-web"],
-        "custom": ["disha-ryl-custom"]
+        "disha-primary": ["disha-diagnostics"],
+        "disha-diagnostics": ["disha-diagnostics"],
+        "default": ["disha-diagnostics"]
       }
     }
   },

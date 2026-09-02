@@ -4,15 +4,16 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    plugins: [react()],
+    plugins: [react({ jsxImportSource: 'react' })],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, './src'),
       },
     },
     build: {
       outDir: 'build',
       emptyOutDir: true,
+      sourcemap: false,
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',

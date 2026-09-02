@@ -1,0 +1,12 @@
+# Challenge Combination: Leadership Capability Gap + Academic Quality Decline + Parent Communication Issues
+metric_field,value
+students_per_classroom,28
+parent_query_response_sla_hours,24
+annual_training_hours,20
+weekly_planning_hours,4
+leadership_competency_score_pct,60
+principal_vp_experience_years,5
+board_exam_pass_rate_pct,87
+average_subject_score_pct,71
+parent_satisfaction_score_pct,58
+parent_response_rate_pct,65

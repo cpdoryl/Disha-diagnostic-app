@@ -1,0 +1,545 @@
+{
+  "metadata": {
+    "scenario": "Workflow Scenario 1: High Performer",
+    "description": "Complete end-to-end workflow for a healthy, high-performing school",
+    "testPurpose": "Gold standard for validating complete First Opinion workflow",
+    "createdDate": "2026-08-30",
+    "dataFiles": {
+      "schoolProfile": "school_profile_tier1_metro.json",
+      "challengeResponses": "challenge_responses_scenario_1_healthy.json",
+      "multipliers": "multipliers_scenario_1_strong.json"
+    }
+  },
+  "phase1_input": {
+    "title": "Step 1: Select Worries - Challenge Selection",
+    "description": "Leadership selects key challenges they're concerned about",
+    "allChallengesNeeded": true,
+    "challenges": [
+      {
+        "id": "C1",
+        "name": "Enrollment Trend & Student Growth",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C2",
+        "name": "Student Retention & Repetition",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C3",
+        "name": "Admission Quality & Competition",
+        "selected": true,
+        "importance": "medium"
+      },
+      {
+        "id": "C4",
+        "name": "Teacher Retention & Attrition",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C5",
+        "name": "Professional Development & Training",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C6",
+        "name": "Teacher Compensation & Career Progression",
+        "selected": true,
+        "importance": "medium"
+      },
+      {
+        "id": "C7",
+        "name": "Board Exam Results & Academic Rigor",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C8",
+        "name": "Curriculum Implementation & Innovation",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C9",
+        "name": "Student Wellness & Counseling",
+        "selected": true,
+        "importance": "medium"
+      },
+      {
+        "id": "C10",
+        "name": "Brand Perception & Market Position",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C11",
+        "name": "Competitive Differentiation",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C12",
+        "name": "Parent & Community Sentiment",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C13",
+        "name": "Fee Realization & Financial Health",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C14",
+        "name": "Safety, Compliance & Facilities",
+        "selected": true,
+        "importance": "high"
+      },
+      {
+        "id": "C15",
+        "name": "Digital Adoption & LMS Usage",
+        "selected": true,
+        "importance": "medium"
+      }
+    ]
+  },
+  "phase2_input": {
+    "title": "Step 2: Screening Intake - Answer Questions",
+    "description": "Leadership responds to 15 screening questions about challenges",
+    "baselineProfile": {
+      "board": "CBSE",
+      "schoolSize": "Large (1500+ students)",
+      "feeBand": "Premium (₹75k+ per year)",
+      "cityTier": "Tier 1 (Metro)"
+    },
+    "allChallengeResponses": {
+      "challenge1": { "id": "C1", "response": 1, "label": "No Impact", "severity": 0.0 },
+      "challenge2": { "id": "C2", "response": 1, "label": "No Impact", "severity": 0.0 },
+      "challenge3": { "id": "C3", "response": 2, "label": "Minor Challenge", "severity": 0.15 },
+      "challenge4": { "id": "C4", "response": 2, "label": "Minor Challenge", "severity": 0.15 },
+      "challenge5": { "id": "C5", "response": 1, "label": "No Impact", "severity": 0.0 },
+      "challenge6": { "id": "C6", "response": 2, "label": "Minor Challenge", "severity": 0.15 },
+      "challenge7": { "id": "C7", "response": 1, "label": "No Impact", "severity": 0.0 },
+      "challenge8": { "id": "C8", "response": 1, "label": "No Impact", "severity": 0.0 },
+      "challenge9": { "id": "C9", "response": 2, "label": "Minor Challenge", "severity": 0.15 },
+      "challenge10": { "id": "C10", "response": 1, "label": "No Impact", "severity": 0.0 },
+      "challenge11": { "id": "C11", "response": 1, "label": "No Impact", "severity": 0.0 },
+      "challenge12": { "id": "C12", "response": 1, "label": "No Impact", "severity": 0.0 },
+      "challenge13": { "id": "C13", "response": 1, "label": "No Impact", "severity": 0.0 },
+      "challenge14": { "id": "C14", "response": 1, "label": "No Impact", "severity": 0.0 },
+      "challenge15": { "id": "C15", "response": 1, "label": "No Impact", "severity": 0.0 }
+    }
+  },
+  "phase2_computed": {
+    "title": "Screening Calculation - Perception Score (S_sub)",
+    "formula": "S_sub = 100 × Σ(weight_i × health_i) / Σ(weight_i)",
+    "noImpactCount": 11,
+    "minorChallengeCount": 4,
+    "significantChallengeCount": 0,
+    "majorCrisisCount": 0,
+    "calculation": {
+      "noImpactContribution": "11 challenges × avg weight 0.19 × health 1.0 = 2.09",
+      "minorChallengeContribution": "4 challenges × avg weight 0.19 × health 0.85 = 0.646",
+      "totalWeightedHealth": "2.09 + 0.646 = 2.736",
+      "totalWeight": "3.0",
+      "s_sub": 91.2
+    },
+    "s_sub_result": 91.2,
+    "interpretation": "Leadership is aware of situation and confident in addressing issues",
+    "confidence": "Data-backed, supported by operational reality"
+  },
+  "phase3_input": {
+    "title": "Step 3: Operational Reality - Multiplier Data",
+    "description": "Objective metrics showing actual operational performance",
+    "multipliers": {
+      "m1_STR": {
+        "name": "Student-Teacher Ratio",
+        "value": 0.82,
+        "scaledValue": 82,
+        "status": "VALID"
+      },
+      "m2_ParentSLA": {
+        "name": "Parent Response SLA",
+        "value": 0.90,
+        "scaledValue": 90,
+        "status": "VALID"
+      },
+      "m3_Training": {
+        "name": "Annual Training Hours",
+        "value": 0.85,
+        "scaledValue": 85,
+        "status": "VALID"
+      },
+      "m4_Planning": {
+        "name": "Weekly Planning Sessions",
+        "value": 0.88,
+        "scaledValue": 88,
+        "status": "VALID"
+      },
+      "m5_FeeRealization": {
+        "name": "Fee Realization Rate",
+        "value": 0.98,
+        "scaledValue": 98,
+        "status": "VALID"
+      },
+      "m6_Safety": {
+        "name": "Safety & Compliance Score",
+        "value": 1.0,
+        "scaledValue": 100,
+        "status": "VALID"
+      },
+      "m7_LMS": {
+        "name": "LMS Active Usage Rate",
+        "value": 0.92,
+        "scaledValue": 92,
+        "status": "VALID"
+      },
+      "m8_CoCurricular": {
+        "name": "Co-Curricular Participation Rate",
+        "value": 0.88,
+        "scaledValue": 88,
+        "status": "VALID"
+      }
+    }
+  },
+  "phase3_computed": {
+    "title": "Operational Reality Score (M_obj)",
+    "formula": "M_obj = (m1 × m2 × m3 × m4 × m5 × m6 × m7 × m8)^(1/8)",
+    "calculation": {
+      "individual": [0.82, 0.90, 0.85, 0.88, 0.98, 1.0, 0.92, 0.88],
+      "product": 0.468,
+      "exponent": 0.125,
+      "result": 0.904
+    },
+    "m_obj_result": 0.904,
+    "m_obj_scaled": 90.4,
+    "interpretation": "Strong operational performance across all metrics"
+  },
+  "phase4_output": {
+    "title": "Step 3: First Opinion Report - Complete Analysis",
+    "description": "Final diagnostic report with recommendations",
+    "reportGeneratedAt": "2026-08-30T15:45:00Z",
+    "schoolContext": {
+      "schoolName": "Sterling International School - Mumbai",
+      "board": "CBSE",
+      "schoolSize": "Large (1500+ students)",
+      "feeBand": "Premium (₹75k+ per year)",
+      "cityTier": "Tier 1 (Metro)"
+    },
+    "coreMetrics": {
+      "s_sub": {
+        "value": 91.2,
+        "range": "0-100",
+        "interpretation": "Perception Score - Leadership feels confident and aware",
+        "confidence": "HIGH - Data-backed awareness"
+      },
+      "m_obj": {
+        "value": 90.4,
+        "range": "0-100",
+        "interpretation": "Reality Score - Operational metrics support perception",
+        "confidence": "HIGH - All multipliers VALID"
+      },
+      "healthIndex": {
+        "rawCalculation": "(0.912 × 0.904) - Penalty = 0.825",
+        "delusionPenalty": {
+          "threshold": 80,
+          "appliedPenalty": 0,
+          "reasoning": "S_sub (91.2) is > 80, but operations (M_obj 90.4) are also strong, so limited overconfidence"
+        },
+        "finalValue": 80.3,
+        "range": "0-100",
+        "status": "GOOD",
+        "color": "GREEN",
+        "interpretation": "School health is GOOD - strong performance with minor areas for improvement"
+      },
+      "gap": {
+        "calculation": "S_sub (91.2) - M_obj (90.4) = 0.8 → scaled to 50.4",
+        "value": 50.4,
+        "range": "0-100",
+        "quadrant": "ALIGNED",
+        "interpretation": "Perception closely matches reality - credible read of school situation"
+      }
+    },
+    "quadrantAnalysis": {
+      "quadrant": "ALIGNED",
+      "gapRange": "30-70",
+      "characteristics": {
+        "title": "Aligned Perception & Reality",
+        "description": "Leadership perception accurately reflects operational reality",
+        "implication": "Credible diagnosis - what leadership thinks aligns with data",
+        "riskLevel": "LOW"
+      },
+      "boardCommunication": "School is in good health. Leadership has accurate assessment of strengths and areas for improvement."
+    },
+    "challengeDrivers": {
+      "title": "Challenge Impact Ranking",
+      "description": "Which challenges are driving the most concern",
+      "ranking": [
+        {
+          "rank": 1,
+          "challengeId": "C6",
+          "challengeName": "Teacher Compensation & Career Progression",
+          "severityScore": 0.15,
+          "healthScore": 0.85,
+          "impact": "6% of overall concern",
+          "domain": "People & Staffing",
+          "recommendation": "Develop clearer career progression paths for senior teachers"
+        },
+        {
+          "rank": 2,
+          "challengeId": "C4",
+          "challengeName": "Teacher Retention & Attrition",
+          "severityScore": 0.15,
+          "healthScore": 0.85,
+          "impact": "6% of overall concern",
+          "domain": "People & Staffing",
+          "recommendation": "Competitive compensation and mentoring programs"
+        },
+        {
+          "rank": 3,
+          "challengeId": "C3",
+          "challengeName": "Admission Quality & Competition",
+          "severityScore": 0.15,
+          "healthScore": 0.85,
+          "impact": "5% of overall concern",
+          "domain": "Growth & Enrollment",
+          "recommendation": "Market positioning strategy against emerging competitors"
+        },
+        {
+          "rank": 4,
+          "challengeId": "C9",
+          "challengeName": "Student Wellness & Counseling",
+          "severityScore": 0.15,
+          "healthScore": 0.85,
+          "impact": "5% of overall concern",
+          "domain": "Academic & Student Wellbeing",
+          "recommendation": "Increase counselor capacity from 1:400 to 1:250 students"
+        }
+      ],
+      "dominantChallenge": {
+        "challenge": "C6 - Teacher Career Progression",
+        "concentrationPercentage": 6,
+        "threshold": "61%",
+        "status": "No single dominant challenge",
+        "interpretation": "Issues are distributed across multiple areas - balanced portfolio of concerns"
+      }
+    },
+    "multiplierProfile": {
+      "title": "Operational Metrics Performance",
+      "description": "How each objective multiplier is performing",
+      "metrics": [
+        {
+          "rank": 1,
+          "name": "Safety & Compliance Score",
+          "value": 100,
+          "status": "EXCELLENT",
+          "trend": "STABLE"
+        },
+        {
+          "rank": 2,
+          "name": "Fee Realization Rate",
+          "value": 98,
+          "status": "EXCELLENT",
+          "trend": "STABLE"
+        },
+        {
+          "rank": 3,
+          "name": "Parent Response SLA",
+          "value": 90,
+          "status": "VERY GOOD",
+          "trend": "IMPROVING"
+        },
+        {
+          "rank": 4,
+          "name": "LMS Active Usage Rate",
+          "value": 92,
+          "status": "VERY GOOD",
+          "trend": "IMPROVING"
+        },
+        {
+          "rank": 5,
+          "name": "Co-Curricular Participation",
+          "value": 88,
+          "status": "VERY GOOD",
+          "trend": "STABLE"
+        },
+        {
+          "rank": 6,
+          "name": "Weekly Planning Sessions",
+          "value": 88,
+          "status": "VERY GOOD",
+          "trend": "STABLE"
+        },
+        {
+          "rank": 7,
+          "name": "Annual Training Hours",
+          "value": 85,
+          "status": "GOOD",
+          "trend": "STABLE"
+        },
+        {
+          "rank": 8,
+          "name": "Student-Teacher Ratio",
+          "value": 82,
+          "status": "GOOD",
+          "trend": "STABLE"
+        }
+      ],
+      "overallM_obj": 90.4,
+      "assessment": "All multipliers are VALID and within good-to-excellent range"
+    },
+    "recommendations": {
+      "title": "Prioritized Action Plan",
+      "description": "Recommendations prioritized by severity and impact",
+      "critical": [],
+      "high": [
+        {
+          "priority": "HIGH",
+          "title": "Develop Teacher Career Progression Framework",
+          "description": "Create clear career paths and incentives for senior teachers to reduce attrition",
+          "actionItems": [
+            "Define 3 advancement tracks: Subject Matter Expert, Leadership, Research",
+            "Create mentorship program pairing junior-senior teachers",
+            "Establish quarterly recognition for high performers",
+            "Develop sabbatical policy for professional renewal"
+          ],
+          "expectedImpact": "Reduce teacher attrition from 11% to <5%, improve retention",
+          "timeline": "6-9 months",
+          "estimatedCost": "Low-Medium"
+        },
+        {
+          "priority": "HIGH",
+          "title": "Strengthen Student Counseling Infrastructure",
+          "description": "Scale counseling services to handle increased student needs",
+          "actionItems": [
+            "Hire additional counselor (target 1:250 ratio)",
+            "Implement peer mentoring program",
+            "Launch wellness mobile app for students",
+            "Conduct quarterly mental health awareness sessions"
+          ],
+          "expectedImpact": "Improve student wellbeing score from 85 to 95+",
+          "timeline": "3-6 months",
+          "estimatedCost": "Medium"
+        }
+      ],
+      "medium": [
+        {
+          "priority": "MEDIUM",
+          "title": "Competitive Market Positioning Strategy",
+          "description": "Differentiate against emerging competitors in admission market",
+          "actionItems": [
+            "Conduct annual competitive market scan",
+            "Highlight unique value propositions in marketing",
+            "Strengthen alumni network for referrals",
+            "Enhance digital presence and parent testimonials"
+          ],
+          "expectedImpact": "Maintain selective admission standards and enrollment growth",
+          "timeline": "9-12 months",
+          "estimatedCost": "Low"
+        }
+      ],
+      "opportunities": [
+        {
+          "priority": "OPPORTUNITY",
+          "title": "Leverage Strong Operations for Excellence Recognition",
+          "description": "Convert strong operational metrics into industry recognition",
+          "actionItems": [
+            "Pursue ISO certifications in quality management",
+            "Apply for education excellence awards",
+            "Publish case studies on best practices",
+            "Benchmark against top schools globally"
+          ],
+          "expectedImpact": "Enhance brand reputation and attract premium students",
+          "timeline": "Ongoing",
+          "estimatedCost": "Low"
+        }
+      ]
+    },
+    "respondentSummary": {
+      "totalRespondents": 1,
+      "respondentRole": "Principal",
+      "respondentName": "Dr. Rajesh Kumar",
+      "completionRate": 100,
+      "allChallengesAnswered": true
+    },
+    "earlyWarnings": {
+      "total": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "assessment": "No early warning flags detected - school is healthy with stable operations"
+    },
+    "trajectory": {
+      "status": "STABLE_WITH_IMPROVEMENT",
+      "trend": "Slight upward trend in health metrics",
+      "forecast": "Expected to remain GOOD (78-82) in next cycle"
+    }
+  },
+  "expectedUIDisplay": {
+    "step3Page": {
+      "headline": "School Health: GOOD",
+      "healthIndexGauge": {
+        "value": 80.3,
+        "color": "GREEN",
+        "status": "GOOD",
+        "message": "School is performing well overall with strong operations and aware leadership"
+      },
+      "scoreCards": [
+        { "label": "Perception Score", "value": 91.2, "status": "Confident" },
+        { "label": "Reality Score", "value": 90.4, "status": "Strong" },
+        { "label": "Health Index", "value": 80.3, "status": "GOOD" },
+        { "label": "Alignment Gap", "value": 50.4, "status": "Aligned" }
+      ],
+      "quadrantVisualization": {
+        "type": "2x2 Quadrant",
+        "current": "ALIGNED",
+        "insight": "Perception matches reality - credible diagnosis"
+      },
+      "driverTable": "Shows C6, C4, C3, C9 as top drivers with 5-6% impact each",
+      "multiplierBars": "8 multiplier cards with 82-100 scores, all VALID",
+      "recommendationsSummary": "2 HIGH priority + 1 MEDIUM + 1 OPPORTUNITY recommendations shown",
+      "printButton": "Available",
+      "exportButton": "Available",
+      "startNewButton": "Available"
+    }
+  },
+  "validationChecklist": {
+    "uiTests": [
+      "✅ All 15 challenges answered",
+      "✅ Wizard navigates to Step 3 (Report)",
+      "✅ Health Index displays as 80.3 (GREEN/GOOD)",
+      "✅ NO 14D Deployment step visible",
+      "✅ NO mixed report sections",
+      "✅ 4 recommendation cards visible",
+      "✅ Print and Export buttons clickable"
+    ],
+    "dataTests": [
+      "✅ 15 challengeResponses in Firestore",
+      "✅ 8 multipliers in Firestore (all VALID)",
+      "✅ s_sub calculated as 91.2",
+      "✅ m_obj calculated as 90.4",
+      "✅ healthIndex calculated as 80.3",
+      "✅ gap calculated as 50.4",
+      "✅ quadrant set to ALIGNED",
+      "✅ NO early warnings detected",
+      "✅ NO 14D data in collections"
+    ],
+    "consoleTests": [
+      "✅ NO red errors in console",
+      "✅ NO 'DeepDiveAssessment' references",
+      "✅ NO '14D' or 'EWISR' logs",
+      "✅ Clean calculation logs only"
+    ]
+  },
+  "testExecutionInstructions": {
+    "step1": "Set school profile to: Board=CBSE, Size=Large, Fee=Premium, Tier=Tier1",
+    "step2": "Answer 15 challenges using responses from challenge_responses_scenario_1_healthy.json",
+    "step3": "Import 8 multipliers from multipliers_scenario_1_strong.json",
+    "verify": "Compare actual report with expectedUIDisplay section above",
+    "duration": "10-15 minutes"
+  }
+}

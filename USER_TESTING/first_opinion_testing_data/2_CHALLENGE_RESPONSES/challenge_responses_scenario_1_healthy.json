@@ -1,0 +1,288 @@
+{
+  "metadata": {
+    "scenario": "Scenario 1: Healthy School",
+    "description": "School performing well across all domains with strong leadership awareness",
+    "testPurpose": "Baseline validation for healthy school operations",
+    "createdDate": "2026-08-30",
+    "expectedResults": {
+      "s_sub": "82-88 (High perception score, leadership confident and data-aware)",
+      "m_obj": "78-85 (Strong operational reality)",
+      "healthIndex": "78-82 (GOOD status - green flag)",
+      "gap": "30-40 (ALIGNED quadrant - perception matches reality)",
+      "delusionPenalty": "0 (No overconfidence)",
+      "earlyWarnings": "None",
+      "quadrant": "ALIGNED"
+    }
+  },
+  "schoolContext": {
+    "schoolName": "Sterling International School - Mumbai",
+    "schoolId": "test_tier1_metro_001",
+    "board": "CBSE",
+    "schoolSize": "Large (1500+ students)",
+    "feeBand": "Premium (₹75k+ per year)",
+    "cityTier": "Tier 1 (Metro)",
+    "assessmentDate": "2026-08-30",
+    "respondentRole": "Principal",
+    "respondentName": "Dr. Rajesh Kumar"
+  },
+  "challenges": [
+    {
+      "domainNumber": 1,
+      "domain": "Growth & Enrollment",
+      "challengeNumber": 1,
+      "challengeId": "C1",
+      "challengeName": "Enrollment Trend & Student Growth",
+      "description": "Is student enrollment growing, stable, or declining?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "Enrollment growing 5-8% YoY, strong admission pipeline",
+      "weight": 0.20,
+      "rationale": "School has strong brand reputation and consistent growth"
+    },
+    {
+      "domainNumber": 1,
+      "domain": "Growth & Enrollment",
+      "challengeNumber": 2,
+      "challengeId": "C2",
+      "challengeName": "Student Retention & Repetition",
+      "description": "What is the student retention rate and repetition percentage?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "96% retention rate, <1% repetition rate",
+      "weight": 0.20,
+      "rationale": "Students are satisfied and performing well academically"
+    },
+    {
+      "domainNumber": 1,
+      "domain": "Growth & Enrollment",
+      "challengeNumber": 3,
+      "challengeId": "C3",
+      "challengeName": "Admission Quality & Competition",
+      "description": "How competitive is your admission process? Any quality concerns?",
+      "responseValue": 2,
+      "responseLabel": "Minor Challenge",
+      "responseDescription": "Selective process with 4:1 ratio, but competition increasing from tier 2 competitors",
+      "weight": 0.15,
+      "rationale": "Market is becoming more competitive but school maintains selective admission standards"
+    },
+    {
+      "domainNumber": 2,
+      "domain": "People & Staffing",
+      "challengeNumber": 4,
+      "challengeId": "C4",
+      "challengeName": "Teacher Retention & Attrition",
+      "description": "What is your teacher turnover rate?",
+      "responseValue": 2,
+      "responseLabel": "Minor Challenge",
+      "responseDescription": "89% retention rate, 11% attrition mostly due to relocation or higher studies",
+      "weight": 0.25,
+      "rationale": "Retention is good but there's room for improvement in career progression"
+    },
+    {
+      "domainNumber": 2,
+      "domain": "People & Staffing",
+      "challengeNumber": 5,
+      "challengeId": "C5",
+      "challengeName": "Professional Development & Training",
+      "description": "How much professional development do teachers receive?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "56 hours/year training, regular workshops, 78% teachers have MA",
+      "weight": 0.20,
+      "rationale": "Strong investment in teacher development across the board"
+    },
+    {
+      "domainNumber": 2,
+      "domain": "People & Staffing",
+      "challengeNumber": 6,
+      "challengeId": "C6",
+      "challengeName": "Teacher Compensation & Career Progression",
+      "description": "Are salaries competitive and is there clear career progression?",
+      "responseValue": 2,
+      "responseLabel": "Minor Challenge",
+      "responseDescription": "Salaries at 60th percentile, but limited advancement opportunities for senior teachers",
+      "weight": 0.20,
+      "rationale": "Compensation is reasonable but not highest in sector, career growth needs attention"
+    },
+    {
+      "domainNumber": 3,
+      "domain": "Academic & Student Wellbeing",
+      "challengeNumber": 7,
+      "challengeId": "C7",
+      "challengeName": "Board Exam Results & Academic Rigor",
+      "description": "What are your board exam pass rates and subject-wise performance?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "98.5% pass rate, 89% in top 2 grades, subject avg 85%+",
+      "weight": 0.22,
+      "rationale": "Excellent academic outcomes demonstrating strong curriculum implementation"
+    },
+    {
+      "domainNumber": 3,
+      "domain": "Academic & Student Wellbeing",
+      "challengeNumber": 8,
+      "challengeId": "C8",
+      "challengeName": "Curriculum Implementation & Innovation",
+      "description": "How effectively is curriculum implemented? Any innovation?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "Curriculum implemented 95%+ on time, regular innovation in pedagogy, 48/60 smart classrooms",
+      "weight": 0.20,
+      "rationale": "Strong curriculum execution with modern teaching methodologies"
+    },
+    {
+      "domainNumber": 3,
+      "domain": "Academic & Student Wellbeing",
+      "challengeNumber": 9,
+      "challengeId": "C9",
+      "challengeName": "Student Wellness & Counseling",
+      "description": "What is the student wellbeing situation? Any mental health concerns?",
+      "responseValue": 2,
+      "responseLabel": "Minor Challenge",
+      "responseDescription": "Wellness program in place, but counselor availability could be improved (1 counselor per 400 students)",
+      "weight": 0.18,
+      "rationale": "Good wellness infrastructure but needs scaling to handle individual attention"
+    },
+    {
+      "domainNumber": 4,
+      "domain": "Reputation & Competition",
+      "challengeNumber": 10,
+      "challengeId": "C10",
+      "challengeName": "Brand Perception & Market Position",
+      "description": "How is your school perceived in the market? Brand strength?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "Strong brand, 4.6/5 Google rating, recognized as top school in the area",
+      "weight": 0.20,
+      "rationale": "School has built strong market reputation over years"
+    },
+    {
+      "domainNumber": 4,
+      "domain": "Reputation & Competition",
+      "challengeNumber": 11,
+      "challengeId": "C11",
+      "challengeName": "Competitive Differentiation",
+      "description": "What makes your school unique compared to competitors?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "Clear differentiation: holistic education, strong infrastructure, expert faculty",
+      "weight": 0.18,
+      "rationale": "School has distinct value proposition in market"
+    },
+    {
+      "domainNumber": 4,
+      "domain": "Reputation & Competition",
+      "challengeNumber": 12,
+      "challengeId": "C12",
+      "challengeName": "Parent & Community Sentiment",
+      "description": "How satisfied are parents? Community perception?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "82 NPS score, 95% parent satisfaction, strong community engagement",
+      "weight": 0.18,
+      "rationale": "Parents and community are highly satisfied with school performance"
+    },
+    {
+      "domainNumber": 5,
+      "domain": "Operations & Finance",
+      "challengeNumber": 13,
+      "challengeId": "C13",
+      "challengeName": "Fee Realization & Financial Health",
+      "description": "What is your fee collection rate and financial stability?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "98% fee realization, 0.8% default rate, strong cash flow",
+      "weight": 0.22,
+      "rationale": "Excellent financial health with strong collections"
+    },
+    {
+      "domainNumber": 5,
+      "domain": "Operations & Finance",
+      "challengeNumber": 14,
+      "challengeId": "C14",
+      "challengeName": "Safety, Compliance & Facilities",
+      "description": "Are facilities safe and compliant? Any infrastructure gaps?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "0 safety incidents, 100% regulatory compliance, well-maintained facilities",
+      "weight": 0.20,
+      "rationale": "School maintains highest safety and compliance standards"
+    },
+    {
+      "domainNumber": 5,
+      "domain": "Operations & Finance",
+      "challengeNumber": 15,
+      "challengeId": "C15",
+      "challengeName": "Digital Adoption & LMS Usage",
+      "description": "What is the digital adoption rate and LMS usage?",
+      "responseValue": 1,
+      "responseLabel": "No Impact",
+      "responseDescription": "92% LMS adoption, 89% active usage rate, modern tech infrastructure",
+      "weight": 0.18,
+      "rationale": "School has invested in and successfully implemented digital infrastructure"
+    }
+  ],
+  "summaryStatistics": {
+    "totalChallenges": 15,
+    "challengesByDomain": {
+      "Growth & Enrollment": 3,
+      "People & Staffing": 3,
+      "Academic & Student Wellbeing": 3,
+      "Reputation & Competition": 3,
+      "Operations & Finance": 3
+    },
+    "responseDistribution": {
+      "noImpact": 11,
+      "minorChallenge": 4,
+      "significantChallenge": 0,
+      "majorCrisis": 0
+    },
+    "totalWeight": 3.0,
+    "averageResponseValue": 1.27,
+    "dominantChallengeArea": "None - Balanced across all domains",
+    "severityOverallAssessment": "School is in HEALTHY state with minor challenges in staff progression and student counseling"
+  },
+  "expectedCalculations": {
+    "severityScores": {
+      "C1": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" },
+      "C2": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" },
+      "C3": { "severity": 0.15, "health": 0.85, "domainImpact": "Low" },
+      "C4": { "severity": 0.15, "health": 0.85, "domainImpact": "Low" },
+      "C5": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" },
+      "C6": { "severity": 0.15, "health": 0.85, "domainImpact": "Low" },
+      "C7": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" },
+      "C8": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" },
+      "C9": { "severity": 0.15, "health": 0.85, "domainImpact": "Low" },
+      "C10": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" },
+      "C11": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" },
+      "C12": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" },
+      "C13": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" },
+      "C14": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" },
+      "C15": { "severity": 0.0, "health": 1.0, "domainImpact": "Very Low" }
+    },
+    "s_sub_calculation": {
+      "formula": "100 × Σ(weight_i × health_i) / Σ(weight_i)",
+      "weightedSum": "2.535",
+      "totalWeight": "3.0",
+      "s_sub_value": 84.5,
+      "range": "82-88"
+    }
+  },
+  "usageInstructions": {
+    "uiTesting": [
+      "1. Go to https://disha.rylneuroacademy.com/",
+      "2. Login to dashboard",
+      "3. Click 'First Opinion Check'",
+      "4. Click 'Start First Opinion Checkup'",
+      "5. For each challenge C1-C15, select response matching this file",
+      "6. Submit and verify report shows expected scores"
+    ],
+    "validation": [
+      "Compare actual S_sub (84.5) with expected range 82-88",
+      "Verify no delusional comfort penalty applied",
+      "Verify ALIGNED quadrant (gap 30-40)",
+      "Verify Health Index shows GOOD status",
+      "Verify no early warnings triggered"
+    ]
+  }
+}

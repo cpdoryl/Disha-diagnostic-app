@@ -139,6 +139,17 @@ service cloud.firestore {
 
     match /schools/{schoolId} {
       allow read, write: if true;
+
+      // First Opinion checkups (schools/{schoolId}/checkups/{checkupId}),
+      // their Cloud Function analysis output (.../analysis/current), and
+      // audit logs (schools/{schoolId}/auditLogs/{logId}) were never given
+      // an explicit rule, so every write here fell through to the global
+      // "Safety Net" deny-all above - the First Opinion "Analyze & Get
+      // First Opinion" save always failed with permission-denied. Matching
+      // the same open access already granted to the school document itself.
+      match /{document=**} {
+        allow read, write: if true;
+      }
     }
 
     match /students/{studentId} {

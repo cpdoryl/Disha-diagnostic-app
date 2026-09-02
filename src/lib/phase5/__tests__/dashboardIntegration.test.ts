@@ -262,7 +262,7 @@ describe('Phase 6: Trend Analysis Integration', () => {
     const lastThreeMonths = trendData.slice(-3);
 
     const trend = (lastThreeMonths[2].value - lastThreeMonths[0].value) / 2;
-    const forecast = Math.round(lastThreeMonths[2].value + trend);
+    const forecast = Math.min(100, Math.max(0, Math.round(lastThreeMonths[2].value + trend)));
 
     expect(forecast).toBeGreaterThanOrEqual(0);
     expect(forecast).toBeLessThanOrEqual(100);

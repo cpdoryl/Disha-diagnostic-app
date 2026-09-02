@@ -1,0 +1,225 @@
+[
+  {
+    "metadata": {
+      "scenario": "Scenario 1: Strong Operational Multipliers",
+      "description": "8 multipliers for a healthy school with strong operational metrics",
+      "testPurpose": "Test with all VALID multipliers supporting healthy operations",
+      "createdDate": "2026-08-30",
+      "schoolId": "test_tier1_metro_001",
+      "cycleId": "cycle_healthy_scenario_1"
+    },
+    "multipliers": [
+      {
+        "id": "m1",
+        "name": "STR",
+        "fullName": "Student-Teacher Ratio",
+        "category": "CORE",
+        "description": "Ratio of students to teachers (lower is better)",
+        "value": 0.82,
+        "scaledValue": 82,
+        "actualRatio": "1:19.5",
+        "benchmark": {
+          "excellent": "1:15 (1.0 score)",
+          "good": "1:20 (0.85 score)",
+          "acceptable": "1:25 (0.70 score)",
+          "critical": "1:35+ (0.0 score)"
+        },
+        "validationStatus": "VALID",
+        "dataSource": "HR System - Teacher Roster",
+        "updatedAt": "2026-08-29T14:30:00Z",
+        "notes": "Good ratio, supporting effective teaching and student attention"
+      },
+      {
+        "id": "m2",
+        "name": "Parent SLA",
+        "fullName": "Parent Response SLA (Hours)",
+        "category": "CORE",
+        "description": "Average response time to parent inquiries in hours",
+        "value": 0.90,
+        "scaledValue": 90,
+        "actualResponseTime": 12,
+        "benchmark": {
+          "excellent": "12 hours (0.95 score)",
+          "good": "24 hours (0.85 score)",
+          "acceptable": "48 hours (0.65 score)",
+          "critical": "72+ hours (0.0 score)"
+        },
+        "validationStatus": "VALID",
+        "dataSource": "Communication Log / Helpdesk",
+        "updatedAt": "2026-08-29T14:30:00Z",
+        "notes": "Excellent parent communication turnaround time"
+      },
+      {
+        "id": "m3",
+        "name": "Training Hours",
+        "fullName": "Annual Teacher Training Hours",
+        "category": "CORE",
+        "description": "Professional development hours per teacher per year",
+        "value": 0.85,
+        "scaledValue": 85,
+        "actualHours": 56,
+        "benchmark": {
+          "excellent": "40+ hours (1.0 score)",
+          "good": "30 hours (0.85 score)",
+          "acceptable": "20 hours (0.65 score)",
+          "critical": "<10 hours (0.0 score)"
+        },
+        "validationStatus": "VALID",
+        "dataSource": "HR System - Training Records",
+        "updatedAt": "2026-08-29T14:30:00Z",
+        "notes": "Strong investment in teacher professional development"
+      },
+      {
+        "id": "m4",
+        "name": "Planning Time",
+        "fullName": "Weekly Teacher Planning Sessions",
+        "category": "CORE",
+        "description": "Dedicated planning periods per teacher per week",
+        "value": 0.88,
+        "scaledValue": 88,
+        "actualSessions": 2.5,
+        "benchmark": {
+          "excellent": "2+ sessions/week (0.95 score)",
+          "good": "1.5 sessions/week (0.85 score)",
+          "acceptable": "1 session/week (0.65 score)",
+          "critical": "<1 session/week (0.0 score)"
+        },
+        "validationStatus": "VALID",
+        "dataSource": "Timetable System - Scheduling",
+        "updatedAt": "2026-08-29T14:30:00Z",
+        "notes": "Good planning infrastructure supporting curriculum delivery"
+      },
+      {
+        "id": "m5",
+        "name": "Fee Realization",
+        "fullName": "Fee Realization Rate",
+        "category": "EXPANDED",
+        "description": "Percentage of fees collected vs billed",
+        "value": 0.98,
+        "scaledValue": 98,
+        "actualRate": 98,
+        "benchmark": {
+          "excellent": ">95% (1.0 score)",
+          "good": "90-95% (0.85 score)",
+          "acceptable": "75-90% (0.65 score)",
+          "critical": "<75% (0.0 score)"
+        },
+        "validationStatus": "VALID",
+        "dataSource": "Finance System - Accounts Ledger",
+        "updatedAt": "2026-08-29T14:30:00Z",
+        "notes": "Excellent financial health with strong collections"
+      },
+      {
+        "id": "m6",
+        "name": "Safety Score",
+        "fullName": "Safety & Compliance Score",
+        "category": "EXPANDED",
+        "description": "Number of safety incidents per year (lower is better)",
+        "value": 1.0,
+        "scaledValue": 100,
+        "actualIncidents": 0,
+        "benchmark": {
+          "excellent": "0 incidents (1.0 score)",
+          "good": "1-2 incidents (0.80 score)",
+          "acceptable": "3-4 incidents (0.60 score)",
+          "critical": "5+ incidents (0.0 score)"
+        },
+        "validationStatus": "VALID",
+        "dataSource": "Facilities & Safety Audit Records",
+        "updatedAt": "2026-08-29T14:30:00Z",
+        "notes": "Perfect safety record, all regulatory compliance met"
+      },
+      {
+        "id": "m7",
+        "name": "LMS Usage",
+        "fullName": "Digital/LMS Active Usage Rate",
+        "category": "EXPANDED",
+        "description": "Percentage of faculty actively using LMS platform",
+        "value": 0.92,
+        "scaledValue": 92,
+        "actualRate": 92,
+        "benchmark": {
+          "excellent": ">80% (1.0 score)",
+          "good": "70-80% (0.85 score)",
+          "acceptable": "50-70% (0.65 score)",
+          "critical": "<30% (0.0 score)"
+        },
+        "validationStatus": "VALID",
+        "dataSource": "LMS Analytics Dashboard",
+        "updatedAt": "2026-08-29T14:30:00Z",
+        "notes": "Strong digital adoption across the school"
+      },
+      {
+        "id": "m8",
+        "name": "Co-Curricular",
+        "fullName": "Extracurricular Participation Rate",
+        "category": "EXPANDED",
+        "description": "Percentage of students participating in co-curricular activities",
+        "value": 0.88,
+        "scaledValue": 88,
+        "actualRate": 88,
+        "benchmark": {
+          "excellent": ">80% (1.0 score)",
+          "good": "60-80% (0.85 score)",
+          "acceptable": "40-60% (0.65 score)",
+          "critical": "<40% (0.0 score)"
+        },
+        "validationStatus": "VALID",
+        "dataSource": "Activity/Co-Curricular Rosters",
+        "updatedAt": "2026-08-29T14:30:00Z",
+        "notes": "Strong student engagement in activities beyond academics"
+      }
+    ]
+  },
+  {
+    "summary": {
+      "totalMultipliers": 8,
+      "allValid": true,
+      "missingMultipliers": 0,
+      "outlierMultipliers": 0,
+      "averageScore": 0.90,
+      "m_obj_calculation": {
+        "formula": "M_obj = (m1 × m2 × m3 × m4 × m5 × m6 × m7 × m8)^(1/8)",
+        "individual_values": [0.82, 0.90, 0.85, 0.88, 0.98, 1.0, 0.92, 0.88],
+        "product": 0.468,
+        "m_obj": 0.90,
+        "m_obj_scaled": 90,
+        "geometric_mean_applied": true,
+        "notes": "Geometric mean prevents score compounding when all multipliers are strong"
+      },
+      "expectedHealthStatus": {
+        "with_s_sub_84.5": {
+          "calculation": "(S_sub/100 × M_obj/100 × 100) - Penalty",
+          "intermediate": "(0.845 × 0.90 × 100) = 76.05",
+          "delusionPenalty": 0,
+          "healthIndex": 76,
+          "status": "GOOD",
+          "color": "GREEN",
+          "range": "78-82 (with multiplier support)"
+        }
+      }
+    },
+    "dataQuality": {
+      "allDataSourcesVerified": true,
+      "dataFreshness": "Current as of 2026-08-29",
+      "dataIntegrity": "All values within expected ranges",
+      "readyForCalculation": true
+    },
+    "usageInstructions": {
+      "firebaseImport": [
+        "1. Open Firebase Console",
+        "2. Navigate to: Firestore → schools → [schoolId] → assessmentCycles → [cycleId] → multipliers",
+        "3. For each multiplier in array above:",
+        "   - Create new document with ID: m1, m2, ... m8",
+        "   - Copy all fields from JSON",
+        "4. System auto-calculates M_obj and recalculates Health Index"
+      ],
+      "validation": [
+        "Verify all 8 multipliers present",
+        "Verify all validationStatus = VALID (no MISSING/OUTLIER)",
+        "Verify M_obj calculated as 0.90 (scaled: 90)",
+        "Verify Health Index recalculated after multiplier import"
+      ]
+    }
+  }
+]

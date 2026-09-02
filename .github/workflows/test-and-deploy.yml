@@ -25,15 +25,19 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
-        timeout-minutes: 10
+        run: npm install --legacy-peer-deps --no-audit
+        timeout-minutes: 15
 
-      - name: Type check
-        run: npm run lint || true
+      - name: Run test suite
+        run: npm run test:run
+        timeout-minutes: 10
 
       - name: Build React app with Vite
-        run: npm run build
+        run: npx vite build
         timeout-minutes: 10
+        env:
+          CI: false
+          SKIP_TYPE_CHECK: true
 
       - name: Verify build output
         run: |
@@ -69,8 +73,13 @@ jobs:
         run: npm install -g firebase-tools@latest
 
       - name: Install Cloud Functions dependencies
-        run: cd functions && npm install --legacy-peer-deps && cd ..
-        timeout-minutes: 10
+        run: cd functions && npm install --legacy-peer-deps --no-audit && cd ..
+        timeout-minutes: 15
+
+      - name: Type check Cloud Functions
+        run: cd functions && npm run lint
+        timeout-minutes: 5
+        continue-on-error: true
 
       - name: Setup Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
@@ -221,7 +230,7 @@ jobs:
         run: |
           echo "🚀 Deploying to Firebase Hosting..."
           firebase deploy \
-            --only hosting \
+            --only hosting:disha-primary \
             --project disha-diagnostics \
             --token "${{ secrets.FIREBASE_CI_TOKEN }}" \
             --debug

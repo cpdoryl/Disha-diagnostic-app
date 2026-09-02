@@ -1,7 +1,19 @@
 /**
  * Challenge Data Requirements System
- * Defines required metrics for objective analysis of each challenge
- * Used to validate uploaded data completeness
+ * Defines required objective metrics for each of the 15 First Opinion Engine
+ * challenges (see src/data/screeningQuestionsData.ts for the questions bank).
+ *
+ * IMPORTANT: the keys of CHALLENGE_DATA_REQUIREMENTS below are the exact same
+ * challenge ids used by COMPLETE_SCREENING_QUESTIONS (e.g. "enrollment_decline"),
+ * NOT the "C1".."C15" challengeId shorthand. selectedChallenges in
+ * FirstOpinionPage.tsx is always an array of these ids, so this file must be
+ * keyed the same way for lookups to actually resolve.
+ *
+ * fieldName values are the canonical metric keys used by the Operational
+ * Metrics CSV upload format (see fileAnalyzer.ts: parseCanonicalMetricsCSV).
+ * Each fieldName is derived directly from the "metrics" array already declared
+ * per challenge in screeningQuestionsData.ts, so the objective data requested
+ * here always matches the metric named in that challenge's own question bank.
  */
 
 export interface MetricRequirement {
@@ -11,11 +23,129 @@ export interface MetricRequirement {
   unit: string;
   example: string;
   mandatory: boolean;
-  dataType: 'number' | 'percentage' | 'count' | 'hours' | 'ratio';
+  dataType: 'number' | 'percentage' | 'count' | 'hours' | 'ratio' | 'currency';
+  /**
+   * A generously wide "is this even physically plausible" bound, not a
+   * scoring band (see METRIC_BAND_DEFINITIONS in challengeObjectiveScoring.ts
+   * for the actual severity thresholds). Presence-only validation
+   * (validateDataForChallenges) never checked whether an uploaded number
+   * made sense at all - a negative student-teacher ratio or a 250% pass
+   * rate would previously be accepted as-is and silently scored as if it
+   * were a real, if extreme, result. validateMetricRanges() below is the
+   * one place these bounds are enforced. Chosen to be wide enough that no
+   * genuine outlier value should ever be rejected - only clear data-entry
+   * errors (a stray minus sign, a percentage over 100, a unit mismatch).
+   */
+  validRange: { min: number; max: number };
 }
 
+/**
+ * RTE Act 2009 Schedule - the core physical-infrastructure norms and
+ * standards a recognized school is expected to meet. This is the widely-used
+ * checklist referenced by state RTE recognition/compliance forms (individual
+ * states sometimes add 1-2 local items - a school should defer to its own
+ * state's RTE recognition checklist where it differs from this list).
+ *
+ * infrastructure_quality_score_pct (see infrastructure_deficits below) is
+ * defined as:
+ *   (number of these norms currently met / RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length) * 100
+ * This replaces what was previously an unexplained, self-rated percentage
+ * (see DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md Addendum 3) with a real,
+ * externally-grounded, and independently auditable calculation - any two
+ * people who walk the same campus with this checklist should reach the same
+ * number, which was not true of the old "how good is your infrastructure,
+ * 1-100" framing.
+ */
+export const RTE_INFRASTRUCTURE_NORMS_CHECKLIST: string[] = [
+  'All-weather school building with safe construction',
+  'One classroom per teacher (adequate classrooms for the Pupil-Teacher Ratio)',
+  "An office-cum-store-cum-Head Teacher's room",
+  'Separate toilets for boys and girls',
+  'Safe drinking water facility for every child',
+  'A kitchen for cooking mid-day meal (where the scheme applies to the school)',
+  'A playground',
+  'A library with newspapers, magazines, and story books',
+  'Barrier-free (ramp) access for Children With Special Needs (CWSN)',
+  'Boundary wall/fencing for school safety and security'
+];
+
+/**
+ * Core, board/state-agnostic regulatory compliance domains every Indian
+ * K-12 school is subject to under central law, regardless of board (CBSE/
+ * ICSE/State) or state-specific bye-laws that may add further requirements
+ * on top of this baseline. compliance_score_pct (see compliance_regulatory_stress
+ * below) is defined as: (domains currently met / CORE_COMPLIANCE_DOMAINS_CHECKLIST.length) * 100.
+ *
+ * Deliberately narrower than a full board-specific affiliation checklist:
+ * CBSE/ICSE/State Board bye-laws vary in their exact clauses and this
+ * session has no way to verify board-specific clause text, so only
+ * genuinely universal, centrally-mandated domains are listed here. A school
+ * should track its own board's full affiliation checklist in addition to
+ * this baseline - see DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md Addendum 3.
+ */
+export const CORE_COMPLIANCE_DOMAINS_CHECKLIST: string[] = [
+  'Valid Fire Safety NOC/Certificate from the state Fire Services Department',
+  'Structural Safety/Stability Certificate for all school buildings',
+  'Currently valid RTE Act recognition certificate or board affiliation, not under show-cause',
+  'Functional Child Protection Policy / Internal Committee under the POCSO Act, 2012',
+  'Valid building/occupancy certificate from the local municipal authority',
+  'Drinking water and sanitation compliant with health department norms',
+  'School transport (if operated) compliant with Motor Vehicles Act school-bus safety norms',
+  'No pending regulatory show-cause notice or suspension from the affiliating board'
+];
+
+/**
+ * The 4 CORE operational levers that feed the DISHA Health Score itself
+ * (see DISHAScoreCalculator / OperationalMetrics). These are required on
+ * EVERY First Opinion checkup regardless of which 3 challenges are selected
+ * — they are not challenge-specific.
+ */
+export const CORE_OPERATIONAL_METRICS: MetricRequirement[] = [
+  {
+    fieldName: 'students_per_classroom',
+    displayName: 'Student-Teacher Ratio',
+    description: 'Average number of students per classroom/teacher',
+    unit: 'ratio',
+    example: '28',
+    mandatory: true,
+    dataType: 'ratio',
+    validRange: { min: 1, max: 100 }
+  },
+  {
+    fieldName: 'parent_query_response_sla_hours',
+    displayName: 'Parent Query Response SLA',
+    description: 'Average time taken to respond to a parent query',
+    unit: 'hours',
+    example: '24',
+    mandatory: true,
+    dataType: 'hours',
+    validRange: { min: 0, max: 720 }
+  },
+  {
+    fieldName: 'annual_training_hours',
+    displayName: 'Annual Teacher Training Hours',
+    description: 'CPD/training hours per teacher per year',
+    unit: 'hours',
+    example: '20',
+    mandatory: true,
+    dataType: 'hours',
+    validRange: { min: 0, max: 500 }
+  },
+  {
+    fieldName: 'weekly_planning_hours',
+    displayName: 'Weekly Planning Time',
+    description: 'Hours per week allocated for lesson planning',
+    unit: 'hours',
+    example: '4',
+    mandatory: true,
+    dataType: 'hours',
+    validRange: { min: 0, max: 80 }
+  }
+];
+
 export interface ChallengeDataRequirement {
-  challengeId: string;
+  challengeId: string; // C1..C15 shorthand, for reference/display only
+  challengeKey: string; // the real screeningQuestionsData id (matches selectedChallenges entries)
   challengeName: string;
   category: string;
   requiredMetrics: MetricRequirement[];
@@ -24,69 +154,44 @@ export interface ChallengeDataRequirement {
 }
 
 // ============================================================================
-// 15 CHALLENGES DATA REQUIREMENTS
+// 15 CHALLENGES DATA REQUIREMENTS (keyed by the real screeningQuestionsData id)
 // ============================================================================
 
 export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequirement> = {
-  // GROWTH & ENROLLMENT CHALLENGES
-  C1_ENROLLMENT_DECLINE: {
+  enrollment_decline: {
     challengeId: 'C1',
+    challengeKey: 'enrollment_decline',
     challengeName: 'Enrollment Decline',
     category: 'Growth & Enrollment',
     requiredMetrics: [
       {
-        fieldName: 'new_enrollment_rate',
-        displayName: 'New Enrollment Rate',
-        description: 'Year-over-year enrollment growth percentage',
+        fieldName: 'new_student_intake_rate_pct',
+        displayName: 'New Student Intake Rate',
+        description: 'Year-over-year growth (or decline) in new admissions',
         unit: 'percentage',
-        example: '15% (or -10% for decline)',
+        example: '-8',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: -100, max: 300 }
       },
       {
-        fieldName: 'total_current_students',
-        displayName: 'Total Current Students',
-        description: 'Total enrolled students this year',
-        unit: 'count',
-        example: '1260',
-        mandatory: true,
-        dataType: 'count'
-      },
-      {
-        fieldName: 'retention_rate_pct',
+        fieldName: 'student_retention_rate_pct',
         displayName: 'Student Retention Rate',
         description: 'Grade 1 to Grade 12 retention percentage',
         unit: 'percentage',
-        example: '82%',
+        example: '78',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
-    optionalMetrics: [
-      {
-        fieldName: 'enrollment_trend_3yr',
-        displayName: '3-Year Enrollment Trend',
-        description: 'Student count trend over 3 years',
-        unit: 'count',
-        example: '1350, 1300, 1260',
-        mandatory: false,
-        dataType: 'count'
-      },
-      {
-        fieldName: 'competitive_positioning',
-        displayName: 'Competitive Positioning Score',
-        description: 'How school ranks vs competitors',
-        unit: 'percentage',
-        example: '65%',
-        mandatory: false,
-        dataType: 'percentage'
-      }
-    ],
-    sampleDataFile: 'Enrollment_Data.csv'
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
   },
 
-  C2_STUDENT_ATTRITION: {
+  student_attrition: {
     challengeId: 'C2',
+    challengeKey: 'student_attrition',
     challengeName: 'Student Attrition',
     category: 'Growth & Enrollment',
     requiredMetrics: [
@@ -95,55 +200,61 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         displayName: 'Mid-Year Dropout Rate',
         description: 'Percentage of students leaving mid-year',
         unit: 'percentage',
-        example: '5%',
+        example: '6',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
         fieldName: 'outflow_to_competitors_pct',
         displayName: 'Outflow to Competitors',
         description: 'Students leaving to competitor schools',
         unit: 'percentage',
-        example: '3%',
+        example: '4',
         mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'primary_attrition_reasons',
-        displayName: 'Primary Attrition Reasons',
-        description: 'Main reasons for student exit (affordability, safety, quality)',
-        unit: 'text',
-        example: 'Affordability: 45%, Quality: 30%, Safety: 25%',
-        mandatory: true,
-        dataType: 'count'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
-    optionalMetrics: [
-      {
-        fieldName: 'student_satisfaction_score',
-        displayName: 'Student Satisfaction',
-        description: 'Student NPS or satisfaction score',
-        unit: 'score',
-        example: '7.2/10',
-        mandatory: false,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'parent_satisfaction_score',
-        displayName: 'Parent Satisfaction',
-        description: 'Parent NPS or satisfaction score',
-        unit: 'score',
-        example: '7.5/10',
-        mandatory: false,
-        dataType: 'number'
-      }
-    ],
-    sampleDataFile: 'Attrition_Data.csv'
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
   },
 
-  C3_STAFF_TURNOVER: {
+  fee_collection_challenges: {
     challengeId: 'C3',
-    challengeName: 'Staff Turnover',
+    challengeKey: 'fee_collection_challenges',
+    challengeName: 'Fee Collection Challenges',
+    category: 'Growth & Enrollment',
+    requiredMetrics: [
+      {
+        fieldName: 'fee_realization_rate_pct',
+        displayName: 'Fee Realization Rate',
+        description: 'Percentage of billed annual fees actually collected',
+        unit: 'percentage',
+        example: '86',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      },
+      {
+        fieldName: 'days_sales_outstanding',
+        displayName: 'Days Sales Outstanding (DSO)',
+        description: 'Standard accounting DSO formula: (Outstanding Fee Receivables / Total Annual Fee Revenue) x 365. A precise figure from the fee ledger, not an estimate.',
+        unit: 'days',
+        example: '45',
+        mandatory: true,
+        dataType: 'number',
+        validRange: { min: 0, max: 730 }
+      }
+    ],
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
+  },
+
+  teacher_attrition: {
+    challengeId: 'C4',
+    challengeKey: 'teacher_attrition',
+    challengeName: 'Teacher Attrition',
     category: 'People & Staffing',
     requiredMetrics: [
       {
@@ -151,839 +262,365 @@ export const CHALLENGE_DATA_REQUIREMENTS: Record<string, ChallengeDataRequiremen
         displayName: 'Teacher Turnover Rate',
         description: 'Annual teacher attrition rate',
         unit: 'percentage',
-        example: '18%',
+        example: '22',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
-        fieldName: 'admin_turnover_rate_pct',
-        displayName: 'Admin Staff Turnover',
-        description: 'Annual admin staff attrition rate',
-        unit: 'percentage',
-        example: '12%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'average_teacher_tenure_yrs',
+        fieldName: 'avg_teacher_tenure_years',
         displayName: 'Average Teacher Tenure',
-        description: 'Average years of service for teachers',
+        description: 'Average years of service for current teaching staff',
         unit: 'years',
-        example: '6.5',
+        example: '3.5',
         mandatory: true,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'teacher_burnout_score',
-        displayName: 'Teacher Burnout Score',
-        description: 'Burnout index (0-100, higher = more burnout)',
-        unit: 'score',
-        example: '62',
-        mandatory: true,
-        dataType: 'number'
+        dataType: 'number',
+        validRange: { min: 0, max: 50 }
       }
     ],
-    optionalMetrics: [
-      {
-        fieldName: 'salary_competitiveness_percentile',
-        displayName: 'Salary Competitiveness',
-        description: 'How salaries rank vs regional average',
-        unit: 'percentile',
-        example: '45th percentile',
-        mandatory: false,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'job_satisfaction_score',
-        displayName: 'Job Satisfaction',
-        description: 'Teacher job satisfaction rating',
-        unit: 'score',
-        example: '6.8/10',
-        mandatory: false,
-        dataType: 'number'
-      }
-    ],
-    sampleDataFile: 'Staff_Turnover_Data.csv'
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
   },
 
-  C4_ACADEMIC_PERFORMANCE: {
-    challengeId: 'C4',
-    challengeName: 'Academic Performance Gap',
-    category: 'Academic & Student Wellbeing',
+  staff_capability_gaps: {
+    challengeId: 'C5',
+    challengeKey: 'staff_capability_gaps',
+    challengeName: 'Staff Capability Gaps',
+    category: 'People & Staffing',
+    requiredMetrics: [
+      {
+        fieldName: 'teacher_competency_score_pct',
+        displayName: 'Teacher Competency Score',
+        description: 'Internal or external assessment score of teaching competency',
+        unit: 'percentage',
+        example: '68',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      },
+      {
+        fieldName: 'professional_qualification_pct',
+        displayName: 'Professional Qualification %',
+        description: 'Percentage of teachers holding required formal qualifications (e.g. B.Ed)',
+        unit: 'percentage',
+        example: '74',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      }
+    ],
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
+  },
+
+  leadership_capability_gap: {
+    challengeId: 'C6',
+    challengeKey: 'leadership_capability_gap',
+    challengeName: 'Leadership Capability Gap',
+    category: 'People & Staffing',
+    requiredMetrics: [
+      {
+        fieldName: 'leadership_competency_score_pct',
+        displayName: 'Leadership Competency Score',
+        description: 'Assessment score of middle-management / HOD decision-making capability',
+        unit: 'percentage',
+        example: '60',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      },
+      {
+        fieldName: 'principal_vp_experience_years',
+        displayName: 'Principal/VP Experience',
+        description: 'Years of leadership experience of the Principal/Vice-Principal',
+        unit: 'years',
+        example: '5',
+        mandatory: true,
+        dataType: 'number',
+        validRange: { min: 0, max: 60 }
+      }
+    ],
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
+  },
+
+  academic_quality_decline: {
+    challengeId: 'C7',
+    challengeKey: 'academic_quality_decline',
+    challengeName: 'Academic Quality Decline',
+    category: 'Academic & Wellbeing',
     requiredMetrics: [
       {
         fieldName: 'board_exam_pass_rate_pct',
         displayName: 'Board Exam Pass Rate',
         description: 'Percentage of students passing board exams',
         unit: 'percentage',
-        example: '82%',
+        example: '87',
         mandatory: true,
-        dataType: 'percentage'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
-        fieldName: 'average_exam_score',
-        displayName: 'Average Exam Score',
-        description: 'Average score out of 100',
-        unit: 'score',
-        example: '76',
-        mandatory: true,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'curriculum_coverage_pct',
-        displayName: 'Curriculum Coverage',
-        description: 'Percentage of curriculum completed',
+        fieldName: 'average_subject_score_pct',
+        displayName: 'Average Subject Score',
+        description: 'Mean % score across all subjects and all grades from the most recently completed annual/term exams, from the school\'s own mark register - a real recorded figure, not an estimate.',
         unit: 'percentage',
-        example: '88%',
+        example: '71',
         mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'subject_wise_performance',
-        displayName: 'Subject-wise Performance',
-        description: 'Performance by subject (Math, Science, English)',
-        unit: 'score',
-        example: 'Math: 78, Science: 80, English: 75',
-        mandatory: true,
-        dataType: 'number'
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
-    optionalMetrics: [
-      {
-        fieldName: 'remedial_program_coverage_pct',
-        displayName: 'Remedial Program Coverage',
-        description: 'Percentage of struggling students in remedial programs',
-        unit: 'percentage',
-        example: '32%',
-        mandatory: false,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'learning_outcome_assessment',
-        displayName: 'Learning Outcome Assessment',
-        description: 'Internal assessment scores vs board performance',
-        unit: 'score',
-        example: '84 internal vs 76 board',
-        mandatory: false,
-        dataType: 'number'
-      }
-    ],
-    sampleDataFile: 'Academic_Performance_Data.csv'
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
   },
 
-  C5_STUDENT_WELLBEING: {
-    challengeId: 'C5',
-    challengeName: 'Student Wellbeing Issues',
-    category: 'Academic & Student Wellbeing',
-    requiredMetrics: [
-      {
-        fieldName: 'student_attendance_rate_pct',
-        displayName: 'Student Attendance Rate',
-        description: 'Daily attendance percentage',
-        unit: 'percentage',
-        example: '91%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'dropout_rate_pct',
-        displayName: 'Dropout Rate',
-        description: 'Annual student dropout percentage',
-        unit: 'percentage',
-        example: '3%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'mental_health_support_available',
-        displayName: 'Mental Health Support',
-        description: 'Number of counselors/mental health professionals',
-        unit: 'count',
-        example: '2',
-        mandatory: true,
-        dataType: 'count'
-      },
-      {
-        fieldName: 'bullying_complaint_rate',
-        displayName: 'Bullying Complaint Rate',
-        description: 'Number of bullying complaints per 100 students',
-        unit: 'ratio',
-        example: '2.5',
-        mandatory: true,
-        dataType: 'ratio'
-      }
-    ],
-    optionalMetrics: [
-      {
-        fieldName: 'school_safety_rating',
-        displayName: 'School Safety Rating',
-        description: 'Student perception of safety (1-10)',
-        unit: 'score',
-        example: '8.2/10',
-        mandatory: false,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'student_wellness_program_participation',
-        displayName: 'Wellness Program Participation',
-        description: 'Percentage of students in wellness programs',
-        unit: 'percentage',
-        example: '65%',
-        mandatory: false,
-        dataType: 'percentage'
-      }
-    ],
-    sampleDataFile: 'Wellbeing_Data.csv'
-  },
-
-  C6_INFRASTRUCTURE: {
-    challengeId: 'C6',
-    challengeName: 'Infrastructure Gaps',
-    category: 'Operations & Finance',
-    requiredMetrics: [
-      {
-        fieldName: 'students_per_classroom',
-        displayName: 'Student-Teacher Ratio',
-        description: 'Average students per classroom',
-        unit: 'ratio',
-        example: '28',
-        mandatory: true,
-        dataType: 'ratio'
-      },
-      {
-        fieldName: 'sanitation_facilities_per_100_students',
-        displayName: 'Sanitation Facilities',
-        description: 'Number of toilets per 100 students',
-        unit: 'ratio',
-        example: '3',
-        mandatory: true,
-        dataType: 'ratio'
-      },
-      {
-        fieldName: 'classroom_quality_index',
-        displayName: 'Classroom Quality Index',
-        description: 'Infrastructure quality score (0-100)',
-        unit: 'score',
-        example: '72',
-        mandatory: true,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'digital_infrastructure_status',
-        displayName: 'Digital Infrastructure',
-        description: 'Internet bandwidth, lab computers, smart boards count',
-        unit: 'mixed',
-        example: '50Mbps, 40 computers, 15 smart boards',
-        mandatory: true,
-        dataType: 'count'
-      }
-    ],
-    optionalMetrics: [
-      {
-        fieldName: 'maintenance_backlog_months',
-        displayName: 'Maintenance Backlog',
-        description: 'Months of pending maintenance work',
-        unit: 'months',
-        example: '6',
-        mandatory: false,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'building_safety_compliance_pct',
-        displayName: 'Building Safety Compliance',
-        description: 'Percentage of safety standards met',
-        unit: 'percentage',
-        example: '85%',
-        mandatory: false,
-        dataType: 'percentage'
-      }
-    ],
-    sampleDataFile: 'Infrastructure_Data.csv'
-  },
-
-  C7_TEACHER_DEVELOPMENT: {
-    challengeId: 'C7',
-    challengeName: 'Inadequate Teacher Development',
-    category: 'People & Staffing',
-    requiredMetrics: [
-      {
-        fieldName: 'annual_training_hours',
-        displayName: 'Annual Training Hours',
-        description: 'CPD hours per teacher per year',
-        unit: 'hours',
-        example: '20',
-        mandatory: true,
-        dataType: 'hours'
-      },
-      {
-        fieldName: 'certified_teachers_pct',
-        displayName: 'Certified Teachers',
-        description: 'Percentage of teachers with formal certifications',
-        unit: 'percentage',
-        example: '85%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'weekly_planning_hours',
-        displayName: 'Weekly Planning Hours',
-        description: 'Hours per week for lesson planning',
-        unit: 'hours',
-        example: '4',
-        mandatory: true,
-        dataType: 'hours'
-      },
-      {
-        fieldName: 'pedagogical_training_coverage_pct',
-        displayName: 'Pedagogical Training Coverage',
-        description: 'Percentage of teachers trained in modern pedagogy',
-        unit: 'percentage',
-        example: '62%',
-        mandatory: true,
-        dataType: 'percentage'
-      }
-    ],
-    optionalMetrics: [
-      {
-        fieldName: 'teacher_tech_literacy_pct',
-        displayName: 'Digital Literacy',
-        description: 'Percentage of teachers proficient in digital tools',
-        unit: 'percentage',
-        example: '58%',
-        mandatory: false,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'mentorship_program_active',
-        displayName: 'Mentorship Program',
-        description: 'Whether peer/senior mentorship exists (Yes/No)',
-        unit: 'boolean',
-        example: 'Yes',
-        mandatory: false,
-        dataType: 'count'
-      }
-    ],
-    sampleDataFile: 'Teacher_Development_Data.csv'
-  },
-
-  C8_PARENT_ENGAGEMENT: {
+  student_wellbeing_issues: {
     challengeId: 'C8',
-    challengeName: 'Low Parent Engagement',
-    category: 'Reputation & Competition',
+    challengeKey: 'student_wellbeing_issues',
+    challengeName: 'Student Wellbeing Issues',
+    category: 'Academic & Wellbeing',
     requiredMetrics: [
       {
-        fieldName: 'parent_query_response_sla_hours',
-        displayName: 'Parent Query Response SLA',
-        description: 'Average response time to parent queries (hours)',
-        unit: 'hours',
-        example: '24',
-        mandatory: true,
-        dataType: 'hours'
-      },
-      {
-        fieldName: 'parent_meeting_attendance_pct',
-        displayName: 'Parent Meeting Attendance',
-        description: 'Percentage of parents attending school events',
-        unit: 'percentage',
-        example: '42%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'parent_satisfaction_nps',
-        displayName: 'Parent NPS Score',
-        description: 'Net Promoter Score from parent survey',
-        unit: 'score',
-        example: '35',
-        mandatory: true,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'parent_volunteer_participation_pct',
-        displayName: 'Parent Volunteer Participation',
-        description: 'Percentage of parents volunteering',
-        unit: 'percentage',
-        example: '28%',
-        mandatory: true,
-        dataType: 'percentage'
-      }
-    ],
-    optionalMetrics: [
-      {
-        fieldName: 'parent_portal_usage_pct',
-        displayName: 'Parent Portal Usage',
-        description: 'Percentage of parents using digital portal',
-        unit: 'percentage',
-        example: '55%',
-        mandatory: false,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'communication_channels_available',
-        displayName: 'Communication Channels',
-        description: 'Number of communication methods (email, WhatsApp, SMS, etc)',
-        unit: 'count',
-        example: '4',
-        mandatory: false,
-        dataType: 'count'
-      }
-    ],
-    sampleDataFile: 'Parent_Engagement_Data.csv'
-  },
-
-  C9_FINANCIAL_HEALTH: {
-    challengeId: 'C9',
-    challengeName: 'Financial Sustainability',
-    category: 'Operations & Finance',
-    requiredMetrics: [
-      {
-        fieldName: 'fee_collection_rate_pct',
-        displayName: 'Fee Collection Rate',
-        description: 'Percentage of fees collected',
-        unit: 'percentage',
-        example: '88%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'budget_execution_pct',
-        displayName: 'Budget Execution',
-        description: 'Percentage of budget spent',
-        unit: 'percentage',
-        example: '92%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'fee_default_rate_pct',
-        displayName: 'Fee Default Rate',
-        description: 'Percentage of fees not collected',
-        unit: 'percentage',
-        example: '12%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'operational_cost_per_student',
-        displayName: 'Operational Cost per Student',
-        description: 'Annual operational cost per student',
-        unit: 'amount',
-        example: '15000',
-        mandatory: true,
-        dataType: 'number'
-      }
-    ],
-    optionalMetrics: [
-      {
-        fieldName: 'revenue_diversification_sources',
-        displayName: 'Revenue Diversification',
-        description: 'Number of revenue sources',
-        unit: 'count',
-        example: '4',
-        mandatory: false,
-        dataType: 'count'
-      },
-      {
-        fieldName: 'financial_reserves_months',
-        displayName: 'Financial Reserves',
-        description: 'Months of operating expense in reserves',
-        unit: 'months',
-        example: '3',
-        mandatory: false,
-        dataType: 'number'
-      }
-    ],
-    sampleDataFile: 'Financial_Data.csv'
-  },
-
-  C10_DIGITAL_READINESS: {
-    challengeId: 'C10',
-    challengeName: 'Digital Transformation Lag',
-    category: 'Operations & Finance',
-    requiredMetrics: [
-      {
-        fieldName: 'smart_classroom_coverage_pct',
-        displayName: 'Smart Classroom Coverage',
-        description: 'Percentage of classrooms with digital infrastructure',
-        unit: 'percentage',
-        example: '45%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'learning_management_system_active',
-        displayName: 'LMS Active',
-        description: 'Whether LMS is actively used (Yes/No)',
-        unit: 'boolean',
-        example: 'No',
-        mandatory: true,
-        dataType: 'count'
-      },
-      {
-        fieldName: 'teacher_digital_literacy_pct',
-        displayName: 'Teacher Digital Literacy',
-        description: 'Percentage of teachers comfortable with digital tools',
-        unit: 'percentage',
-        example: '58%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'internet_bandwidth_mbps',
-        displayName: 'Internet Bandwidth',
-        description: 'Available internet bandwidth in Mbps',
-        unit: 'mbps',
-        example: '50',
-        mandatory: true,
-        dataType: 'number'
-      }
-    ],
-    optionalMetrics: [
-      {
-        fieldName: 'student_device_access_pct',
-        displayName: 'Student Device Access',
-        description: 'Percentage of students with device access',
-        unit: 'percentage',
-        example: '72%',
-        mandatory: false,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'cybersecurity_training_completed',
-        displayName: 'Cybersecurity Training',
-        description: 'Percentage of staff trained in cybersecurity',
-        unit: 'percentage',
-        example: '35%',
-        mandatory: false,
-        dataType: 'percentage'
-      }
-    ],
-    sampleDataFile: 'Digital_Readiness_Data.csv'
-  },
-
-  C11_COMPLIANCE_GOVERNANCE: {
-    challengeId: 'C11',
-    challengeName: 'Compliance & Governance Gaps',
-    category: 'Operations & Finance',
-    requiredMetrics: [
-      {
-        fieldName: 'sqaaf_compliance_pct',
-        displayName: 'SQAAF Compliance',
-        description: 'Percentage of SQAAF standards met',
-        unit: 'percentage',
-        example: '76%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'audit_findings_count',
-        displayName: 'Audit Findings',
-        description: 'Number of audit findings pending resolution',
-        unit: 'count',
-        example: '8',
-        mandatory: true,
-        dataType: 'count'
-      },
-      {
-        fieldName: 'regulation_compliance_audit_rating',
-        displayName: 'Regulation Compliance Rating',
-        description: 'Overall compliance rating (1-10)',
-        unit: 'score',
-        example: '6.5',
-        mandatory: true,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'policy_documentation_completeness_pct',
-        displayName: 'Policy Documentation',
-        description: 'Percentage of required policies documented',
-        unit: 'percentage',
-        example: '82%',
-        mandatory: true,
-        dataType: 'percentage'
-      }
-    ],
-    optionalMetrics: [
-      {
-        fieldName: 'internal_audit_frequency_months',
-        displayName: 'Internal Audit Frequency',
-        description: 'Months between internal audits',
-        unit: 'months',
+        fieldName: 'mental_health_incidents_per_1000',
+        displayName: 'Mental Health Incidents',
+        description: 'Reported mental-health-related incidents per 1000 students per year',
+        unit: 'per 1000 students',
         example: '12',
-        mandatory: false,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'governance_training_pct',
-        displayName: 'Governance Training',
-        description: 'Percentage of governing body trained',
-        unit: 'percentage',
-        example: '90%',
-        mandatory: false,
-        dataType: 'percentage'
-      }
-    ],
-    sampleDataFile: 'Compliance_Data.csv'
-  },
-
-  C12_REPUTATION_MANAGEMENT: {
-    challengeId: 'C12',
-    challengeName: 'Reputation & Brand Issues',
-    category: 'Reputation & Competition',
-    requiredMetrics: [
-      {
-        fieldName: 'school_reputation_score',
-        displayName: 'School Reputation Score',
-        description: 'Perception score among parents/community (1-10)',
-        unit: 'score',
-        example: '6.8',
         mandatory: true,
-        dataType: 'number'
+        dataType: 'ratio',
+        validRange: { min: 0, max: 1000 }
       },
       {
-        fieldName: 'online_review_rating_avg',
-        displayName: 'Online Review Rating',
-        description: 'Average rating on review platforms',
-        unit: 'score',
-        example: '3.8/5',
-        mandatory: true,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'negative_press_incidents_yoy',
-        displayName: 'Negative Press Incidents',
-        description: 'Number of negative press mentions in past year',
-        unit: 'count',
-        example: '3',
-        mandatory: true,
-        dataType: 'count'
-      },
-      {
-        fieldName: 'social_media_sentiment_score',
-        displayName: 'Social Media Sentiment',
-        description: 'Sentiment analysis score (-100 to +100)',
-        unit: 'score',
-        example: '35',
-        mandatory: true,
-        dataType: 'number'
-      }
-    ],
-    optionalMetrics: [
-      {
-        fieldName: 'alumni_engagement_pct',
-        displayName: 'Alumni Engagement',
-        description: 'Percentage of alumni engaged with school',
-        unit: 'percentage',
-        example: '42%',
-        mandatory: false,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'pr_coverage_frequency_monthly',
-        displayName: 'PR Coverage',
-        description: 'Number of positive PR mentions per month',
-        unit: 'count',
-        example: '2',
-        mandatory: false,
-        dataType: 'count'
-      }
-    ],
-    sampleDataFile: 'Reputation_Data.csv'
-  },
-
-  C13_COMPETITIVE_POSITIONING: {
-    challengeId: 'C13',
-    challengeName: 'Competitive Positioning',
-    category: 'Reputation & Competition',
-    requiredMetrics: [
-      {
-        fieldName: 'market_share_percentage',
-        displayName: 'Market Share',
-        description: 'Percentage of local school-age market',
-        unit: 'percentage',
-        example: '12%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'competitor_comparison_score',
-        displayName: 'Competitor Comparison',
-        description: 'Performance vs competitors (1-10, 10=best)',
-        unit: 'score',
-        example: '6',
-        mandatory: true,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'unique_value_proposition_strength',
-        displayName: 'Value Proposition Strength',
-        description: 'Uniqueness score (1-10)',
-        unit: 'score',
-        example: '5.5',
-        mandatory: true,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'price_competitiveness_percentile',
-        displayName: 'Price Competitiveness',
-        description: 'Where fees rank among competitors (percentile)',
-        unit: 'percentile',
-        example: '45th',
-        mandatory: true,
-        dataType: 'percentage'
-      }
-    ],
-    optionalMetrics: [
-      {
-        fieldName: 'differentiation_factors_count',
-        displayName: 'Differentiation Factors',
-        description: 'Number of unique differentiators',
-        unit: 'count',
-        example: '4',
-        mandatory: false,
-        dataType: 'count'
-      },
-      {
-        fieldName: 'competitive_threat_level',
-        displayName: 'Competitive Threat Level',
-        description: 'Perceived threat from competitors (1-10)',
-        unit: 'score',
-        example: '7',
-        mandatory: false,
-        dataType: 'number'
-      }
-    ],
-    sampleDataFile: 'Competitive_Data.csv'
-  },
-
-  C14_STUDENT_SAFETY: {
-    challengeId: 'C14',
-    challengeName: 'Student Safety & DPDP Compliance',
-    category: 'Academic & Student Wellbeing',
-    requiredMetrics: [
-      {
-        fieldName: 'dpdp_compliance_pct',
-        displayName: 'DPDP Compliance',
-        description: 'Percentage of DPDP Act 2023 requirements met',
-        unit: 'percentage',
-        example: '68%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'data_breach_incidents_yoy',
-        displayName: 'Data Breach Incidents',
-        description: 'Number of data breaches in past year',
-        unit: 'count',
-        example: '0',
-        mandatory: true,
-        dataType: 'count'
-      },
-      {
-        fieldName: 'cybersecurity_audit_rating',
-        displayName: 'Cybersecurity Rating',
-        description: 'Annual cybersecurity assessment rating (1-10)',
-        unit: 'score',
-        example: '4.2',
-        mandatory: true,
-        dataType: 'number'
-      },
-      {
-        fieldName: 'physical_safety_incidents_yoy',
-        displayName: 'Physical Safety Incidents',
-        description: 'Number of reported safety incidents',
-        unit: 'count',
-        example: '2',
-        mandatory: true,
-        dataType: 'count'
-      }
-    ],
-    optionalMetrics: [
-      {
-        fieldName: 'staff_safety_training_pct',
-        displayName: 'Staff Safety Training',
-        description: 'Percentage of staff trained in safety protocols',
-        unit: 'percentage',
-        example: '92%',
-        mandatory: false,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'student_safety_awareness_pct',
-        displayName: 'Student Safety Awareness',
-        description: 'Percentage of students trained in safety',
-        unit: 'percentage',
-        example: '85%',
-        mandatory: false,
-        dataType: 'percentage'
-      }
-    ],
-    sampleDataFile: 'Safety_Data.csv'
-  },
-
-  C15_INNOVATION_ADOPTION: {
-    challengeId: 'C15',
-    challengeName: 'Innovation & Continuous Improvement',
-    category: 'Academic & Student Wellbeing',
-    requiredMetrics: [
-      {
-        fieldName: 'innovation_initiatives_active',
-        displayName: 'Active Innovation Initiatives',
-        description: 'Number of active innovation/improvement projects',
-        unit: 'count',
+        fieldName: 'safety_violations_count_year',
+        displayName: 'Safety Violations',
+        description: 'Number of reported safety/bullying violations in the past year',
+        unit: 'count/year',
         example: '5',
         mandatory: true,
-        dataType: 'count'
-      },
-      {
-        fieldName: 'research_based_pedagogy_adoption_pct',
-        displayName: 'Research-Based Pedagogy',
-        description: 'Percentage of teachers using evidence-based methods',
-        unit: 'percentage',
-        example: '52%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'innovation_investment_percentage',
-        displayName: 'Innovation Investment',
-        description: 'Percentage of budget allocated to innovation',
-        unit: 'percentage',
-        example: '8%',
-        mandatory: true,
-        dataType: 'percentage'
-      },
-      {
-        fieldName: 'success_rate_of_initiatives_pct',
-        displayName: 'Initiative Success Rate',
-        description: 'Percentage of initiatives meeting goals',
-        unit: 'percentage',
-        example: '65%',
-        mandatory: true,
-        dataType: 'percentage'
+        dataType: 'count',
+        validRange: { min: 0, max: 1000 }
       }
     ],
-    optionalMetrics: [
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
+  },
+
+  remedial_lag: {
+    challengeId: 'C9',
+    challengeKey: 'remedial_lag',
+    challengeName: 'Remedial Lag',
+    category: 'Academic & Wellbeing',
+    requiredMetrics: [
       {
-        fieldName: 'partnerships_with_universities',
-        displayName: 'University Partnerships',
-        description: 'Number of active university partnerships',
-        unit: 'count',
-        example: '3',
-        mandatory: false,
-        dataType: 'count'
+        fieldName: 'remedial_support_coverage_pct',
+        displayName: 'Remedial Support Coverage',
+        description: 'Percentage of struggling students actually enrolled in remedial support',
+        unit: 'percentage',
+        example: '35',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       },
       {
-        fieldName: 'innovation_culture_score',
-        displayName: 'Innovation Culture',
-        description: 'Staff perception of innovation culture (1-10)',
-        unit: 'score',
-        example: '6.2',
-        mandatory: false,
-        dataType: 'number'
+        fieldName: 'improvement_rate_pct',
+        displayName: 'Improvement Rate',
+        description: 'Percentage of remedial-program students who improved by next assessment',
+        unit: 'percentage',
+        example: '48',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
       }
     ],
-    sampleDataFile: 'Innovation_Data.csv'
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
+  },
+
+  parent_communication_issues: {
+    challengeId: 'C10',
+    challengeKey: 'parent_communication_issues',
+    challengeName: 'Parent Communication Issues',
+    category: 'Reputation & Competition',
+    requiredMetrics: [
+      {
+        fieldName: 'parent_satisfaction_score_pct',
+        displayName: 'Parent Satisfaction Score',
+        description: 'Percentage of parents rating communication as satisfactory or better',
+        unit: 'percentage',
+        example: '58',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      },
+      {
+        fieldName: 'parent_response_rate_pct',
+        displayName: 'Parent Response Rate',
+        description: 'Percentage of parent queries responded to within SLA',
+        unit: 'percentage',
+        example: '65',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      }
+    ],
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
+  },
+
+  competitive_pressure: {
+    challengeId: 'C11',
+    challengeKey: 'competitive_pressure',
+    challengeName: 'Competitive Pressure',
+    category: 'Reputation & Competition',
+    requiredMetrics: [
+      {
+        fieldName: 'market_share_loss_pct',
+        displayName: 'Market Share Loss',
+        description: 'Estimated local market share lost to competitor schools year-over-year',
+        unit: 'percentage',
+        example: '5',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: -100, max: 100 }
+      },
+      {
+        fieldName: 'competitor_win_rate_pct',
+        displayName: 'Competitor Win Rate',
+        description: 'From the admissions CRM/inquiry log: of inquiries where a specific named competitor school was mentioned, the % lost to that competitor - a countable ratio, not an estimate.',
+        unit: 'percentage',
+        example: '30',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      }
+    ],
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
+  },
+
+  brand_reputation_issues: {
+    challengeId: 'C12',
+    challengeKey: 'brand_reputation_issues',
+    challengeName: 'Brand/Reputation Issues',
+    category: 'Reputation & Competition',
+    requiredMetrics: [
+      {
+        fieldName: 'brand_perception_score_pct',
+        displayName: 'Brand Perception Score',
+        description: 'Community/parent brand perception score from survey or review platforms',
+        unit: 'percentage',
+        example: '62',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      },
+      {
+        fieldName: 'media_sentiment_pct',
+        displayName: 'Media Sentiment',
+        description: 'Percentage of local media/online mentions that are positive',
+        unit: 'percentage',
+        example: '55',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      }
+    ],
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
+  },
+
+  cost_inflation: {
+    challengeId: 'C13',
+    challengeKey: 'cost_inflation',
+    challengeName: 'Cost Inflation',
+    category: 'Operations & Finance',
+    requiredMetrics: [
+      {
+        fieldName: 'cost_increase_yoy_pct',
+        displayName: 'Cost Increase YoY',
+        description: 'Standard YoY formula: ((This Year Total Operating Cost - Last Year Total Operating Cost) / Last Year Total Operating Cost) x 100, from the annual expense ledger.',
+        unit: 'percentage',
+        example: '14',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: -100, max: 300 }
+      },
+      {
+        fieldName: 'operating_margin_pct',
+        displayName: 'Operating Margin',
+        description: 'Operating surplus/deficit as a percentage of revenue',
+        unit: 'percentage',
+        example: '6',
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: -200, max: 100 }
+      }
+    ],
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
+  },
+
+  infrastructure_deficits: {
+    challengeId: 'C14',
+    challengeKey: 'infrastructure_deficits',
+    challengeName: 'Infrastructure Deficits',
+    category: 'Operations & Finance',
+    requiredMetrics: [
+      {
+        fieldName: 'infrastructure_quality_score_pct',
+        displayName: 'Infrastructure Quality Score',
+        description: `RTE Act 2009 Schedule compliance rate: count how many of the ${RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length} core infrastructure norms the campus currently meets (all-weather building, adequate classrooms, separate toilets, drinking water, mid-day meal kitchen, playground, library, CWSN ramp access, boundary wall, etc. - see RTE_INFRASTRUCTURE_NORMS_CHECKLIST) and enter (norms met / ${RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length}) x 100. This is a checklist count, not a subjective self-rating.`,
+        unit: 'percentage',
+        example: '70', // 7 of 10 RTE norms met
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      },
+      {
+        fieldName: 'maintenance_backlog_inr',
+        displayName: 'Maintenance Backlog',
+        description: 'Value of pending maintenance work not yet budgeted or completed',
+        unit: 'INR',
+        example: '850000',
+        mandatory: true,
+        dataType: 'currency',
+        validRange: { min: 0, max: 100000000 }
+      }
+    ],
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
+  },
+
+  compliance_regulatory_stress: {
+    challengeId: 'C15',
+    challengeKey: 'compliance_regulatory_stress',
+    challengeName: 'Compliance & Regulatory Stress',
+    category: 'Operations & Finance',
+    requiredMetrics: [
+      {
+        fieldName: 'compliance_score_pct',
+        displayName: 'Compliance Score',
+        description: `Core regulatory compliance rate: count how many of the ${CORE_COMPLIANCE_DOMAINS_CHECKLIST.length} baseline compliance domains (fire safety NOC, structural safety certificate, RTE/board recognition, POCSO child-protection committee, occupancy certificate, sanitation, transport safety, no pending show-cause - see CORE_COMPLIANCE_DOMAINS_CHECKLIST) are currently met and enter (domains met / ${CORE_COMPLIANCE_DOMAINS_CHECKLIST.length}) x 100. This is a checklist count, not a subjective self-rating - track any additional board/state-specific requirements separately.`,
+        unit: 'percentage',
+        example: '75', // 6 of 8 domains met
+        mandatory: true,
+        dataType: 'percentage',
+        validRange: { min: 0, max: 100 }
+      },
+      {
+        fieldName: 'regulatory_violations_count_year',
+        displayName: 'Regulatory Violations',
+        description: 'Count of formal violation, non-compliance, or show-cause notices received in writing from any regulator (fire department, board, RTE authority, labor department, municipal authority, etc.) in the past 12 months - a distinct, real count from official correspondence, not derived from the Compliance Score checklist',
+        unit: 'count/year',
+        example: '1',
+        mandatory: true,
+        dataType: 'count',
+        validRange: { min: 0, max: 1000 }
+      }
+    ],
+    optionalMetrics: [],
+    sampleDataFile: 'operational_metrics_master_ALL_15_CHALLENGES.csv'
   }
 };
 
@@ -999,16 +636,23 @@ export function getDataRequirementsForChallenges(
 }
 
 /**
- * Get all required metrics for selected challenges
+ * Get all required metrics for selected challenges (deduplicated by fieldName,
+ * since two challenges could theoretically ask for the same underlying metric)
  */
 export function getRequiredMetricsForChallenges(
   challengeIds: string[]
 ): MetricRequirement[] {
   const requirements = getDataRequirementsForChallenges(challengeIds);
+  const seen = new Set<string>();
   const metrics: MetricRequirement[] = [];
 
   requirements.forEach(req => {
-    metrics.push(...req.requiredMetrics);
+    req.requiredMetrics.forEach(m => {
+      if (!seen.has(m.fieldName)) {
+        seen.add(m.fieldName);
+        metrics.push(m);
+      }
+    });
   });
 
   return metrics;
@@ -1026,13 +670,14 @@ export function validateDataForChallenges(
   foundMetrics: string[];
   completeness: number;
   recommendations: string[];
+  requiredMetrics: MetricRequirement[];
 } {
   const requiredMetrics = getRequiredMetricsForChallenges(challengeIds);
   const missingMetrics: string[] = [];
   const foundMetrics: string[] = [];
 
   requiredMetrics.forEach(metric => {
-    if (uploadedMetrics[metric.fieldName] !== undefined && uploadedMetrics[metric.fieldName] !== null) {
+    if (uploadedMetrics[metric.fieldName] !== undefined && uploadedMetrics[metric.fieldName] !== null && String(uploadedMetrics[metric.fieldName]).trim() !== '') {
       foundMetrics.push(`✅ ${metric.displayName}`);
     } else {
       missingMetrics.push(`❌ ${metric.displayName} (${metric.fieldName})`);
@@ -1041,15 +686,15 @@ export function validateDataForChallenges(
 
   const completeness = requiredMetrics.length > 0
     ? Math.round((foundMetrics.length / requiredMetrics.length) * 100)
-    : 0;
+    : 100;
 
-  const isValid = missingMetrics.length === 0;
+  const isValid = requiredMetrics.length > 0 && missingMetrics.length === 0;
 
   const recommendations: string[] = [];
   if (!isValid) {
-    recommendations.push(`Missing ${missingMetrics.length} required metrics`);
-    recommendations.push('Upload file must include all required fields for selected challenges');
-    recommendations.push('Check sample data files for correct format and field names');
+    recommendations.push(`Missing ${missingMetrics.length} required metric(s)`);
+    recommendations.push('Upload an Operational Metrics CSV (metric_field,value rows) that includes every field listed above');
+    recommendations.push('See the "Required Data Fields" panel above for the exact field names and example values');
   }
 
   if (isValid && completeness < 100) {
@@ -1061,8 +706,59 @@ export function validateDataForChallenges(
     missingMetrics,
     foundMetrics,
     completeness,
-    recommendations
+    recommendations,
+    requiredMetrics
   };
+}
+
+/**
+ * Every canonical metric definition (4 Core Operational Levers + 30
+ * challenge-specific fields), keyed by fieldName, for lookups that need a
+ * field's full metadata (including validRange) regardless of which
+ * challenge it came from.
+ */
+const ALL_METRIC_DEFINITIONS: Record<string, MetricRequirement> = (() => {
+  const map: Record<string, MetricRequirement> = {};
+  CORE_OPERATIONAL_METRICS.forEach((m) => { map[m.fieldName] = m; });
+  Object.values(CHALLENGE_DATA_REQUIREMENTS).forEach((req) => {
+    req.requiredMetrics.forEach((m) => { map[m.fieldName] = m; });
+  });
+  return map;
+})();
+
+export interface OutOfRangeMetric {
+  fieldName: string;
+  displayName: string;
+  value: number;
+  min: number;
+  max: number;
+}
+
+/**
+ * Sanity-checks every uploaded numeric value against its field's validRange
+ * - catching data-entry errors (a negative percentage, a stray extra zero,
+ * a unit mismatch) that the presence-only check in validateDataForChallenges
+ * would silently accept and pass straight into the scoring engine. Only
+ * checks fields this app actually recognizes and that parsed as numeric -
+ * an unrecognized field name or a non-numeric value is a different problem,
+ * already handled elsewhere (ALL_KNOWN_FIELD_NAMES / scoreRawValueToWeight
+ * both already skip those rather than guessing at a fabricated range).
+ */
+export function validateMetricRanges(
+  uploadedMetrics: Record<string, number | string>
+): OutOfRangeMetric[] {
+  const violations: OutOfRangeMetric[] = [];
+  Object.entries(uploadedMetrics).forEach(([fieldName, rawValue]) => {
+    const def = ALL_METRIC_DEFINITIONS[fieldName];
+    if (!def) return;
+    const value = typeof rawValue === 'number' ? rawValue : parseFloat(String(rawValue));
+    if (isNaN(value)) return;
+    const { min, max } = def.validRange;
+    if (value < min || value > max) {
+      violations.push({ fieldName, displayName: def.displayName, value, min, max });
+    }
+  });
+  return violations;
 }
 
 export default CHALLENGE_DATA_REQUIREMENTS;

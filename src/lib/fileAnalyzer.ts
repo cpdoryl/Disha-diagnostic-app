@@ -1,9 +1,25 @@
 /**
- * File Analyzer - Extracts metrics from uploaded CSV/Excel files
+ * File Analyzer - Extracts metrics from uploaded CSV/Excel/PDF files
  * Generates real data-driven insights for First Opinion diagnosis
  */
 
-import { validateDataForChallenges } from './challengeDataRequirements';
+import * as XLSXLib from 'xlsx';
+import { validateDataForChallenges, CHALLENGE_DATA_REQUIREMENTS, CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges, validateMetricRanges, OutOfRangeMetric } from './challengeDataRequirements';
+
+// pdfjs-dist (~1.3MB with its worker) is only loaded on demand, the first
+// time a user actually uploads a PDF, instead of being pulled into every
+// page load for a feature most checkups won't use.
+let pdfjsModule: typeof import('pdfjs-dist') | null = null;
+async function getPdfjs() {
+  if (!pdfjsModule) {
+    const lib = await import('pdfjs-dist');
+    // @ts-ignore - Vite ?url import returns the built asset URL as a string
+    const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+    lib.GlobalWorkerOptions.workerSrc = workerUrl;
+    pdfjsModule = lib;
+  }
+  return pdfjsModule;
+}
 
 export interface ExtractedMetrics {
   fileType: string;
@@ -11,7 +27,90 @@ export interface ExtractedMetrics {
   insights: string[];
   affectedDomains: string[];
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  /** Set when the uploaded file could not be read as text at all (e.g. a
+   * genuine binary .xlsx/.docx/.pdf/image was uploaded) — callers should
+   * show this as a file-format problem, not a "data missing" problem. */
+  unreadableReason?: string;
 }
+
+/**
+ * Detects whether FileReader.readAsText produced real text or binary
+ * garbage. This app only ever parses plain text/CSV — a genuine .xlsx,
+ * .docx, .pdf, or image file read this way will not contain a real header
+ * or real values, and would otherwise be misreported as "all fields missing"
+ * (a data problem) rather than "wrong file type" (a format problem).
+ */
+function detectUnreadableBinary(content: string): string | null {
+  const head = content.slice(0, 8);
+  if (head.startsWith('PK')) {
+    return 'This looks like a native Microsoft Office file (.xlsx, .docx, .pptx) or a ZIP archive, which is stored in binary format.';
+  }
+  if (head.startsWith('%PDF')) {
+    return 'This looks like a PDF file, which is stored in binary format.';
+  }
+  if (head.startsWith('\xFF\xD8\xFF') || head.startsWith('\x89PNG')) {
+    return 'This looks like an image file (JPG/PNG), which contains no readable text.';
+  }
+  // Heuristic: real CSV/text should be almost entirely printable ASCII/UTF-8
+  // text with normal whitespace. Binary content read as text tends to be
+  // full of the Unicode replacement character or raw control bytes.
+  const sample = content.slice(0, 2000);
+  if (sample.length > 0) {
+    let suspicious = 0;
+    for (let i = 0; i < sample.length; i++) {
+      const code = sample.charCodeAt(i);
+      const isNormalWhitespace = code === 9 || code === 10 || code === 13;
+      if (code === 0xFFFD || (code < 32 && !isNormalWhitespace)) suspicious++;
+    }
+    if (suspicious / sample.length > 0.05) {
+      return 'This file contains mostly non-text (binary) content that could not be read as CSV.';
+    }
+  }
+  return null;
+}
+
+/**
+ * Canonical "Operational Metrics CSV" format: a simple two-column CSV,
+ * header "metric_field,value", one row per metric, using the exact
+ * fieldName keys from challengeDataRequirements.ts. This is the only format
+ * this app can reliably validate against per-challenge requirements, since
+ * it uses exact field names instead of guessing from free-form documents.
+ */
+// Sample/template files may carry leading "#" comment lines (e.g. to note
+// which challenge combination the file is built for) before the real header.
+function stripLeadingCommentRows(rows: string[][]): string[][] {
+  let start = 0;
+  while (start < rows.length && (rows[start][0] || '').trim().startsWith('#')) {
+    start++;
+  }
+  return rows.slice(start);
+}
+
+function isCanonicalOperationalMetricsCSV(rows: string[][]): boolean {
+  const dataRows = stripLeadingCommentRows(rows);
+  if (dataRows.length === 0) return false;
+  const header = dataRows[0].map(c => c.trim().toLowerCase());
+  return header.length >= 2 && header[0] === 'metric_field' && header[1] === 'value';
+}
+
+function parseCanonicalOperationalMetricsCSV(rows: string[][]): Record<string, number | string> {
+  const dataRows = stripLeadingCommentRows(rows);
+  const metrics: Record<string, number | string> = {};
+  for (let i = 1; i < dataRows.length; i++) {
+    const [fieldName, rawValue] = dataRows[i];
+    if (!fieldName || fieldName.trim().startsWith('#')) continue;
+    const key = fieldName.trim();
+    const value = (rawValue ?? '').trim();
+    const numeric = Number(value);
+    metrics[key] = value !== '' && !isNaN(numeric) ? numeric : value;
+  }
+  return metrics;
+}
+
+const ALL_KNOWN_FIELD_NAMES = new Set([
+  ...CORE_OPERATIONAL_METRICS.map(m => m.fieldName),
+  ...Object.values(CHALLENGE_DATA_REQUIREMENTS).flatMap(req => req.requiredMetrics.map(m => m.fieldName))
+]);
 
 export class FileAnalyzer {
   /**
@@ -19,7 +118,41 @@ export class FileAnalyzer {
    */
   static async analyzeFile(file: File): Promise<ExtractedMetrics> {
     const fileName = file.name.toLowerCase();
+    const extension = fileName.split('.').pop() || '';
+
+    if (extension === 'xlsx' || extension === 'xls') {
+      return this.analyzeSpreadsheetFile(file);
+    }
+    if (extension === 'pdf') {
+      return this.analyzePdfFile(file);
+    }
+
     const content = await this.readFile(file);
+
+    // Check FIRST whether this is actually readable text at all. A genuine
+    // binary .docx/image (or a misnamed .xlsx/.pdf) uploaded here would
+    // otherwise fall through every parser below and be reported as
+    // "0 fields found" - which looks exactly like a data-completeness
+    // problem when it is really a file-format problem, and misleads the
+    // user into thinking their real data is missing when the file was
+    // simply never readable.
+    const unreadableReason = detectUnreadableBinary(content);
+    if (unreadableReason) {
+      return {
+        fileType: 'UNREADABLE_BINARY_FILE',
+        metricsFound: {},
+        insights: [`Could not read "${file.name}" as text: ${unreadableReason}`],
+        affectedDomains: [],
+        confidence: 'LOW',
+        unreadableReason
+      };
+    }
+
+    // Canonical Operational Metrics CSV takes priority over filename-based
+    // guessing whenever present, since it gives exact, unambiguous field names.
+    const rows = this.parseCSV(content);
+    const canonicalResult = this.buildCanonicalResult(rows);
+    if (canonicalResult) return canonicalResult;
 
     // Detect file type and parse accordingly
     if (fileName.includes('attendance') || fileName.includes('register') || fileName.includes('roster')) {
@@ -74,6 +207,158 @@ export class FileAnalyzer {
       .split('\n')
       .filter(line => line.trim())
       .map(line => line.split(',').map(cell => cell.trim()));
+  }
+
+  /**
+   * If the given rows match the canonical "metric_field,value" format,
+   * build the ExtractedMetrics result for it. Returns null otherwise, so
+   * callers (CSV, Excel, PDF) can fall back to their own next step.
+   */
+  private static buildCanonicalResult(rows: string[][]): ExtractedMetrics | null {
+    if (!isCanonicalOperationalMetricsCSV(rows)) return null;
+    const metricsFound = parseCanonicalOperationalMetricsCSV(rows);
+    const recognizedCount = Object.keys(metricsFound).filter(k => ALL_KNOWN_FIELD_NAMES.has(k)).length;
+    const unrecognizedCount = Object.keys(metricsFound).length - recognizedCount;
+    const insights = [
+      `Loaded ${Object.keys(metricsFound).length} operational metric field(s) from the uploaded file.`
+    ];
+    if (unrecognizedCount > 0) {
+      insights.push(`${unrecognizedCount} field(s) in the file did not match any known metric_field name and were ignored for validation.`);
+    }
+    return {
+      fileType: 'Operational Metrics (Canonical CSV)',
+      metricsFound,
+      insights,
+      affectedDomains: [],
+      confidence: recognizedCount > 0 ? 'HIGH' : 'LOW'
+    };
+  }
+
+  /**
+   * Parse a real .xlsx/.xls file (binary, via SheetJS) for the canonical
+   * metric_field,value table in its first sheet.
+   */
+  private static async analyzeSpreadsheetFile(file: File): Promise<ExtractedMetrics> {
+    let rows: string[][];
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSXLib.read(buffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) throw new Error('No sheets found in this workbook.');
+      const sheet = workbook.Sheets[sheetName];
+      const raw = XLSXLib.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }) as unknown[][];
+      rows = raw.map(r => r.map(c => String(c ?? '').trim()));
+    } catch (error) {
+      const reason = `Could not open this Excel file (${error instanceof Error ? error.message : 'unknown error'}). It may be corrupted or password-protected.`;
+      return {
+        fileType: 'UNREADABLE_BINARY_FILE',
+        metricsFound: {},
+        insights: [reason],
+        affectedDomains: [],
+        confidence: 'LOW',
+        unreadableReason: reason
+      };
+    }
+
+    const canonicalResult = this.buildCanonicalResult(rows);
+    if (canonicalResult) return canonicalResult;
+
+    const reason =
+      `This Excel file was read successfully, but its first sheet does not have the required header ` +
+      `"metric_field" in column A and "value" in column B (with one data row per metric below it). ` +
+      `Add that header row and re-upload — see the "Required Data Fields" table above for the exact field names.`;
+    return {
+      fileType: 'UNREADABLE_BINARY_FILE',
+      metricsFound: {},
+      insights: [reason],
+      affectedDomains: [],
+      confidence: 'LOW',
+      unreadableReason: reason
+    };
+  }
+
+  /**
+   * Best-effort parse of a .pdf file (via pdfjs-dist text extraction) for
+   * the canonical metric_field,value table. This only works for text-based
+   * PDFs (e.g. exported from a spreadsheet or word processor) — a scanned
+   * image PDF has no extractable text and cannot be read this way.
+   */
+  private static async analyzePdfFile(file: File): Promise<ExtractedMetrics> {
+    let lines: string[];
+    try {
+      const buffer = await file.arrayBuffer();
+      const pdfjsLib = await getPdfjs();
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+      const pageLines: string[] = [];
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        // Group text items by their vertical position (y) into lines
+        const byLine = new Map<number, { x: number; str: string }[]>();
+        textContent.items.forEach((item: any) => {
+          const y = Math.round(item.transform[5]);
+          if (!byLine.has(y)) byLine.set(y, []);
+          byLine.get(y)!.push({ x: item.transform[4], str: item.str });
+        });
+        Array.from(byLine.entries())
+          .sort((a, b) => b[0] - a[0]) // top to bottom
+          .forEach(([, items]) => {
+            const line = items.sort((a, b) => a.x - b.x).map(i => i.str).join(' ').trim();
+            if (line) pageLines.push(line);
+          });
+      }
+      lines = pageLines;
+    } catch (error) {
+      const reason = `Could not read this PDF (${error instanceof Error ? error.message : 'unknown error'}). It may be corrupted, password-protected, or a scanned image with no extractable text.`;
+      return {
+        fileType: 'UNREADABLE_BINARY_FILE',
+        metricsFound: {},
+        insights: [reason],
+        affectedDomains: [],
+        confidence: 'LOW',
+        unreadableReason: reason
+      };
+    }
+
+    if (lines.length === 0) {
+      const reason = 'This PDF has no extractable text (likely a scanned image). Export or re-save it as a text-based PDF, or upload a CSV/Excel file instead.';
+      return {
+        fileType: 'UNREADABLE_BINARY_FILE',
+        metricsFound: {},
+        insights: [reason],
+        affectedDomains: [],
+        confidence: 'LOW',
+        unreadableReason: reason
+      };
+    }
+
+    // Each extracted line may separate "field,value" with a comma, colon,
+    // or run of whitespace/tabs, depending on how the source document laid
+    // out the table — try comma first (matches the CSV convention), then
+    // fall back to colon or whitespace splitting.
+    const rows: string[][] = lines.map(line => {
+      if (line.includes(',')) return line.split(',').map(c => c.trim());
+      if (line.includes(':')) return line.split(':').map(c => c.trim());
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 2) return [parts.slice(0, -1).join(' '), parts[parts.length - 1]];
+      return [line.trim()];
+    });
+
+    const canonicalResult = this.buildCanonicalResult(rows);
+    if (canonicalResult) return canonicalResult;
+
+    const reason =
+      `This PDF's text was read successfully, but no "metric_field, value" table could be found in it ` +
+      `(expected a line reading "metric_field, value" followed by one field/value pair per line). ` +
+      `PDF table extraction is best-effort — for reliable results, export the same data as a CSV or Excel file instead.`;
+    return {
+      fileType: 'UNREADABLE_BINARY_FILE',
+      metricsFound: {},
+      insights: [reason],
+      affectedDomains: [],
+      confidence: 'LOW',
+      unreadableReason: reason
+    };
   }
 
   /**
@@ -615,6 +900,19 @@ export interface ValidationResult {
     description: string;
     example: string;
   }>;
+  /** Uploaded values that parsed as numbers but fall outside their field's plausible range (see MetricRequirement.validRange) - a stray minus sign, an extra zero, a % over 100. Empty when every present value is plausible. */
+  outOfRangeMetrics: OutOfRangeMetric[];
+}
+
+function formatOutOfRangeMessage(violations: OutOfRangeMetric[]): string {
+  const lines = violations.map(
+    (v) => `• ${v.displayName}: uploaded value ${v.value} is outside the plausible range (${v.min} to ${v.max})`
+  );
+  return (
+    `❌ IMPLAUSIBLE VALUE(S) DETECTED - this looks like a data-entry error, not real operational data:\n\n` +
+    `${lines.join('\n')}\n\n` +
+    `HOW TO FIX: Double-check these values in your source file for a typo, a missing/extra digit, a wrong sign, or a unit mismatch (e.g. entering a fraction like 0.28 instead of a percentage like 28), then re-upload.`
+  );
 }
 
 export interface ChallengeValidationResult {
@@ -626,6 +924,12 @@ export interface ChallengeValidationResult {
   errorMessage: string;
   challengesCovered: string[];
   challengesUncovered: string[];
+  requiredMetrics: Array<{
+    fieldName: string;
+    description: string;
+    example: string;
+  }>;
+  outOfRangeMetrics: OutOfRangeMetric[];
 }
 
 /**
@@ -668,10 +972,11 @@ export function validateFileMetrics(extractedMetrics: ExtractedMetrics): Validat
     }
   });
 
-  const isValid = missingMetrics.length === 0;
+  const outOfRangeMetrics = validateMetricRanges(metricsFound);
+  const isValid = missingMetrics.length === 0 && outOfRangeMetrics.length === 0;
 
   let errorMessage = '';
-  if (!isValid) {
+  if (missingMetrics.length > 0) {
     errorMessage = `❌ Missing ${missingMetrics.length} required data field(s). Your file must include:\n\n`;
     missingMetrics.forEach(metric => {
       const required = requiredMetrics.find(r => r.fieldName === metric);
@@ -681,13 +986,17 @@ export function validateFileMetrics(extractedMetrics: ExtractedMetrics): Validat
     });
     errorMessage += `\nPlease upload a file containing these operational metrics.`;
   }
+  if (outOfRangeMetrics.length > 0) {
+    errorMessage += (errorMessage ? '\n\n' : '') + formatOutOfRangeMessage(outOfRangeMetrics);
+  }
 
   return {
     isValid,
     missingMetrics,
     foundMetrics: foundMetricsNames,
     errorMessage,
-    requiredMetrics
+    requiredMetrics,
+    outOfRangeMetrics
   };
 }
 
@@ -699,17 +1008,56 @@ export function validateFileForChallenges(
   extractedMetrics: ExtractedMetrics,
   selectedChallengeIds: string[]
 ): ChallengeValidationResult {
-  // If no challenges selected, accept all data
-  if (!selectedChallengeIds || selectedChallengeIds.length === 0) {
+  // A genuinely unreadable/malformed upload (wrong internal structure,
+  // corrupted file, scanned PDF with no text, etc.) is a FILE-FORMAT/
+  // STRUCTURE problem, not a data-completeness problem - report the
+  // specific diagnosed reason instead of "every field is missing", which
+  // is technically true but misdiagnoses the real cause.
+  if (extractedMetrics.fileType === 'UNREADABLE_BINARY_FILE') {
+    const requiredMetrics = getRequiredMetricsForChallenges(selectedChallengeIds)
+      .map(m => ({
+        fieldName: m.fieldName,
+        description: `${m.displayName} (${m.unit})`,
+        example: m.example
+      }));
     return {
-      isValid: true,
+      isValid: false,
+      completeness: 0,
+      missingMetrics: [],
+      foundMetrics: [],
+      recommendations: [
+        'Supported formats: .csv, .xlsx, .xls, and text-based .pdf.',
+        'The file must contain a header "metric_field" / "value" (two columns) with one metric per row below it.',
+        'See the "Required Data Fields" table above for the exact field names and example values to use.'
+      ],
+      errorMessage:
+        `❌ COULD NOT READ THIS FILE — this is not a case of missing data values.\n\n` +
+        `${extractedMetrics.unreadableReason || 'The uploaded file could not be parsed.'}\n\n` +
+        `HOW TO FIX: Make sure the file is a .csv, .xlsx/.xls, or text-based .pdf with a "metric_field,value" ` +
+        `header and one field per row (see the Required Data Fields table above), then re-upload.`,
+      challengesCovered: [],
+      challengesUncovered: selectedChallengeIds,
+      requiredMetrics,
+      outOfRangeMetrics: []
+    };
+  }
+
+  // If no challenges selected, accept all data - but still flag any
+  // uploaded value that is numerically implausible, since that error
+  // exists independent of which challenges get selected afterward.
+  if (!selectedChallengeIds || selectedChallengeIds.length === 0) {
+    const outOfRangeMetrics = validateMetricRanges(extractedMetrics.metricsFound);
+    return {
+      isValid: outOfRangeMetrics.length === 0,
       completeness: 100,
       missingMetrics: [],
       foundMetrics: Object.keys(extractedMetrics.metricsFound).map(k => `✅ ${k}`),
       recommendations: [],
-      errorMessage: '',
+      errorMessage: outOfRangeMetrics.length > 0 ? formatOutOfRangeMessage(outOfRangeMetrics) : '',
       challengesCovered: [],
-      challengesUncovered: []
+      challengesUncovered: [],
+      requiredMetrics: [],
+      outOfRangeMetrics
     };
   }
 
@@ -718,29 +1066,46 @@ export function validateFileForChallenges(
     extractedMetrics.metricsFound,
     selectedChallengeIds
   );
+  const outOfRangeMetrics = validateMetricRanges(extractedMetrics.metricsFound);
+  const isValid = validation.isValid && outOfRangeMetrics.length === 0;
 
   // Determine which challenges can be analyzed
   const challengesCovered = selectedChallengeIds;
   const challengesUncovered: string[] = [];
 
-  if (validation.missingMetrics.length > 0) {
+  if (!isValid) {
     challengesUncovered.push(...selectedChallengeIds);
   }
 
+  const requiredMetrics = validation.requiredMetrics.map(m => ({
+    fieldName: m.fieldName,
+    description: `${m.displayName} (${m.unit})`,
+    example: m.example
+  }));
+
+  let errorMessage = '';
+  if (!validation.isValid) {
+    errorMessage =
+      `❌ Data INCOMPLETE for selected challenges!\n\n${validation.missingMetrics.join('\n')}\n\n` +
+      `Your file covers ${validation.completeness}% of required data.\n\n` +
+      `To analyze ALL selected challenges, your file must include:\n\n` +
+      `${validation.recommendations.join('\n')}`;
+  }
+  if (outOfRangeMetrics.length > 0) {
+    errorMessage += (errorMessage ? '\n\n' : '') + formatOutOfRangeMessage(outOfRangeMetrics);
+  }
+
   return {
-    isValid: validation.isValid,
+    isValid,
     completeness: validation.completeness,
     missingMetrics: validation.missingMetrics,
     foundMetrics: validation.foundMetrics,
     recommendations: validation.recommendations,
-    errorMessage: validation.isValid
-      ? ''
-      : `❌ Data INCOMPLETE for selected challenges!\n\n${validation.missingMetrics.join('\n')}\n\n` +
-        `Your file covers ${validation.completeness}% of required data.\n\n` +
-        `To analyze ALL selected challenges, your file must include:\n\n` +
-        `${validation.recommendations.join('\n')}`,
-    challengesCovered: validation.isValid ? challengesCovered : [],
-    challengesUncovered: validation.isValid ? [] : selectedChallengeIds
+    errorMessage,
+    challengesCovered: isValid ? challengesCovered : [],
+    challengesUncovered: isValid ? [] : selectedChallengeIds,
+    requiredMetrics,
+    outOfRangeMetrics
   };
 }
 

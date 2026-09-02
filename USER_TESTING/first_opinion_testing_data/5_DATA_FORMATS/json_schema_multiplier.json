@@ -1,0 +1,260 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "First Opinion Engine - Multiplier Data Schema",
+  "description": "JSON schema for validating objective multiplier data",
+  "type": "object",
+  "required": ["metadata", "multipliers"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Metadata about the batch",
+      "required": ["type", "version"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "multiplier_data_batch",
+          "description": "Fixed value indicating data type"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$",
+          "description": "Schema version",
+          "example": "1.0"
+        },
+        "totalRecords": {
+          "type": "integer",
+          "const": 8,
+          "description": "Must have exactly 8 multipliers"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of creation"
+        },
+        "cycleId": {
+          "type": "string",
+          "description": "Assessment cycle identifier",
+          "example": "cycle_2026_08"
+        },
+        "schoolId": {
+          "type": "string",
+          "description": "School identifier",
+          "example": "test_school_001"
+        }
+      }
+    },
+    "multipliers": {
+      "type": "array",
+      "description": "Array of 8 objective multipliers",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "category", "value", "validationStatus"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^m[1-8]$",
+            "description": "Multiplier ID from m1 to m8",
+            "examples": ["m1", "m5", "m8"]
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "STR",
+              "Parent SLA",
+              "Training Hours",
+              "Planning Time",
+              "Fee Realization",
+              "Safety Score",
+              "LMS Usage",
+              "Co-Curricular"
+            ],
+            "description": "Multiplier name (exactly one of 8 defined names)"
+          },
+          "fullName": {
+            "type": "string",
+            "description": "Full descriptive name (optional)",
+            "examples": [
+              "Student-Teacher Ratio",
+              "Parent Response SLA",
+              "Annual Teacher Training Hours"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": ["CORE", "EXPANDED"],
+            "description": "Multiplier category",
+            "mapping": {
+              "CORE": ["STR", "Parent SLA", "Training Hours", "Planning Time"],
+              "EXPANDED": ["Fee Realization", "Safety Score", "LMS Usage", "Co-Curricular"]
+            }
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Objective multiplier value (0=worst, 1=best)",
+            "example": 0.85
+          },
+          "scaledValue": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Scaled value for display (0-100, optional)",
+            "example": 85,
+            "formula": "scaledValue = value × 100"
+          },
+          "validationStatus": {
+            "type": "string",
+            "enum": ["VALID", "MISSING", "OUTLIER", "PENDING"],
+            "description": "Data validation status",
+            "definitions": {
+              "VALID": "Data is valid and within acceptable range",
+              "MISSING": "Data not provided or unavailable",
+              "OUTLIER": "Data is outside normal range, needs investigation",
+              "PENDING": "Data validation in progress"
+            }
+          },
+          "dataSource": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Source of the multiplier data (optional)",
+            "examples": [
+              "HR System - Teacher Roster",
+              "Helpdesk - Support Tickets",
+              "Finance System - Accounts Ledger"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of last update (optional)",
+            "example": "2026-08-30T10:00:00Z"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Additional notes about the multiplier (optional)"
+          }
+        }
+      },
+      "uniqueItems": true,
+      "additionalValidation": {
+        "mustIncludeCoreMultipliers": [
+          "STR",
+          "Parent SLA",
+          "Training Hours",
+          "Planning Time"
+        ],
+        "mustIncludeExpandedMultipliers": [
+          "Fee Realization",
+          "Safety Score",
+          "LMS Usage",
+          "Co-Curricular"
+        ]
+      }
+    }
+  },
+  "examples": [
+    {
+      "metadata": {
+        "type": "multiplier_data_batch",
+        "version": "1.0",
+        "totalRecords": 8,
+        "timestamp": "2026-08-30T10:00:00Z",
+        "cycleId": "cycle_2026_08"
+      },
+      "multipliers": [
+        {
+          "id": "m1",
+          "name": "STR",
+          "fullName": "Student-Teacher Ratio",
+          "category": "CORE",
+          "value": 0.82,
+          "scaledValue": 82,
+          "validationStatus": "VALID",
+          "dataSource": "HR System - Teacher Roster",
+          "updatedAt": "2026-08-30T10:00:00Z"
+        },
+        {
+          "id": "m2",
+          "name": "Parent SLA",
+          "fullName": "Parent Response SLA",
+          "category": "CORE",
+          "value": 0.90,
+          "scaledValue": 90,
+          "validationStatus": "VALID",
+          "dataSource": "Helpdesk - Support Tickets",
+          "updatedAt": "2026-08-30T10:00:00Z"
+        },
+        {
+          "id": "m3",
+          "name": "Training Hours",
+          "fullName": "Annual Teacher Training Hours",
+          "category": "CORE",
+          "value": 0.85,
+          "scaledValue": 85,
+          "validationStatus": "VALID",
+          "dataSource": "HR System - Training Records",
+          "updatedAt": "2026-08-30T10:00:00Z"
+        },
+        {
+          "id": "m4",
+          "name": "Planning Time",
+          "fullName": "Weekly Teacher Planning Sessions",
+          "category": "CORE",
+          "value": 0.88,
+          "scaledValue": 88,
+          "validationStatus": "VALID",
+          "dataSource": "Timetable System - Scheduling",
+          "updatedAt": "2026-08-30T10:00:00Z"
+        },
+        {
+          "id": "m5",
+          "name": "Fee Realization",
+          "fullName": "Fee Realization Rate",
+          "category": "EXPANDED",
+          "value": 0.98,
+          "scaledValue": 98,
+          "validationStatus": "VALID",
+          "dataSource": "Finance System - Accounts Ledger",
+          "updatedAt": "2026-08-30T10:00:00Z"
+        },
+        {
+          "id": "m6",
+          "name": "Safety Score",
+          "fullName": "Safety & Compliance Score",
+          "category": "EXPANDED",
+          "value": 1.0,
+          "scaledValue": 100,
+          "validationStatus": "VALID",
+          "dataSource": "Facilities & Safety Audit Records",
+          "updatedAt": "2026-08-30T10:00:00Z"
+        },
+        {
+          "id": "m7",
+          "name": "LMS Usage",
+          "fullName": "Digital/LMS Active Usage Rate",
+          "category": "EXPANDED",
+          "value": 0.92,
+          "scaledValue": 92,
+          "validationStatus": "VALID",
+          "dataSource": "LMS Analytics Dashboard",
+          "updatedAt": "2026-08-30T10:00:00Z"
+        },
+        {
+          "id": "m8",
+          "name": "Co-Curricular",
+          "fullName": "Extracurricular Participation Rate",
+          "category": "EXPANDED",
+          "value": 0.88,
+          "scaledValue": 88,
+          "validationStatus": "VALID",
+          "dataSource": "Activity / Co-Curricular Rosters",
+          "updatedAt": "2026-08-30T10:00:00Z"
+        }
+      ]
+    }
+  ]
+}

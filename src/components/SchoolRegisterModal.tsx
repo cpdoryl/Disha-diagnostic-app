@@ -13,8 +13,11 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
   const { addSchool, updateActiveSchool } = useAppStore();
 
   const [name, setName] = useState('');
+  const [schoolCode, setSchoolCode] = useState('');
   const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [board, setBoard] = useState('CBSE');
+  const [schoolType, setSchoolType] = useState('Private');
   const [tier, setTier] = useState('Tier 2 (Capital / Large Cities)');
   const [feeBand, setFeeBand] = useState('Mid-tier (₹25k - ₹75k per year)');
   const [studentCount, setStudentCount] = useState('Medium (500 - 1500 students)');
@@ -27,8 +30,11 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
   useEffect(() => {
     if (editSchool) {
       setName(editSchool.name || '');
+      setSchoolCode(editSchool.schoolCode || '');
       setCity(editSchool.city || '');
+      setState(editSchool.state || '');
       setBoard(editSchool.board || 'CBSE');
+      setSchoolType(editSchool.schoolType || 'Private');
       setTier(editSchool.tier || 'Tier 2 (Capital / Large Cities)');
       setFeeBand(editSchool.feeBand || 'Mid-tier (₹25k - ₹75k per year)');
       setStudentCount(editSchool.studentCount || 'Medium (500 - 1500 students)');
@@ -38,8 +44,11 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
       setAddress(editSchool.address || '');
     } else {
       setName('');
+      setSchoolCode('');
       setCity('');
+      setState('');
       setBoard('CBSE');
+      setSchoolType('Private');
       setTier('Tier 2 (Capital / Large Cities)');
       setFeeBand('Mid-tier (₹25k - ₹75k per year)');
       setStudentCount('Medium (500 - 1500 students)');
@@ -66,8 +75,11 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
 
     const schoolPayload = {
       name: name.trim(),
+      schoolCode: schoolCode.trim(),
       city: city.trim(),
+      state: state.trim(),
       board,
+      schoolType,
       tier,
       feeBand,
       studentCount,
@@ -141,6 +153,17 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
               </div>
 
               <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">School Code / ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. SCH-2026-001"
+                  value={schoolCode}
+                  onChange={(e) => setSchoolCode(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                />
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   City / District <span className="text-rose-500">*</span>
                 </label>
@@ -155,6 +178,17 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
                     required
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">State / Province</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Maharashtra, Karnataka"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                />
               </div>
 
               <div>
@@ -174,6 +208,21 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
                     <option value="Other">Other Affiliation</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">School Type</label>
+                <select
+                  value={schoolType}
+                  onChange={(e) => setSchoolType(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium bg-white"
+                >
+                  <option value="Private">Private</option>
+                  <option value="Public">Public</option>
+                  <option value="Charter">Charter</option>
+                  <option value="International">International</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
             </div>
           </div>
@@ -251,6 +300,20 @@ export const SchoolRegisterModal: React.FC<SchoolRegisterModalProps> = ({ isOpen
                     placeholder="e.g. principal@school.edu.in"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Contact Phone Number</label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="tel"
+                    placeholder="e.g. +91-98920-73660"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
                     className="w-full pl-9 pr-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
                   />
                 </div>

@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import JSZip from 'jszip';
 import { useAppStore } from '../store';
-import { DeepDiveAssessment } from '../components/DeepDiveAssessment';
 import { DISHAScoreDashboard } from '../components/DISHAScoreDashboard';
 import FileAnalyzer, {
   ExtractedMetrics,
@@ -13,10 +12,11 @@ import FileAnalyzer, {
 import DiagnosisGenerator, { DiagnosisResult } from '../lib/dynamicDiagnosisGenerator';
 import DISHAScoreCalculator, { DISHAScore, OperationalMetrics } from '../lib/dishaScoreCalculator';
 import { generateRealInsights, DataAnalysisResult } from '../lib/insightGenerator';
-import { saveCheckupToFirestore, waitForCheckupAnalysis, subscribeToCheckupAnalysis } from '../lib/checkupService';
+import { saveCheckupToFirestore, subscribeToCheckupAnalysis, updateCheckupStatus, saveCheckupAnalysis, getCheckupAnalysisOnce, getSchoolCheckups } from '../lib/checkupService';
+import { generateFirstOpinionReportPdf, AnsweredQuestionDetail, ReportChartImage } from '../lib/firstOpinionReportPdf';
+import { computeInputsChecksum, verifyCheckupAnalysis, VerificationResult } from '../lib/reportIntegrity';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
-import { logAuditEvent } from '../lib/auditService';
 import {
   HeartPulse,
   HelpCircle,
@@ -50,12 +50,16 @@ import {
   Sliders,
   Target,
   Check,
-  Download
+  Download,
+  Lock,
+  X
 } from 'lucide-react';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { COMPLETE_SCREENING_QUESTIONS } from '../data/screeningQuestionsData';
+import { CORE_OPERATIONAL_METRICS, getRequiredMetricsForChallenges, RTE_INFRASTRUCTURE_NORMS_CHECKLIST, CORE_COMPLIANCE_DOMAINS_CHECKLIST } from '../lib/challengeDataRequirements';
+import { computePerceptionGapReport, PerceptionGapEntry } from '../lib/challengeObjectiveScoring';
 import {
   Radar,
   RadarChart,
@@ -69,7 +73,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend
+  Legend,
+  ReferenceLine,
+  Cell
 } from 'recharts';
 
 // Define structures for our 15 challenges
@@ -104,6 +110,25 @@ const CATEGORIES = [
   { id: 'reputation', label: 'Reputation & Competition', color: 'text-purple-600 bg-purple-50 border-purple-100', icon: Globe },
   { id: 'operations', label: 'Operations & Finance', color: 'text-amber-600 bg-amber-50 border-amber-100', icon: Settings }
 ];
+
+// Short, distinct sub-copy for each challenge card (must never equal the label)
+const CHALLENGE_DESCRIPTIONS: Record<string, string> = {
+  enrollment_decline: 'New admissions trending flat or falling vs. prior years and peer schools.',
+  student_attrition: 'Existing students exiting mid-year to competitor schools or other reasons.',
+  fee_collection_challenges: 'Annual fee realization is below target, with rising dues and defaults.',
+  teacher_attrition: 'Teachers resigning faster than they can be hired, trained, and retained.',
+  staff_capability_gaps: 'Teaching quality or subject-matter depth lagging expected classroom standards.',
+  leadership_capability_gap: 'Middle-management and HOD decision-making inconsistent or slow to act.',
+  academic_quality_decline: 'Board exam results or academic outcomes slipping against past performance.',
+  student_wellbeing_issues: 'Rising signs of student stress, bullying, or emotional safety concerns.',
+  remedial_lag: 'Struggling students not catching up despite remedial or extra-help sessions.',
+  parent_communication_issues: 'Parent queries and complaints going unanswered or resolved too slowly.',
+  competitive_pressure: 'Nearby schools pulling ahead on admissions, pricing, or reputation.',
+  brand_reputation_issues: 'Negative reviews, word-of-mouth, or local perception hurting the brand.',
+  cost_inflation: 'Operating costs (staff, utilities, maintenance) rising faster than revenue.',
+  infrastructure_deficits: 'Classrooms, labs, or campus facilities falling short of expectations.',
+  compliance_regulatory_stress: 'Board affiliation, safety, or statutory compliance requirements at risk.',
+};
 
 // Loading will be done in component state
 
@@ -359,22 +384,24 @@ const OUTCOMES: OutcomeItem[] = [
   }
 ];
 
+/** Rasterizes an on-screen Recharts container (via its ref) to a PNG data URL for embedding in the downloadable PDF. Same pattern already used by DiagnosticReport.tsx's PDF export. */
+async function captureChartImage(el: HTMLElement | null): Promise<ReportChartImage | null> {
+  if (!el) return null;
+  const { default: html2canvas } = await import('html2canvas');
+  const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', logging: false });
+  return { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height };
+}
+
 export const FirstOpinionPage = () => {
-  console.log('🔴 FIRST OPINION ENGINE LOADED - This is the latest version');
-  const { activeSchool } = useAppStore();
+  const { activeSchool, setCurrentView } = useAppStore();
   const [user] = useAuthState(auth);
-  const schoolId = activeSchool?.id || 'default-school';
+  const schoolId = activeSchool?.id || '';
   
   // Layout stages:
   // 0: Select Symptoms (Challenge Menu)
   // 1: Screening baseline + follow-up questions
   // 2: Quick first opinion (perception-vs-data gap)
-  // 3: 14-Dimension Multilateral Survey Deployment Portal (EWISR Stage 1: Capture)
-  // 4: Complete Comprehensive School Diagnostics Report (The 12-Lens & 14-Dimension Comparison)
   const [step, setStep] = useState<number>(0);
-  const [activeReportTab, setActiveReportTab] = useState<'standard' | 'ewisr'>('standard');
-  const [ewisrDimensions, setEwisrDimensions] = useState<any>(null);
-  const [ewisrAnswers, setEwisrAnswers] = useState<any>(null);
   
   // Challenge Selection
   const [selectedChallenges, setSelectedChallenges] = useState<string[]>(['enrollment_decline', 'teacher_attrition']);
@@ -398,8 +425,142 @@ export const FirstOpinionPage = () => {
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
   const [realInsights, setRealInsights] = useState<DataAnalysisResult | null>(null);
 
+  // RTE Infrastructure Checklist: when "Infrastructure Deficits" is one of
+  // the 3 selected challenges, infrastructure_quality_score_pct is computed
+  // from this checklist (RTE Act 2009 Schedule norms - see
+  // challengeDataRequirements.ts) rather than trusted as a pre-calculated
+  // number typed into the uploaded CSV, so the school never has to do the
+  // arithmetic themselves and the result is independently auditable.
+  const [rteNormsMet, setRteNormsMet] = useState<boolean[]>(
+    () => new Array(RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length).fill(false)
+  );
+  const [rteChecklistTouched, setRteChecklistTouched] = useState(false);
+  const infraScoreFromChecklist = useMemo(
+    () => Math.round((rteNormsMet.filter(Boolean).length / RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length) * 100),
+    [rteNormsMet]
+  );
+  const showInfraChecklist = selectedChallenges.includes('infrastructure_deficits');
+
+  const toggleRteNorm = (index: number) => {
+    setRteChecklistTouched(true);
+    setRteNormsMet(prev => prev.map((v, i) => (i === index ? !v : v)));
+  };
+
+  // Re-validate whenever the checklist changes AFTER a file is already
+  // uploaded (the upload-time path in analyzeUploadedFile handles the
+  // reverse order - checklist ticked, then file uploaded).
+  useEffect(() => {
+    if (!showInfraChecklist || !rteChecklistTouched || !extractedMetrics) return;
+    if (extractedMetrics.metricsFound['infrastructure_quality_score_pct'] === infraScoreFromChecklist) return;
+
+    const merged: ExtractedMetrics = {
+      ...extractedMetrics,
+      metricsFound: { ...extractedMetrics.metricsFound, infrastructure_quality_score_pct: infraScoreFromChecklist }
+    };
+    setExtractedMetrics(merged);
+
+    const validation = selectedChallenges.length > 0
+      ? validateFileForChallenges(merged, selectedChallenges)
+      : validateFileMetrics(merged);
+    setFileValidation(validation);
+    if (validation.isValid) setValidationError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infraScoreFromChecklist, rteChecklistTouched, showInfraChecklist]);
+
+  // Core Compliance Checklist: same pattern as the RTE Infrastructure
+  // Checklist above, for compliance_score_pct when "Compliance & Regulatory
+  // Stress" is selected - see CORE_COMPLIANCE_DOMAINS_CHECKLIST.
+  const [complianceDomainsMet, setComplianceDomainsMet] = useState<boolean[]>(
+    () => new Array(CORE_COMPLIANCE_DOMAINS_CHECKLIST.length).fill(false)
+  );
+  const [complianceChecklistTouched, setComplianceChecklistTouched] = useState(false);
+  const complianceScoreFromChecklist = useMemo(
+    () => Math.round((complianceDomainsMet.filter(Boolean).length / CORE_COMPLIANCE_DOMAINS_CHECKLIST.length) * 100),
+    [complianceDomainsMet]
+  );
+  const showComplianceChecklist = selectedChallenges.includes('compliance_regulatory_stress');
+
+  const toggleComplianceDomain = (index: number) => {
+    setComplianceChecklistTouched(true);
+    setComplianceDomainsMet(prev => prev.map((v, i) => (i === index ? !v : v)));
+  };
+
+  useEffect(() => {
+    if (!showComplianceChecklist || !complianceChecklistTouched || !extractedMetrics) return;
+    if (extractedMetrics.metricsFound['compliance_score_pct'] === complianceScoreFromChecklist) return;
+
+    const merged: ExtractedMetrics = {
+      ...extractedMetrics,
+      metricsFound: { ...extractedMetrics.metricsFound, compliance_score_pct: complianceScoreFromChecklist }
+    };
+    setExtractedMetrics(merged);
+
+    const validation = selectedChallenges.length > 0
+      ? validateFileForChallenges(merged, selectedChallenges)
+      : validateFileMetrics(merged);
+    setFileValidation(validation);
+    if (validation.isValid) setValidationError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [complianceScoreFromChecklist, complianceChecklistTouched, showComplianceChecklist]);
+
+  // Fields whose value is computed from a checklist above rather than typed
+  // into the CSV - used to give correct "how to fix this" guidance in the
+  // three validation-error messages below instead of telling the school to
+  // add a CSV row for a field the checklist already supplies.
+  const CHECKLIST_MANAGED_FIELDS: Record<string, { active: boolean; label: string }> = {
+    infrastructure_quality_score_pct: { active: showInfraChecklist, label: 'RTE Infrastructure Checklist' },
+    compliance_score_pct: { active: showComplianceChecklist, label: 'Core Compliance Checklist' }
+  };
+
+  // Perception Gap: compares each selected challenge's self-reported severity
+  // (from the screening answers) against its objective severity (from the
+  // uploaded Operational Metrics CSV). Additive to the core Health Index —
+  // does not change the S_sub/M_obj/H formula itself.
+  const perceptionGapReport: PerceptionGapEntry[] = useMemo(
+    () => computePerceptionGapReport(selectedChallenges, answers, extractedMetrics?.metricsFound || {}),
+    [selectedChallenges, answers, extractedMetrics]
+  );
+
+  // Refs to the on-screen chart containers below (Step 2), so the PDF
+  // download can rasterize the exact same charts the user is looking at
+  // rather than re-rendering a second, potentially-diverging version.
+  const leversChartRef = useRef<HTMLDivElement>(null);
+  const radarChartRef = useRef<HTMLDivElement>(null);
+
+  // Perception vs Reality radar data: one axis per selected challenge, two
+  // series (self-reported vs data-derived severity), both 1 (healthy) to 10
+  // (severe). A missing side (insufficient uploaded data) plots as 0 rather
+  // than being omitted, since a radar axis can't be dropped per-series -
+  // the on-screen caption calls this out explicitly.
+  const radarChartData = useMemo(
+    () =>
+      perceptionGapReport.map((g) => ({
+        challenge: g.challengeLabel,
+        'Self-Perceived Severity': g.subjectiveWeight ?? 0,
+        'Data-Driven Severity': g.objectiveWeight ?? 0
+      })),
+    [perceptionGapReport]
+  );
+
+  const getLeverBarColor = (pct: number) => (pct >= 100 ? '#059669' : pct >= 85 ? '#2563eb' : pct >= 70 ? '#d97706' : '#dc2626');
+
   // DISHA Score State
   const [dishaScore, setDISHAScore] = useState<DISHAScore | null>(null);
+
+  // Core Operational Levers as % of their "Ideal" (1.0x+) benchmark
+  // multiplier, so all four sit on one comparable 0-110% scale for the chart.
+  const leversChartData = useMemo(
+    () =>
+      dishaScore
+        ? [
+            { lever: 'Student-Teacher Ratio', pct: Math.round(dishaScore.m_str * 100) },
+            { lever: 'Parent Response SLA', pct: Math.round(dishaScore.m_sla * 100) },
+            { lever: 'Annual Training', pct: Math.round(dishaScore.m_train * 100) },
+            { lever: 'Weekly Planning', pct: Math.round(dishaScore.m_plan * 100) }
+          ]
+        : [],
+    [dishaScore]
+  );
   const [operationalMetrics, setOperationalMetrics] = useState<OperationalMetrics>({
     studentTeacherRatio: 28,
     parentResponseSLA: 24,
@@ -408,24 +569,129 @@ export const FirstOpinionPage = () => {
   });
 
   // File validation state
-  const [fileValidation, setFileValidation] = useState<ValidationResult | null>(null);
+  const [fileValidation, setFileValidation] = useState<ValidationResult | ChallengeValidationResult | null>(null);
 
   // UI Loading/Transition states
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [isDeepScanning, setIsDeepScanning] = useState<boolean>(false);
   const [isAnalyzingFile, setIsAnalyzingFile] = useState<boolean>(false);
 
   // Firestore State for Cloud Function integration
   const [isSubmittingToFirestore, setIsSubmittingToFirestore] = useState<boolean>(false);
   const [checkupId, setCheckupId] = useState<string | null>(null);
   const [firestoreCheckupData, setFirestoreCheckupData] = useState<any>(null);
+  const [isFinalizingReport, setIsFinalizingReport] = useState<boolean>(false);
+  const [isDownloadingReport, setIsDownloadingReport] = useState<boolean>(false);
+  // The SHA-256 checksum of this report's raw inputs, once known - set
+  // right after a fresh save computes one (runLocalDiagnosticCalculation)
+  // or when a past report is reopened (loadPastCheckup restores the one
+  // that was stored with it). Undefined for a report saved before this
+  // feature existed, or one not yet saved at all.
+  const [currentInputsChecksum, setCurrentInputsChecksum] = useState<string | undefined>(undefined);
+  const [isVerifyingReport, setIsVerifyingReport] = useState<boolean>(false);
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+  // The recompute itself is near-instant (pure local math), and the detailed
+  // result banner renders up near the DISHA Score Dashboard at the TOP of
+  // the report - far from the "Verify Report Integrity" button in the
+  // footer. Without this, clicking the button appeared to do nothing at
+  // all: the state changed correctly, but the only visible change was off
+  // the bottom of the viewport. Scroll the banner into view the moment a
+  // result lands so the click always has a visible effect.
+  const verificationBannerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (verificationResult && verificationBannerRef.current) {
+      verificationBannerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [verificationResult]);
+
+  // Past Reports: lets a school reopen a previously computed First Opinion
+  // report instead of it only existing in memory until the tab closes.
+  // Each checkup carries a human-readable FO-YYYYMMDD-NN reference number
+  // (checkupService.ts's generateCheckupReferenceId) so multiple reports
+  // submitted the same day are distinguishable at a glance, and so a
+  // specific report can be traced back to later by that number alone.
+  const [currentReferenceId, setCurrentReferenceId] = useState<string | null>(null);
+  const [pastCheckups, setPastCheckups] = useState<any[]>([]);
+  const [isLoadingPastCheckups, setIsLoadingPastCheckups] = useState<boolean>(false);
+  const [loadingPastCheckupId, setLoadingPastCheckupId] = useState<string | null>(null);
+  const [pastReportError, setPastReportError] = useState<string | null>(null);
+  const [showPastReportsModal, setShowPastReportsModal] = useState<boolean>(false);
+  const [pastReportsSearch, setPastReportsSearch] = useState<string>('');
+  const [pastReportsChallengeFilter, setPastReportsChallengeFilter] = useState<string>('ALL');
+  const [pastReportsStatusFilter, setPastReportsStatusFilter] = useState<string>('ALL');
+
+  useEffect(() => {
+    if (!schoolId) {
+      setPastCheckups([]);
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingPastCheckups(true);
+    getSchoolCheckups(schoolId)
+      .then((all) => {
+        if (cancelled) return;
+        setPastCheckups(all.filter((c) => c.checkupType === 'FirstOpinion' && c.status !== 'DELETED'));
+      })
+      .catch((err) => console.error('Error loading past checkups:', err))
+      .finally(() => { if (!cancelled) setIsLoadingPastCheckups(false); });
+    return () => { cancelled = true; };
+  }, [schoolId]);
+
+  // Every challenge that appears in at least one past checkup, for the
+  // "filter by challenge" dropdown - only shows options that are actually
+  // meaningful for this school's history rather than always all 15.
+  const pastReportsAvailableChallenges = useMemo(() => {
+    const set = new Set<string>();
+    pastCheckups.forEach((c) => (c.selectedChallenges || []).forEach((ck: string) => set.add(ck)));
+    return Array.from(set);
+  }, [pastCheckups]);
+
+  const filteredPastCheckups = useMemo(() => {
+    const search = pastReportsSearch.trim().toLowerCase();
+    return pastCheckups
+      .filter((c) => !search || (c.referenceId || c.id).toLowerCase().includes(search))
+      .filter((c) => pastReportsChallengeFilter === 'ALL' || (c.selectedChallenges || []).includes(pastReportsChallengeFilter))
+      .filter((c) => pastReportsStatusFilter === 'ALL' || (c.status || 'SUBMITTED') === pastReportsStatusFilter);
+  }, [pastCheckups, pastReportsSearch, pastReportsChallengeFilter, pastReportsStatusFilter]);
+
+  const loadPastCheckup = async (checkup: any) => {
+    setPastReportError(null);
+    setLoadingPastCheckupId(checkup.id);
+    try {
+      const analysis = await getCheckupAnalysisOnce(schoolId, checkup.id);
+      if (!analysis) {
+        setPastReportError(
+          `"${checkup.referenceId || checkup.id}" has no saved report (submitted before this feature existed, or its analysis save failed). Its raw survey answers and uploaded data are still safely stored.`
+        );
+        return;
+      }
+      setSelectedChallenges(analysis.selectedChallenges || checkup.selectedChallenges || []);
+      setAnswers(analysis.answers || {});
+      setExtractedMetrics({
+        fileType: analysis.extractedFileType || 'csv',
+        metricsFound: analysis.extractedMetricsFound || {},
+        insights: [],
+        affectedDomains: [],
+        confidence: 'HIGH'
+      });
+      setDISHAScore(analysis.dishaScore);
+      setRealInsights(analysis.realInsights);
+      setCheckupId(checkup.id);
+      setCurrentReferenceId(checkup.referenceId || null);
+      setCurrentInputsChecksum(analysis.inputsChecksum);
+      setVerificationResult(null);
+      setShowPastReportsModal(false);
+      setStep(2);
+    } catch (err) {
+      console.error('Error loading past checkup:', err);
+      const detail = err instanceof Error ? err.message : String(err);
+      setPastReportError(`Could not load this report: ${detail}`);
+    } finally {
+      setLoadingPastCheckupId(null);
+    }
+  };
 
   // Active Root Cause node
   const [activeRootNode, setActiveRootNode] = useState<string>('workload');
-
-  // Competitor Inputs
-  const [comp1, setComp1] = useState<string>('');
-  const [comp2, setComp2] = useState<string>('');
 
   // Quiet Watch simulated alerts logs
   const [alerts, setAlerts] = useState([
@@ -447,13 +713,11 @@ export const FirstOpinionPage = () => {
 
   // Transform hardcoded screening questions data to component format
   const transformChallenges = (): ChallengeItem[] => {
-    console.log('🔄 transformChallenges: Processing', COMPLETE_SCREENING_QUESTIONS.length, 'challenges');
-
     return COMPLETE_SCREENING_QUESTIONS.map(challenge => ({
       id: challenge.id,
       category: challenge.category,
       label: challenge.label,
-      description: challenge.label,
+      description: CHALLENGE_DESCRIPTIONS[challenge.id] || challenge.domain,
       probes: challenge.domain,
       dataRequired: challenge.metrics.join(', '),
       questions: challenge.questions.map(q => {
@@ -463,11 +727,6 @@ export const FirstOpinionPage = () => {
           value: opt.value,
           weight: opt.weight || 5 // Fallback to 5 if not defined
         })) || [];
-
-        if (optionsWithWeights.length > 0) {
-          console.log(`  Question ${q.id}: ${optionsWithWeights.length} options with weights`,
-            optionsWithWeights.map(o => `${o.value}=${o.weight}`).join(', '));
-        }
 
         return {
           id: q.id,
@@ -521,11 +780,13 @@ export const FirstOpinionPage = () => {
       checkupId,
       (analysis) => {
         if (analysis) {
+          // Note: CheckupAnalysis (the actual Cloud Function output shape)
+          // has no dishaScore field - the real Health Index score always
+          // comes from the local calculation (runLocalDiagnosticCalculation),
+          // never from this listener. Kept for whatever else reads
+          // firestoreCheckupData, but do not attempt to derive dishaScore here.
           console.log('✓ Analysis updated from Firestore:', analysis);
           setFirestoreCheckupData(analysis);
-          if (analysis.dishaScore) {
-            setDISHAScore(analysis.dishaScore);
-          }
         }
       }
     );
@@ -729,7 +990,6 @@ HOW TO USE IN DISHA:
         });
       }
     });
-    console.log('getRequiredQuestions returning:', req.length, 'questions with options');
     return req;
   };
 
@@ -768,6 +1028,18 @@ HOW TO USE IN DISHA:
     setIsAnalyzingFile(true);
     try {
       const metrics = await FileAnalyzer.analyzeFile(file);
+
+      // If "Infrastructure Deficits" is selected and the RTE checklist below
+      // was already filled in before this upload, the checklist is the
+      // authoritative source for infrastructure_quality_score_pct - override
+      // whatever the CSV also happened to contain for that one field.
+      if (showInfraChecklist && rteChecklistTouched) {
+        metrics.metricsFound = { ...metrics.metricsFound, infrastructure_quality_score_pct: infraScoreFromChecklist };
+      }
+      // Same override for compliance_score_pct via the Core Compliance Checklist.
+      if (showComplianceChecklist && complianceChecklistTouched) {
+        metrics.metricsFound = { ...metrics.metricsFound, compliance_score_pct: complianceScoreFromChecklist };
+      }
       setExtractedMetrics(metrics);
 
       // VALIDATE file contains required metrics for SELECTED CHALLENGES
@@ -810,8 +1082,26 @@ HOW TO USE IN DISHA:
 
       console.log('  After setOperationalMetrics - queued for update');
 
-      // Generate REAL insights from extracted metrics
-      const insights = generateRealInsights(metrics);
+      // Generate REAL insights from extracted metrics.
+      // generateRealInsights expects fileParser.ts's ParsedData shape
+      // (field "extractedMetrics"), but FileAnalyzer.analyzeFile returns
+      // ExtractedMetrics (field "metricsFound") - passing `metrics` directly
+      // crashed with "can't convert undefined to object" the moment a real
+      // upload reached this code, since parsedData.extractedMetrics was
+      // always undefined. generateRealInsights only ever reads
+      // .extractedMetrics, so adapt just that field rather than rewriting it.
+      const insights = generateRealInsights({
+        fileType: metrics.fileType,
+        fileName: uploadedFileName,
+        uploadedAt: new Date(),
+        dataRows: [],
+        headers: [],
+        extractedMetrics: metrics.metricsFound,
+        parseStatus: 'success',
+        errorMessages: [],
+        warnings: [],
+        confidence: metrics.confidence === 'HIGH' ? 100 : metrics.confidence === 'MEDIUM' ? 60 : 30
+      });
       setRealInsights(insights);
 
       // Generate dynamic diagnosis if we have both metrics and answers
@@ -840,8 +1130,16 @@ HOW TO USE IN DISHA:
 
   // FIRESTORE SAVE & CLOUD FUNCTION HANDLER
   const handleSaveCheckupToFirestore = async () => {
-    if (!user || !schoolId) {
+    if (!user) {
       alert('Authentication required. Please log in.');
+      return;
+    }
+
+    if (!activeSchool || !schoolId) {
+      setValidationError(
+        '⚠️ No school profile selected. Please select or create a school profile from the sidebar before running a First Opinion checkup.'
+      );
+      setStep(0);
       return;
     }
 
@@ -849,6 +1147,38 @@ HOW TO USE IN DISHA:
       setValidationError(
         '⚠️ REQUIRED: Upload supporting data document first. Upload operational data (attendance, fee collection, staff records, etc.) to enable data-driven First Opinion analysis.'
       );
+      return;
+    }
+
+    if (isAnalyzingFile) {
+      setValidationError('⏳ Still analyzing your uploaded file — please wait a moment and try again.');
+      return;
+    }
+
+    if (fileValidation && !fileValidation.isValid) {
+      if (extractedMetrics?.fileType === 'UNREADABLE_BINARY_FILE') {
+        setValidationError(fileValidation.errorMessage);
+        const elem = document.getElementById('file-upload-container');
+        if (elem) elem.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+      const missingList = fileValidation.requiredMetrics
+        .filter(r => fileValidation.missingMetrics.some(mm => mm.includes(r.fieldName)))
+        .map(m => CHECKLIST_MANAGED_FIELDS[m.fieldName]?.active
+          ? `• ${m.description} — complete the "${CHECKLIST_MANAGED_FIELDS[m.fieldName].label}" section below (not a CSV field)`
+          : `• ${m.description} — expected field name "${m.fieldName}" (example: ${m.example})`)
+        .join('\n');
+      const completeness = 'completeness' in fileValidation ? fileValidation.completeness : 0;
+      setValidationError(
+        `❌ UPLOADED FILE DOES NOT MATCH YOUR SELECTED CHALLENGES (${completeness}% complete).\n\n` +
+        `The following required field(s) were not found in your file:\n${missingList}\n\n` +
+        `HOW TO FIX: Re-check your CSV — it must have the header "metric_field,value" with one row per field, ` +
+        `and the field names above spelled exactly as shown (case-sensitive). Add the missing rows with real values, ` +
+        `save the file, then upload it again here. The report cannot be generated until every required field for your ` +
+        `3 selected challenges is present — this keeps the DISHA Score and Perception Gap Analysis accurate to real data.`
+      );
+      const elem = document.getElementById('file-upload-container');
+      if (elem) elem.scrollIntoView({ behavior: 'smooth' });
       return;
     }
 
@@ -884,7 +1214,7 @@ HOW TO USE IN DISHA:
       console.log('📊 Operational Metrics:', checkupOperationalMetrics);
 
       // Save to Firestore
-      const savedCheckupId = await saveCheckupToFirestore(schoolId, {
+      const { id: savedCheckupId, referenceId: savedReferenceId } = await saveCheckupToFirestore(schoolId, {
         surveyInput: surveyInput,
         operationalMetricsUploaded: checkupOperationalMetrics,
         createdBy: user.uid,
@@ -897,34 +1227,27 @@ HOW TO USE IN DISHA:
       });
 
       setCheckupId(savedCheckupId);
-      console.log('✓ Checkup saved to Firestore:', savedCheckupId);
+      setCurrentReferenceId(savedReferenceId);
+      console.log('✓ Checkup saved to Firestore:', savedCheckupId, savedReferenceId);
 
-      // Log audit event for checkup submission
-      await logAuditEvent(
-        schoolId,
-        'CHECKUP_SUBMITTED',
-        'checkup',
-        savedCheckupId,
-        user.email || user.uid
-      );
-      console.log('✓ Audit logged for checkup submission');
-      console.log('⏳ Waiting for Cloud Function analysis (up to 30 seconds)...');
+      // NOTE: saveCheckupToFirestore() (checkupService.ts) already logs a
+      // CHECKUP_SUBMITTED audit event internally - a second explicit call
+      // used to happen here, writing a duplicate audit log document for the
+      // exact same event on every single submission.
 
-      // Wait for analysis (up to 30 seconds)
-      const analysis = await waitForCheckupAnalysis(schoolId, savedCheckupId);
-
-      if (analysis) {
-        console.log('✓ Analysis complete:', analysis);
-        setFirestoreCheckupData(analysis);
-        // Update DISHA score with Firestore results if available
-        if (analysis.dishaScore) {
-          setDISHAScore(analysis.dishaScore);
-        }
-      } else {
-        console.warn('⚠️ Analysis still processing, running local calculation...');
-        // If cloud function times out, run local diagnostic calculation
-        runLocalDiagnosticCalculation();
-      }
+      // NOTE: the analyzeCheckup Cloud Function exists but is a callable
+      // function (functions.https.onCall) - nothing in this app actually
+      // invokes it (no httpsCallable(functions, 'analyzeCheckup') call
+      // exists anywhere in src/), despite this file's earlier comment
+      // claiming it's "triggered automatically" by the Firestore write.
+      // waitForCheckupAnalysis() polled for its output for a full 30
+      // seconds on every single submission before ever falling back to
+      // the local calculation below - a guaranteed 30s hang for every
+      // user, every time, for a path that can never succeed. Go straight
+      // to the local calculation, which independently implements the same
+      // documented S_sub/M_obj/Health Index formula (dishaScoreCalculator.ts)
+      // and was always the code path that actually ran in practice.
+      runLocalDiagnosticCalculation(savedCheckupId);
 
       // Navigate to results step
       setTimeout(() => {
@@ -934,15 +1257,139 @@ HOW TO USE IN DISHA:
 
     } catch (error) {
       console.error('Error saving checkup:', error);
-      setValidationError('Failed to save checkup. Please try again.');
+      const detail = error instanceof Error ? error.message : String(error);
+      setValidationError(`❌ Failed to save checkup: ${detail}\n\nThis is a save/permissions error, not a problem with your answers or uploaded data — please report this exact message if it persists.`);
     } finally {
       // Reset submit state after a delay
       setTimeout(() => setIsSubmittingToFirestore(false), 2000);
     }
   };
 
+  // "Report Complete" button: was a no-op (onClick={() => {}}) - marks the
+  // checkup PUBLISHED so it shows as finalized in the school's checkup
+  // history, then returns to the Dashboard.
+  const handleReportComplete = async () => {
+    if (isFinalizingReport) return;
+    setIsFinalizingReport(true);
+    try {
+      if (checkupId && schoolId && user) {
+        await updateCheckupStatus(schoolId, checkupId, 'PUBLISHED', user.uid);
+      }
+      setCurrentView('DASHBOARD');
+    } catch (error) {
+      console.error('Error finalizing report:', error);
+      const detail = error instanceof Error ? error.message : String(error);
+      setValidationError(`❌ Could not mark this report complete: ${detail}`);
+    } finally {
+      setIsFinalizingReport(false);
+    }
+  };
+
+  // "Download Full Report (PDF)" - builds the same PDF for a freshly
+  // computed report or a reopened past one (loadPastCheckup restores the
+  // exact same state this reads from), so nothing extra needs to be saved
+  // to the database just to make downloading work later.
+  const handleDownloadReport = async () => {
+    if (!dishaScore || !realInsights || isDownloadingReport) return;
+    setIsDownloadingReport(true);
+    try {
+      const challengeLabels: Record<string, string> = {};
+      selectedChallenges.forEach((ck) => {
+        challengeLabels[ck] = challenges.find((c) => c.id === ck)?.label || ck;
+      });
+
+      const answeredQuestions: AnsweredQuestionDetail[] = [];
+      selectedChallenges.forEach((ck) => {
+        const cObj = challenges.find((c) => c.id === ck);
+        if (!cObj) return;
+        cObj.questions.forEach((q) => {
+          const selectedValue = answers[q.id];
+          const option = q.options?.find((opt) => opt.value === selectedValue);
+          if (!option) return;
+          answeredQuestions.push({
+            questionId: q.id,
+            challengeKey: ck,
+            challengeLabel: challengeLabels[ck],
+            questionLabel: q.label,
+            selectedOptionLabel: option.label,
+            weight: option.weight
+          });
+        });
+      });
+
+      const [leversChartImage, radarChartImage, inputsChecksum] = await Promise.all([
+        captureChartImage(leversChartRef.current),
+        captureChartImage(radarChartRef.current),
+        computeInputsChecksum({
+          selectedChallenges,
+          answers,
+          extractedMetricsFound: extractedMetrics?.metricsFound || {}
+        })
+      ]);
+
+      await generateFirstOpinionReportPdf({
+        referenceId: currentReferenceId || `FO-${checkupId?.slice(0, 8) || 'DRAFT'}`,
+        schoolName: activeSchool?.name || 'Unknown School',
+        board,
+        city: activeSchool?.city || '-',
+        cityTier,
+        feeBand,
+        generatedAt: new Date(),
+        selectedChallenges,
+        challengeLabels,
+        answeredQuestions,
+        dishaScore,
+        realInsights,
+        perceptionGap: perceptionGapReport,
+        extractedMetricsFound: extractedMetrics?.metricsFound || {},
+        inputsChecksum,
+        charts: { leversBar: leversChartImage, perceptionRadar: radarChartImage }
+      });
+    } catch (error) {
+      console.error('Error generating PDF report:', error);
+      const detail = error instanceof Error ? error.message : String(error);
+      setValidationError(`❌ Could not generate the PDF report: ${detail}`);
+    } finally {
+      setIsDownloadingReport(false);
+    }
+  };
+
+  // "Verify Report Integrity" - proves this report is not a black box: it
+  // re-runs the ENTIRE calculation pipeline (DISHA Score, Perception Gap,
+  // Data-Driven Insights) from nothing but the currently-held raw inputs
+  // (never trusting the already-computed dishaScore/realInsights state) and
+  // diffs the fresh result against what is on screen/was saved. A match
+  // proves the report is reproducible and the engine has not silently
+  // drifted since this report was generated; a mismatch names exactly what
+  // changed. See reportIntegrity.ts.
+  const handleVerifyReport = async () => {
+    if (!dishaScore || !realInsights || isVerifyingReport) return;
+    setIsVerifyingReport(true);
+    setVerificationResult(null);
+    try {
+      const result = await verifyCheckupAnalysis({
+        dishaScore,
+        realInsights,
+        perceptionGap: perceptionGapReport,
+        selectedChallenges,
+        answers,
+        extractedMetricsFound: extractedMetrics?.metricsFound || {},
+        extractedFileType: extractedMetrics?.fileType || 'csv',
+        generatedAt: null,
+        inputsChecksum: currentInputsChecksum
+      });
+      setVerificationResult(result);
+    } catch (error) {
+      console.error('Error verifying report:', error);
+      const detail = error instanceof Error ? error.message : String(error);
+      setValidationError(`❌ Could not verify this report: ${detail}`);
+    } finally {
+      setIsVerifyingReport(false);
+    }
+  };
+
   // Helper function to run diagnostic calculation locally
-  const runLocalDiagnosticCalculation = () => {
+  const runLocalDiagnosticCalculation = (savedCheckupId: string) => {
     const required = getRequiredQuestions();
     const answersArray = required.map(q => {
       const selectedOptionValue = answers[q.id];
@@ -968,6 +1415,36 @@ HOW TO USE IN DISHA:
     setDiagnosisResult(diagnosis);
 
     console.log('✓ Local diagnostic calculation complete');
+
+    // Persist the computed report (Health Index, Perception Gap, Data-Driven
+    // Insights) so it can be reopened later via "Past Reports" - previously
+    // this only ever existed in this tab's memory and was lost on refresh.
+    if (realInsights && extractedMetrics) {
+      // The checksum is over the raw inputs only (never the computed
+      // dishaScore/insights) - it's the thing a school can independently
+      // recompute by hand from their own original submission to prove
+      // nothing was altered afterward. See reportIntegrity.ts.
+      computeInputsChecksum({
+        selectedChallenges,
+        answers,
+        extractedMetricsFound: extractedMetrics.metricsFound
+      })
+        .then((inputsChecksum) => {
+          setCurrentInputsChecksum(inputsChecksum);
+          return saveCheckupAnalysis(schoolId, savedCheckupId, {
+            dishaScore: score,
+            realInsights,
+            perceptionGap: perceptionGapReport,
+            selectedChallenges,
+            answers,
+            extractedMetricsFound: extractedMetrics.metricsFound,
+            extractedFileType: extractedMetrics.fileType,
+            inputsChecksum
+          });
+        })
+        .then(() => updateCheckupStatus(schoolId, savedCheckupId, 'ANALYZED', user?.uid || 'unknown'))
+        .catch(err => console.error('Error saving checkup analysis:', err));
+    }
   };
 
   // DIAGNOSTIC ENGING CALCULATION
@@ -987,7 +1464,7 @@ HOW TO USE IN DISHA:
     // Check if file validation passed
     if (fileValidation && !fileValidation.isValid) {
       setValidationError(
-        `❌ DATA VALIDATION FAILED:\n${fileValidation.errorMessage}\n\nRequired Data Fields for DISHA First Opinion:\n${fileValidation.requiredMetrics.map(m => `• ${m.description} (${m.fieldName}): ${m.example}`).join('\n')}`
+        `❌ DATA VALIDATION FAILED:\n${fileValidation.errorMessage}\n\nRequired Data Fields for DISHA First Opinion:\n${fileValidation.requiredMetrics.map(m => CHECKLIST_MANAGED_FIELDS[m.fieldName]?.active ? `• ${m.description} (${m.fieldName}) — computed automatically from the ${CHECKLIST_MANAGED_FIELDS[m.fieldName].label} below` : `• ${m.description} (${m.fieldName}): ${m.example}`).join('\n')}`
       );
       const elem = document.getElementById('file-upload-container');
       if (elem) {
@@ -1085,14 +1562,6 @@ HOW TO USE IN DISHA:
     setTimeout(() => {
       setIsProcessing(false);
       setStep(2);
-    }, 1500);
-  };
-
-  const runDeepCheckup = () => {
-    setIsDeepScanning(true);
-    setTimeout(() => {
-      setIsDeepScanning(false);
-      setStep(3);
     }, 1500);
   };
 
@@ -1554,9 +2023,17 @@ HOW TO USE IN DISHA:
           <h2 className="text-3xl font-bold tracking-tight text-gray-900">School First Opinion Engine</h2>
           <p className="text-gray-500 mt-1 font-medium">An annual school diagnostic first opinion, run in simple language by an app instead of an auditor.</p>
         </div>
-        <div className="flex items-center gap-2 bg-indigo-50 px-3.5 py-1.5 rounded-full border border-indigo-100 text-xs font-bold text-indigo-700 w-fit">
-          <Clock className="w-4 h-4 text-indigo-500" />
-          <span>Completed in 1 sitting</span>
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex items-center gap-2 bg-indigo-50 px-3.5 py-1.5 rounded-full border border-indigo-100 text-xs font-bold text-indigo-700 w-fit">
+            <Clock className="w-4 h-4 text-indigo-500" />
+            <span>Completed in 1 sitting</span>
+          </div>
+          {step === 2 && currentReferenceId && (
+            <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-gray-500" title="Unique reference number - use this to find this exact report again later">
+              <FileText className="w-3 h-3" />
+              {currentReferenceId}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1565,9 +2042,7 @@ HOW TO USE IN DISHA:
         {[
           { label: '1. Select Worries', active: step === 0 },
           { label: '2. Screening Intake', active: step === 1 },
-          { label: '3. First Opinion', active: step === 2 },
-          { label: '4. 14D Deployment', active: step === 3 },
-          { label: '5. Diagnostic Report', active: step === 4 }
+          { label: '3. First Opinion Report', active: step === 2 }
         ].map((s, idx) => (
           <div key={idx} className="flex items-center gap-2 shrink-0">
             <span className={cn(
@@ -1579,7 +2054,7 @@ HOW TO USE IN DISHA:
             <span className={cn("inline", s.active ? "text-indigo-700 font-extrabold" : "text-gray-400 font-medium")}>
               {s.label}
             </span>
-            {idx < 4 && <ChevronRight className="w-3.5 h-3.5 text-gray-300 ml-1" />}
+            {idx < 2 && <ChevronRight className="w-3.5 h-3.5 text-gray-300 ml-1" />}
           </div>
         ))}
       </div>
@@ -1652,10 +2127,34 @@ HOW TO USE IN DISHA:
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            {!activeSchool && (
+              <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-200 text-rose-800 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-extrabold text-sm text-rose-900">No School Profile Selected</p>
+                  <p className="text-xs font-semibold text-rose-700 leading-relaxed">
+                    A First Opinion checkup must be linked to a specific school. Please select an existing school, or create a new school profile, from the school dropdown in the left sidebar before continuing.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              {activeSchool && selectedChallenges.length < 3 && (
+                <span className="text-xs font-bold text-amber-600">
+                  Select {3 - selectedChallenges.length} more challenge{3 - selectedChallenges.length > 1 ? 's' : ''} ({selectedChallenges.length}/3)
+                </span>
+              )}
               <button
-                onClick={() => setStep(1)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-7 py-3.5 rounded-xl shadow-md transition-all flex items-center gap-2 shadow-[0_4px_14px_rgba(37,99,235,0.25)] hover:translate-x-0.5 text-sm"
+                onClick={() => activeSchool && selectedChallenges.length === 3 && setStep(1)}
+                disabled={!activeSchool || selectedChallenges.length !== 3}
+                title={!activeSchool ? 'Select or create a school profile first' : selectedChallenges.length !== 3 ? 'Select exactly 3 challenges to continue' : undefined}
+                className={cn(
+                  "text-white font-bold px-7 py-3.5 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm",
+                  activeSchool && selectedChallenges.length === 3
+                    ? "bg-blue-600 hover:bg-blue-700 shadow-[0_4px_14px_rgba(37,99,235,0.25)] hover:translate-x-0.5"
+                    : "bg-gray-300 cursor-not-allowed"
+                )}
               >
                 Assemble Diagnostic Screening
                 <ArrowRight className="w-4 h-4" />
@@ -1685,7 +2184,7 @@ HOW TO USE IN DISHA:
                 </li>
                 <li className="flex gap-2 items-start">
                   <CheckCircle2 className="w-4.5 h-4.5 text-blue-500 shrink-0 mt-0.5" />
-                  <span><strong>Reverse-Parameter Simulation Engine:</strong> Simulate back-testing and adjustment of key educational metrics in real-time to forecast target outcomes and prevent structural risks.</span>
+                  <span><strong>Real-Time Dashboard:</strong> View instant diagnostic results and actionable recommendations without waiting for complex analysis cycles.</span>
                 </li>
               </ul>
               <div className="border-t border-slate-800 pt-4 text-xs font-semibold text-indigo-400 flex items-center gap-1.5">
@@ -1697,9 +2196,148 @@ HOW TO USE IN DISHA:
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3 text-xs text-gray-500">
               <h5 className="font-bold text-gray-800 uppercase tracking-widest text-[10px]">Active First Opinion Target</h5>
               <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 font-medium">
-                <p className="font-bold text-gray-900">{activeSchool?.name || 'Vasant Vihar Public School'}</p>
-                <p className="text-gray-500 mt-0.5">Mumbai Branch &bull; Primary & Secondary</p>
+                {activeSchool ? (
+                  <>
+                    <p className="font-bold text-gray-900">{activeSchool.name}</p>
+                    <p className="text-gray-500 mt-0.5">{activeSchool.city} &bull; {activeSchool.board}</p>
+                  </>
+                ) : (
+                  <p className="text-gray-500 italic">No school selected. Select a school from the dropdown to begin.</p>
+                )}
               </div>
+            </div>
+
+            {activeSchool && (
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3 text-xs">
+                <h5 className="font-bold text-gray-800 uppercase tracking-widest text-[10px] flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                  Past Reports
+                </h5>
+                {isLoadingPastCheckups ? (
+                  <p className="text-gray-400 italic">Loading...</p>
+                ) : pastCheckups.length === 0 ? (
+                  <p className="text-gray-500 italic">No previous First Opinion checkups for this school yet.</p>
+                ) : (
+                  <>
+                    <p className="text-gray-500">
+                      <span className="font-bold text-gray-900">{pastCheckups.length}</span> checkup{pastCheckups.length === 1 ? '' : 's'} on record for this school.
+                    </p>
+                    <button
+                      onClick={() => setShowPastReportsModal(true)}
+                      className="w-full text-center py-2 rounded-lg bg-indigo-50 text-indigo-700 font-bold hover:bg-indigo-100 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Search className="w-3.5 h-3.5" />
+                      Browse & Reopen Reports
+                    </button>
+                  </>
+                )}
+                {pastReportError && (
+                  <p className="text-rose-600 font-semibold pt-1 border-t border-gray-100">{pastReportError}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* PAST REPORTS MODAL: search/filter across every past checkup for
+          this school by reference number, challenge, or status, then
+          reopen its saved report. See loadPastCheckup(). */}
+      {showPastReportsModal && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowPastReportsModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-500" />
+                  Past First Opinion Reports
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {activeSchool?.name} &bull; {filteredPastCheckups.length} of {pastCheckups.length} shown
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPastReportsModal(false)}
+                className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 border-b border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={pastReportsSearch}
+                  onChange={(e) => setPastReportsSearch(e.target.value)}
+                  placeholder="Search by reference no. (FO-...)"
+                  className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-gray-200 focus:border-indigo-400 focus:outline-none"
+                />
+              </div>
+              <select
+                value={pastReportsChallengeFilter}
+                onChange={(e) => setPastReportsChallengeFilter(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-gray-200 focus:border-indigo-400 focus:outline-none bg-white"
+              >
+                <option value="ALL">All challenges</option>
+                {pastReportsAvailableChallenges.map((ck) => (
+                  <option key={ck} value={ck}>{challenges.find((c) => c.id === ck)?.label || ck}</option>
+                ))}
+              </select>
+              <select
+                value={pastReportsStatusFilter}
+                onChange={(e) => setPastReportsStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-gray-200 focus:border-indigo-400 focus:outline-none bg-white"
+              >
+                <option value="ALL">All statuses</option>
+                <option value="SUBMITTED">Submitted</option>
+                <option value="ANALYZED">Analyzed</option>
+                <option value="PUBLISHED">Published</option>
+              </select>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-5 space-y-2">
+              {filteredPastCheckups.length === 0 ? (
+                <p className="text-sm text-gray-500 italic text-center py-8">No reports match these filters.</p>
+              ) : (
+                filteredPastCheckups.map((c) => {
+                  const statusStyle: Record<string, string> = {
+                    SUBMITTED: 'bg-gray-100 text-gray-600',
+                    ANALYZED: 'bg-emerald-100 text-emerald-700',
+                    PUBLISHED: 'bg-indigo-100 text-indigo-700'
+                  };
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => loadPastCheckup(c)}
+                      disabled={loadingPastCheckupId === c.id}
+                      className="w-full text-left p-3.5 rounded-xl border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50/40 transition-all disabled:opacity-50 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-indigo-600 text-sm">{c.referenceId || `#${c.id.slice(0, 8)}`}</span>
+                          <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold uppercase', statusStyle[c.status || 'SUBMITTED'])}>
+                            {loadingPastCheckupId === c.id ? 'Loading...' : (c.status || 'SUBMITTED')}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1 truncate">
+                          {(c.selectedChallenges || []).map((ck: string) => challenges.find((ch) => ch.id === ck)?.label || ck).join(' + ') || 'First Opinion Checkup'}
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-gray-400 font-semibold shrink-0">
+                        {c.createdAt?.toDate?.()?.toLocaleDateString?.('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) || 'Recent'}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -1766,57 +2404,40 @@ HOW TO USE IN DISHA:
                 <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-200 text-rose-800 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
                   <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <p className="font-extrabold text-sm text-rose-900">Compulsory Questions Unanswered</p>
-                    <p className="text-xs font-semibold text-rose-700 leading-relaxed">
+                    <p className="font-extrabold text-sm text-rose-900">Action Required</p>
+                    <p className="text-xs font-semibold text-rose-700 leading-relaxed whitespace-pre-line">
                       {validationError}
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Minimal School Profile Baseline */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
-                <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5 text-slate-500" />
-                  School Profile Baseline (Sector Benchmarking)
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-bold text-gray-700">
-                  <div className="space-y-1.5">
-                    <label className="text-gray-500">Affiliation Board</label>
-                    <select value={board} onChange={(e) => setBoard(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      <option value="CBSE">CBSE (Central Board)</option>
-                      <option value="ICSE">ICSE / ISC</option>
-                      <option value="State">State Board</option>
-                      <option value="IB/IGCSE">IB / IGCSE International</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-gray-500">Student Body Size</label>
-                    <select value={schoolSize} onChange={(e) => setSchoolSize(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      <option value="Small (< 500 students)">Small (Under 500 students)</option>
-                      <option value="Medium (500 - 1500 students)">Medium (500 to 1500 students)</option>
-                      <option value="Large (1500+ students)">Large (Above 1500 students)</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-gray-500">Annual Fee Band</label>
-                    <select value={feeBand} onChange={(e) => setFeeBand(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      <option value="Low (< ₹25k per year)">Low (Under ₹25k per year)</option>
-                      <option value="Medium (₹25k - ₹75k per year)">Medium (₹25k to ₹75k per year)</option>
-                      <option value="High (₹75k+ per year)">High (Above ₹75k per year)</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-gray-500">City / Location Tier</label>
-                    <select value={cityTier} onChange={(e) => setCityTier(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg p-2 font-semibold">
-                      <option value="Tier 1 (Metro)">Tier 1 (Metros: Delhi, Mumbai, Bangalore)</option>
-                      <option value="Tier 2 (Capital / Large Cities)">Tier 2 (State Capitals / Industrial Cities)</option>
-                      <option value="Tier 3 (District Towns)">Tier 3 (District Towns / Semirural)</option>
-                    </select>
-                  </div>
+              {/* School Profile Baseline - locked summary, sourced directly from the active school profile (not editable, not re-asked) */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-slate-500" />
+                    School Profile Baseline (Sector Benchmarking)
+                  </h4>
+                  <span className="text-[10px] font-black text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full shrink-0">
+                    LOCKED &bull; FROM SCHOOL PROFILE
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Already on file for <strong>{activeSchool?.name || 'this school'}</strong> — not asked again here. To change any of these, edit the school profile from the sidebar.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-700">
+                  {[
+                    { label: 'Affiliation Board', value: activeSchool?.board },
+                    { label: 'Student Body Size', value: activeSchool?.studentCount },
+                    { label: 'Annual Fee Band', value: activeSchool?.feeBand },
+                    { label: 'City / Location Tier', value: activeSchool?.tier },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex items-center justify-between gap-2 bg-slate-100/70 rounded-lg px-3 py-2">
+                      <span className="text-slate-500 font-medium">{label}</span>
+                      <span className="font-bold text-slate-800 text-right">{value || 'Not set in school profile'}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1882,6 +2503,150 @@ HOW TO USE IN DISHA:
                 })}
               </div>
 
+              {/* Required Data Fields - computed live from the 3 selected challenges */}
+              <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/40 space-y-4">
+                <h4 className="font-extrabold text-xs text-indigo-900 uppercase tracking-widest flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                  Required Data Fields for This Checkup
+                </h4>
+                <p className="text-[11px] text-indigo-800/80 font-medium -mt-2">
+                  Upload a CSV with two columns, header <code className="bg-white px-1 py-0.5 rounded border border-indigo-200 font-mono">metric_field,value</code>, containing one row per field below. The challenge-specific fields change based on which 3 challenges you selected — a different combination needs different data.
+                </p>
+
+                <div>
+                  <p className="text-[11px] font-black text-indigo-700 uppercase tracking-wider mb-1.5">Core Operational Levers (always required)</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[11px] text-left border-collapse">
+                      <thead>
+                        <tr className="text-slate-500 border-b border-indigo-100">
+                          <th className="py-1 pr-3 font-bold">metric_field</th>
+                          <th className="py-1 pr-3 font-bold">What it is</th>
+                          <th className="py-1 font-bold">Example value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {CORE_OPERATIONAL_METRICS.map(m => (
+                          <tr key={m.fieldName} className="border-b border-indigo-50">
+                            <td className="py-1 pr-3 font-mono text-indigo-700">{m.fieldName}</td>
+                            <td className="py-1 pr-3 text-gray-700">{m.displayName} ({m.unit})</td>
+                            <td className="py-1 text-gray-500">{m.example}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-black text-indigo-700 uppercase tracking-wider mb-1.5">
+                    Challenge-Specific Metrics (based on your 3 selected challenges)
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[11px] text-left border-collapse">
+                      <thead>
+                        <tr className="text-slate-500 border-b border-indigo-100">
+                          <th className="py-1 pr-3 font-bold">metric_field</th>
+                          <th className="py-1 pr-3 font-bold">What it is</th>
+                          <th className="py-1 font-bold">Example value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getRequiredMetricsForChallenges(selectedChallenges).map(m => (
+                          <tr key={m.fieldName} className="border-b border-indigo-50">
+                            <td className="py-1 pr-3 font-mono text-indigo-700">{m.fieldName}</td>
+                            <td className="py-1 pr-3 text-gray-700">{m.displayName} ({m.unit})</td>
+                            <td className="py-1 text-gray-500">{m.example}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* RTE Infrastructure Checklist - only when Infrastructure Deficits is selected.
+                  infrastructure_quality_score_pct is computed HERE, from a real external
+                  standard (RTE Act 2009 Schedule norms), instead of being typed into the CSV
+                  as a pre-calculated, self-rated percentage - see
+                  DISHA_FIRST_OPINION_ENGINE_V3_REFERENCE.md Addendum 3. */}
+              {showInfraChecklist && (
+                <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-extrabold text-xs text-emerald-900 uppercase tracking-widest flex items-center gap-1.5">
+                      <HeartPulse className="w-3.5 h-3.5 text-emerald-600" />
+                      RTE Infrastructure Checklist
+                    </h4>
+                    <span className="text-xs font-black text-emerald-700">
+                      {infraScoreFromChecklist}% ({rteNormsMet.filter(Boolean).length}/{RTE_INFRASTRUCTURE_NORMS_CHECKLIST.length} norms met)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800/80 font-medium">
+                    Tick every RTE Act 2009 Schedule infrastructure norm this campus currently meets.
+                    <code className="bg-white px-1 py-0.5 rounded border border-emerald-200 font-mono mx-1">infrastructure_quality_score_pct</code>
+                    is computed automatically from your answers below — do not add a row for it in the uploaded CSV.
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {RTE_INFRASTRUCTURE_NORMS_CHECKLIST.map((norm, idx) => (
+                      <label key={idx} className="flex items-start gap-2 text-xs text-gray-700 bg-white/70 border border-emerald-100 rounded-lg p-2 cursor-pointer hover:border-emerald-300">
+                        <input
+                          type="checkbox"
+                          checked={rteNormsMet[idx]}
+                          onChange={() => toggleRteNorm(idx)}
+                          className="mt-0.5 accent-emerald-600"
+                        />
+                        <span>{norm}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {!rteChecklistTouched && (
+                    <p className="text-[11px] text-amber-700 font-semibold">
+                      ⚠ Not yet completed — tick each norm above (even if none are met) to record this field.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Core Compliance Checklist - same pattern as the RTE
+                  Infrastructure Checklist above, for compliance_score_pct
+                  when "Compliance & Regulatory Stress" is selected. */}
+              {showComplianceChecklist && (
+                <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-extrabold text-xs text-sky-900 uppercase tracking-widest flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
+                      Core Compliance Checklist
+                    </h4>
+                    <span className="text-xs font-black text-sky-700">
+                      {complianceScoreFromChecklist}% ({complianceDomainsMet.filter(Boolean).length}/{CORE_COMPLIANCE_DOMAINS_CHECKLIST.length} domains met)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-sky-800/80 font-medium">
+                    Tick every core, board/state-agnostic regulatory domain this school currently meets.
+                    <code className="bg-white px-1 py-0.5 rounded border border-sky-200 font-mono mx-1">compliance_score_pct</code>
+                    is computed automatically from your answers below — do not add a row for it in the uploaded CSV.
+                    Track any additional board- or state-specific requirements separately.
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {CORE_COMPLIANCE_DOMAINS_CHECKLIST.map((domain, idx) => (
+                      <label key={idx} className="flex items-start gap-2 text-xs text-gray-700 bg-white/70 border border-sky-100 rounded-lg p-2 cursor-pointer hover:border-sky-300">
+                        <input
+                          type="checkbox"
+                          checked={complianceDomainsMet[idx]}
+                          onChange={() => toggleComplianceDomain(idx)}
+                          className="mt-0.5 accent-sky-600"
+                        />
+                        <span>{domain}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {!complianceChecklistTouched && (
+                    <p className="text-[11px] text-amber-700 font-semibold">
+                      ⚠ Not yet completed — tick each domain above (even if none are met) to record this field.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Supporting Document Upload */}
               <div id="file-upload-container" className={`pt-4 border-t-2 space-y-4 ${!uploadedFile ? 'border-rose-300 bg-rose-50/30 p-4 rounded-lg' : 'border-gray-100'}`}>
                 <div>
@@ -1912,11 +2677,12 @@ HOW TO USE IN DISHA:
                       : "border-gray-300 bg-gray-50/50 hover:border-blue-500"
                   )}
                 >
-                  <input 
-                    type="file" 
-                    id="evidence-file-check" 
-                    className="hidden" 
-                    onChange={handleFileSelect} 
+                  <input
+                    type="file"
+                    id="evidence-file-check"
+                    accept=".csv,.xlsx,.xls,.pdf"
+                    className="hidden"
+                    onChange={handleFileSelect}
                   />
                   <label htmlFor="evidence-file-check" className="cursor-pointer w-full flex flex-col items-center justify-center">
                     {uploadedFileName ? (
@@ -1933,7 +2699,35 @@ HOW TO USE IN DISHA:
                         <p className="text-sm font-bold text-gray-900">{uploadedFileName}</p>
                         {isAnalyzingFile ? (
                           <p className="text-xs text-blue-600 font-bold">🔍 Analyzing data metrics...</p>
-                        ) : fileValidation ? (
+                        ) : extractedMetrics && extractedMetrics.fileType !== 'UNREADABLE_BINARY_FILE' && Object.keys(extractedMetrics.metricsFound).length > 0 ? (
+                          <div className="mt-2 bg-slate-50 border border-slate-200 rounded-lg p-3 text-left">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                              Exactly What We Read From Your File — verify this matches what you entered
+                            </p>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs text-left border-collapse">
+                                <thead>
+                                  <tr className="text-slate-500 border-b border-slate-200">
+                                    <th className="py-1 pr-3 font-bold">metric_field (as read)</th>
+                                    <th className="py-1 font-bold">Value captured</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Object.entries(extractedMetrics.metricsFound).map(([field, value]) => (
+                                    <tr key={field} className="border-b border-slate-100">
+                                      <td className="py-1 pr-3 font-mono text-slate-700">{field}</td>
+                                      <td className={cn('py-1 font-bold', String(value).trim() === '' ? 'text-rose-500 italic' : 'text-slate-900')}>
+                                        {String(value).trim() === '' ? '(blank value)' : String(value)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {isAnalyzingFile ? null : fileValidation ? (
                           <>
                             {fileValidation.isValid ? (
                               <>
@@ -1944,6 +2738,17 @@ HOW TO USE IN DISHA:
                                   ))}
                                 </div>
                               </>
+                            ) : extractedMetrics?.fileType === 'UNREADABLE_BINARY_FILE' ? (
+                              <div className="mt-2 space-y-2 bg-rose-50 p-3 rounded border border-rose-200 text-left">
+                                <p className="text-xs text-rose-800 font-bold">❌ Could not read this file — not a missing-data problem</p>
+                                <p className="text-xs text-rose-700">{extractedMetrics.unreadableReason}</p>
+                                <p className="text-xs text-rose-900 font-semibold mt-1">How to fix:</p>
+                                <p className="text-xs text-rose-700">
+                                  Supported formats: .csv, .xlsx/.xls, and text-based .pdf. The file needs a
+                                  "metric_field, value" header with one field per row — see the Required Data
+                                  Fields table above for the exact names to use, then re-upload.
+                                </p>
+                              </div>
                             ) : (
                               <>
                                 <p className="text-xs text-rose-600 font-bold">❌ Data INCOMPLETE! Missing required fields.</p>
@@ -1956,13 +2761,16 @@ HOW TO USE IN DISHA:
                                       ))}
                                     </>
                                   )}
-                                  <p className="text-xs font-semibold text-rose-900 mt-2">Missing:</p>
+                                  <p className="text-xs font-semibold text-rose-900 mt-2">Missing — not found in your file:</p>
                                   {fileValidation.requiredMetrics
-                                    .filter(r => fileValidation.missingMetrics.includes(r.fieldName))
+                                    .filter(r => fileValidation.missingMetrics.some(mm => mm.includes(r.fieldName)))
                                     .map((missing, idx) => (
                                       <p key={idx} className="text-xs text-rose-700 ml-2">
-                                        • {missing.description}<br/>
-                                        <span className="text-gray-600 italic">{missing.example}</span>
+                                        {CHECKLIST_MANAGED_FIELDS[missing.fieldName]?.active ? (
+                                          <>• {missing.description} — complete the <strong>{CHECKLIST_MANAGED_FIELDS[missing.fieldName].label}</strong> section below</>
+                                        ) : (
+                                          <>• {missing.description} — add row <span className="font-mono">{missing.fieldName},&lt;your value&gt;</span></>
+                                        )}
                                       </p>
                                     ))}
                                 </div>
@@ -1981,7 +2789,7 @@ HOW TO USE IN DISHA:
                           <Upload className="w-5 h-5 text-indigo-500" />
                         </div>
                         <p className="text-xs font-bold text-gray-700">Drag & drop files here, or <span className="text-indigo-600 underline">browse</span></p>
-                        <p className="text-[10px] text-gray-400">PDF, XLS, DOC, or Phone Camera JPG (Up to 15MB)</p>
+                        <p className="text-[10px] text-gray-400">CSV, Excel (.xlsx/.xls), or text-based PDF — see Required Data Fields above (Up to 15MB)</p>
                       </div>
                     )}
                   </label>
@@ -2023,20 +2831,25 @@ HOW TO USE IN DISHA:
 
               <button
                 onClick={handleSaveCheckupToFirestore}
-                disabled={isSubmittingToFirestore || isProcessing || !uploadedFile}
+                disabled={isSubmittingToFirestore || isProcessing || isAnalyzingFile || !uploadedFile || (fileValidation ? !fileValidation.isValid : false)}
                 className={`font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm ${
-                  !uploadedFile
+                  !uploadedFile || isAnalyzingFile || (fileValidation && !fileValidation.isValid)
                     ? 'bg-gray-400 text-gray-600 cursor-not-allowed opacity-60'
                     : 'bg-blue-600 hover:bg-blue-700 text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]'
                 }`}
-                title={!uploadedFile ? '⚠️ Please upload a data file first' : ''}
+                title={
+                  !uploadedFile ? '⚠️ Please upload a data file first'
+                  : isAnalyzingFile ? '⏳ Still analyzing your file'
+                  : fileValidation && !fileValidation.isValid ? '❌ Uploaded file is missing required data — fix and re-upload'
+                  : ''
+                }
               >
                 {isSubmittingToFirestore ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Saving to Database...
                   </>
-                ) : isProcessing ? (
+                ) : isProcessing || isAnalyzingFile ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Running Intake Scan...
@@ -2044,6 +2857,10 @@ HOW TO USE IN DISHA:
                 ) : !uploadedFile ? (
                   <>
                     📁 Upload Data File First
+                  </>
+                ) : fileValidation && !fileValidation.isValid ? (
+                  <>
+                    ❌ Fix Data File First
                   </>
                 ) : (
                   <>
@@ -2090,6 +2907,146 @@ HOW TO USE IN DISHA:
           {dishaScore && (
             <>
               <DISHAScoreDashboard score={dishaScore} />
+
+              {/* VERIFY REPORT INTEGRITY - result banner */}
+              {verificationResult && (
+                <div
+                  ref={verificationBannerRef}
+                  className={cn(
+                    'p-5 rounded-2xl border-2 space-y-2 scroll-mt-6',
+                    verificationResult.verified ? 'bg-emerald-50 border-emerald-300' : 'bg-rose-50 border-rose-300'
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    {verificationResult.verified ? (
+                      <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <ShieldAlert className="w-5 h-5 text-rose-600" />
+                    )}
+                    <p className={cn('font-bold text-sm', verificationResult.verified ? 'text-emerald-900' : 'text-rose-900')}>
+                      {verificationResult.verified
+                        ? 'Verified — recomputed independently from the raw inputs and it matches this report exactly.'
+                        : 'Not verified — the recomputed result differs from this report.'}
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-600 pl-7">
+                    Every number above was just re-derived from scratch (DISHA Score, Perception Gap, Data-Driven Insights) using only the recorded screening answers and uploaded metrics — never by re-reading the stored score itself — and compared field by field.
+                  </p>
+                  {verificationResult.checksumMatches === 'not_recorded' && (
+                    <p className="text-xs text-amber-700 pl-7">
+                      Note: this report predates the input-checksum feature, so its raw inputs cannot be checksum-verified — only the recomputation match above applies. Its live checksum is <span className="font-mono">{verificationResult.recomputedChecksum.slice(0, 16)}…</span>
+                    </p>
+                  )}
+                  {verificationResult.mismatches.length > 0 && (
+                    <ul className="text-xs text-rose-800 pl-7 list-disc list-inside space-y-1">
+                      {verificationResult.mismatches.map((m, i) => (
+                        <li key={i}>{m}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {/* CORE OPERATIONAL LEVERS - VISUAL BREAKDOWN */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                  Core Operational Levers — Objective Health Breakdown
+                </h3>
+                <p className="text-xs text-gray-500 -mt-2">
+                  Each lever's raw value is converted into a benchmark-based multiplier, shown here as a % of the "Ideal" (100%) threshold. All four multiply together to form the Operational Reality score (M_obj).
+                </p>
+                <div ref={leversChartRef} className="bg-white">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={leversChartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="lever" tick={{ fontSize: 11 }} />
+                      <YAxis unit="%" domain={[0, 110]} tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v: number) => [`${v}%`, 'vs. Ideal Benchmark']} />
+                      <ReferenceLine
+                        y={100}
+                        stroke="#059669"
+                        strokeDasharray="4 4"
+                        label={{ value: 'Ideal (100%)', position: 'insideTopRight', fontSize: 10, fill: '#059669' }}
+                      />
+                      <Bar dataKey="pct" name="% of Ideal Benchmark" radius={[6, 6, 0, 0]}>
+                        {leversChartData.map((entry, idx) => (
+                          <Cell key={idx} fill={getLeverBarColor(entry.pct)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3 leading-relaxed">
+                  <strong>How to read this:</strong> A bar reaching the dashed 100% line means that lever meets or beats the "Ideal" benchmark band (Student-Teacher Ratio ≤ 20:1, Parent Response SLA ≤ 12 hours, Annual Training ≥ 25 hours, Weekly Planning ≥ 5 hours). Green = Ideal, blue = Good, amber = Acceptable but taxing, red = Poor and needs urgent attention. Because M_obj is the <em>product</em> of all four multipliers (not an average), one weak lever drags the whole Operational Reality score down disproportionately — fixing the lowest bar first typically has the biggest impact on the overall Health Index.
+                </p>
+              </div>
+
+              {/* PERCEPTION GAP ANALYSIS - per selected challenge */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  Perception Gap Analysis — Per Challenge
+                </h3>
+                <p className="text-xs text-gray-500 -mt-2">
+                  Compares what leadership self-reported for each selected challenge against the objective data uploaded for it (1 = best, 10 = worst on both sides).
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {perceptionGapReport.map(entry => {
+                    const verdictStyle: Record<string, string> = {
+                      ALIGNED: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+                      DELUSIONAL_COMFORT: 'bg-rose-50 border-rose-200 text-rose-800',
+                      HIDDEN_EXCELLENCE: 'bg-blue-50 border-blue-200 text-blue-800',
+                      CONFIRMED_CRISIS: 'bg-orange-50 border-orange-200 text-orange-800',
+                      INSUFFICIENT_DATA: 'bg-gray-50 border-gray-200 text-gray-600'
+                    };
+                    const verdictLabel: Record<string, string> = {
+                      ALIGNED: 'Aligned — perception matches reality',
+                      DELUSIONAL_COMFORT: '⚠ Delusional Comfort — worse than perceived',
+                      HIDDEN_EXCELLENCE: '✓ Hidden Excellence — better than perceived',
+                      CONFIRMED_CRISIS: 'Confirmed Crisis — both agree it is bad',
+                      INSUFFICIENT_DATA: 'Insufficient objective data uploaded'
+                    };
+                    return (
+                      <div key={entry.challengeKey} className={cn('p-4 rounded-xl border space-y-2', verdictStyle[entry.verdict])}>
+                        <p className="font-bold text-sm">{entry.challengeLabel}</p>
+                        <div className="flex justify-between text-xs font-semibold">
+                          <span>Self-reported: {entry.subjectiveWeight ?? '—'}/10</span>
+                          <span>Objective: {entry.objectiveWeight ?? '—'}/10</span>
+                        </div>
+                        <p className="text-[11px] font-bold">{verdictLabel[entry.verdict]}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* PERCEPTION VS REALITY - RADAR CHART */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-indigo-600" />
+                  Perception vs Reality — Radar View
+                </h3>
+                <p className="text-xs text-gray-500 -mt-2">
+                  Plots leadership's self-reported severity against the objective, data-derived severity for each selected challenge (1 = healthy, 10 = severe). The further apart the two shapes, the bigger the perception gap.
+                </p>
+                <div ref={radarChartRef} className="bg-white">
+                  <ResponsiveContainer width="100%" height={320}>
+                    <RadarChart data={radarChartData} outerRadius="72%">
+                      <PolarGrid stroke="#e5e7eb" />
+                      <PolarAngleAxis dataKey="challenge" tick={{ fontSize: 11, fill: '#374151' }} />
+                      <PolarRadiusAxis angle={90} domain={[0, 10]} tick={{ fontSize: 10 }} />
+                      <Radar name="Self-Perceived Severity" dataKey="Self-Perceived Severity" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.35} />
+                      <Radar name="Data-Driven Severity" dataKey="Data-Driven Severity" stroke="#dc2626" fill="#dc2626" fillOpacity={0.25} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v: number) => [`${v}/10`, '']} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3 leading-relaxed">
+                  <strong>How to read this:</strong> Where the indigo (Self-Perceived) and red (Data-Driven) shapes nearly overlap, perception matches reality (<em>Aligned</em>). Where the red shape reaches further out than indigo, the real situation is worse than leadership believes (<em>Delusional Comfort</em>) — the pattern most likely to cause a surprise crisis. Where indigo reaches further than red, the school may be under-crediting a real strength (<em>Hidden Excellence</em>). A challenge sitting at the centre (0) on either line means that side had insufficient data to score — see the cards above for which one and why.
+                </p>
+              </div>
 
               {/* EXTRACTED METRICS & RECOMMENDATIONS */}
               {extractedMetrics && (
@@ -2200,837 +3157,56 @@ HOW TO USE IN DISHA:
             </>
           )}
 
-          {/* PHASE 2 & 3 DISHA COMPLETE SCAN PROPOSAL */}
-          <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-8 rounded-3xl border border-slate-800 space-y-6 relative overflow-hidden shadow-md">
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-              <Sparkles className="w-48 h-48 text-blue-400" />
-            </div>
-            <div className="relative z-10 max-w-2xl space-y-4">
-              <span className="bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-indigo-500">
-                Stage 2: 14-Dimension EWISR Framework
-              </span>
-              <h3 className="text-2xl md:text-3xl font-black text-white">Unlock the Complete 14-Dimension Assessment</h3>
-              <p className="text-xs md:text-sm text-slate-300 leading-relaxed font-medium">
-                Want to run the complete diagnostic? This will deploy all 14 parameters of the EWISR Framework. Enter your competitive benchmark names below, then click to access the live multilateral deployment dashboard where school leaders, teaching staff, parents, and students can provide verified inputs.
-              </p>
-
-              {/* Crawl Add-ons Checklist */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
-                {[
-                  { id: 'web', label: "School's Website & Mobile latency crawl", desc: "Analyzes SEO, load speeds & dropoffs" },
-                  { id: 'reviews', label: "Public review ratings & Google Maps reviews", desc: "Measures parent community sentiment index" },
-                  { id: 'social', label: "Instagram & Facebook posting rate", desc: "Evaluates organic brand representation" },
-                  { id: 'comp', label: `Compare with ${comp1} & ${comp2}`, desc: "District digital landscape positioning" }
-                ].map((addon, idx) => (
-                  <div key={idx} className="p-3 bg-white/5 border border-white/10 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" />
-                      <span className="text-xs font-bold text-white leading-none">{addon.label}</span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1 pl-6 leading-tight">{addon.desc}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Competitor Name Inputs */}
-              <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-3">
-                <p className="text-xs font-extrabold text-indigo-300 uppercase tracking-wider">Provide 2-3 Competitor Schools to Benchmark</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="space-y-1">
-                    <label className="text-slate-400">Primary Competitor Name</label>
-                    <input 
-                      type="text" 
-                      value={comp1} 
-                      onChange={(e) => setComp1(e.target.value)} 
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 font-semibold text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-slate-400">Secondary Competitor Name</label>
-                    <input 
-                      type="text" 
-                      value={comp2} 
-                      onChange={(e) => setComp2(e.target.value)} 
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 font-semibold text-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 flex flex-col sm:flex-row items-center gap-4">
+          {/* Navigation Buttons */}
+          <div className="flex justify-between items-center pt-6">
+            <button
+              onClick={() => setStep(0)}
+              className="text-gray-500 hover:text-gray-800 font-bold text-sm"
+            >
+              Back to Worries
+            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleVerifyReport}
+                disabled={isVerifyingReport || !dishaScore}
+                title="Recomputes the entire score from the raw inputs and diffs it against this report - proves nothing was added or drifted"
+                className="bg-white border-2 border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed font-bold px-5 py-3 rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                {isVerifyingReport ? 'Verifying...' : 'Verify Report Integrity'}
+              </button>
+              {verificationResult && (
                 <button
-                  onClick={runDeepCheckup}
-                  disabled={isDeepScanning}
-                  className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold px-8 py-3.5 rounded-xl text-sm transition-all shadow-[0_4px_20px_rgba(99,102,241,0.4)] flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {isDeepScanning ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      Deploying 14-Dimension Assessment System...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-white animate-pulse" />
-                      Deploy 14-Dimension Complete Assessment
-                    </>
+                  onClick={() => verificationBannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  title="Jump to the full verification result at the top of this report"
+                  className={cn(
+                    'font-bold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5',
+                    verificationResult.verified ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                   )}
-                </button>
-                <button 
-                  onClick={() => setStep(0)}
-                  className="text-xs font-bold text-slate-400 hover:text-white transition-colors"
                 >
-                  Restart screening
+                  {verificationResult.verified ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
+                  {verificationResult.verified ? 'Verified' : 'Not verified'} - see details ↑
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* STEP 3: 14-DIMENSION MULTILATERAL DEPLOYMENT PORTAL */}
-      {step === 3 && (
-        <div className="space-y-6 animate-in fade-in duration-350">
-          <DeepDiveAssessment 
-            isStep3Wizard={true}
-            onCompleteStep3={(dimensionsData, answersData) => {
-              setEwisrDimensions(dimensionsData);
-              setEwisrAnswers(answersData);
-              setStep(4);
-            }}
-          />
-        </div>
-      )}
-
-      {/* STEP 4: FINAL UNIFIED COMPREHENSIVE DIAGNOSTICS REPORT (THE MULTI-LENS DASHBOARD) */}
-      {step === 4 && (
-        <div className="space-y-8 animate-in zoom-in-95 duration-300">
-          
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
-            
-            {/* Header print controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-5">
-              <div>
-                <div className="flex items-center gap-1.5 text-emerald-600 font-bold text-xs uppercase tracking-wider mb-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>Comprehensive Annual Health Check Complete</span>
-                </div>
-                <h3 className="text-2xl font-black text-gray-900">School Diagnostics Report</h3>
-                <p className="text-xs text-gray-500 font-semibold mt-0.5">Bespoke diagnostic view for {activeSchool?.name || 'Vasant Vihar Public School'} &bull; Mumbai Branch</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => window.print()}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors border border-gray-200"
-                >
-                  Print Report
-                </button>
-                <button
-                  onClick={() => setStep(0)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-colors"
-                >
-                  Start New Assessment
-                </button>
-              </div>
-            </div>
-
-            {/* Report Sub-Tabs Navigation */}
-            <div className="flex border-b border-gray-100">
+              )}
               <button
-                onClick={() => setActiveReportTab('standard')}
-                className={cn(
-                  "px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer",
-                  activeReportTab === 'standard'
-                    ? "border-blue-600 text-blue-700 font-extrabold border-b-2"
-                    : "border-transparent text-gray-450 hover:text-gray-700"
-                )}
+                onClick={handleDownloadReport}
+                disabled={isDownloadingReport || !dishaScore}
+                title="Full report + Annexure (calculation detail, benchmark references) as PDF"
+                className="bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 disabled:opacity-60 disabled:cursor-not-allowed font-bold px-5 py-3 rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm"
               >
-                12-Lens Diagnostics Report
+                <Download className="w-4 h-4" />
+                {isDownloadingReport ? 'Building PDF...' : 'Download Full Report (PDF)'}
               </button>
               <button
-                onClick={() => setActiveReportTab('ewisr')}
-                className={cn(
-                  "px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-1.5",
-                  activeReportTab === 'ewisr'
-                    ? "border-blue-600 text-blue-700 font-extrabold border-b-2"
-                    : "border-transparent text-gray-450 hover:text-gray-700"
-                )}
+                onClick={handleReportComplete}
+                disabled={isFinalizingReport}
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm"
               >
-                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                14-Dimension EWISR Deep-Dive Workspace
+                <CheckCircle2 className="w-4 h-4" />
+                {isFinalizingReport ? 'Finalizing...' : 'Report Complete'}
               </button>
             </div>
           </div>
-
-          {activeReportTab === 'standard' ? (
-            <>
-              {/* TWELVE-LENS SCORECARD SECTION (Radar and Bar charts) */}
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
-                <div className="space-y-6">
-              <div>
-                <h4 className="text-lg font-bold text-gray-950 flex items-center gap-1.5">
-                  <BarChart3 className="w-5 h-5 text-indigo-500" />
-                  Twelve-Lens Diagnostic Scorecard
-                </h4>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed font-medium">
-                  We score your school across the **6 Wellbeing Pillars** of the original Wellbeing Framework and the **6 Operational Areas** of the Business & Operations Market Survey.
-                </p>
-              </div>
-
-              {/* Charts grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                
-                {/* Radar Chart (left 3 cols) */}
-                <div className="lg:col-span-3 bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between">
-                  <div className="text-center">
-                    <p className="text-xs font-bold text-slate-800 uppercase tracking-widest">Interactive Multi-Lens Radar Map</p>
-                    <p className="text-[10px] text-gray-400 font-medium">Shows overall operational balance. Deficits are pulled inward.</p>
-                  </div>
-
-                  <div className="h-[320px] w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={scorecardData}>
-                        <PolarGrid stroke="#e2e8f0" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 9, fontWeight: 700 }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 8 }} />
-                        <Radar 
-                          name="School Score" 
-                          dataKey="score" 
-                          stroke="#4f46e5" 
-                          fill="#4f46e5" 
-                          fillOpacity={0.25} 
-                        />
-                        <Tooltip />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="flex justify-center gap-6 text-[10px] font-bold text-gray-500 border-t border-slate-200/50 pt-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 bg-indigo-600 rounded-xs"></span>
-                      <span>Operational Scores (0-100)</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Score listing with Confidence index (right 2 cols) */}
-                <div className="lg:col-span-2 space-y-3.5 flex flex-col justify-between">
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex-1 space-y-3">
-                    <div className="border-b border-slate-200/60 pb-1.5 flex justify-between items-center">
-                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Metrics Listing</span>
-                      <span className="text-[10px] text-slate-400 font-bold">Data Level</span>
-                    </div>
-
-                    <div className="space-y-2 h-[280px] overflow-y-auto pr-1">
-                      {scorecardData.map((item, idx) => {
-                        const scoreColor = item.score < 60 ? 'text-rose-600' : item.score < 75 ? 'text-amber-600' : 'text-emerald-600';
-                        const scoreBg = item.score < 60 ? 'bg-rose-50' : item.score < 75 ? 'bg-amber-50' : 'bg-emerald-50';
-                        return (
-                          <div key={idx} className="flex items-center justify-between text-xs font-bold p-1.5 rounded-md hover:bg-slate-100/50 transition-colors">
-                            <span className="text-gray-700 font-medium">{item.subject}</span>
-                            <div className="flex items-center gap-2">
-                              <span className={cn("px-2 py-0.5 rounded text-[11px]", scoreColor, scoreBg)}>{item.score}/100</span>
-                              <span className={cn(
-                                "text-[9px] px-1.5 py-0.5 rounded-full border shrink-0 font-black",
-                                item.confidence === 'A' ? "bg-emerald-100 text-emerald-800 border-emerald-200" : 
-                                item.confidence === 'B' ? "bg-blue-100 text-blue-800 border-blue-200" : 
-                                "bg-amber-100 text-amber-800 border-amber-200"
-                              )}>
-                                Tier {item.confidence}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="text-[9px] text-gray-400 font-semibold space-y-1 leading-relaxed border-t border-slate-200/60 pt-2 flex flex-col">
-                      <div className="flex items-center gap-1">
-                        <span className="font-extrabold text-emerald-600">Tier A:</span> Hard records uploaded (PDF rosters, Fee Gateway spreadsheets).
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="font-extrabold text-blue-600">Tier B:</span> Standard numerical data and benchmark calculations.
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="font-extrabold text-amber-600">Tier C:</span> Self-reported pulse assessment responses.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* PERCEPTION VS DATA DIVERGENCES */}
-            <div className="space-y-4 pt-6 border-t border-gray-100">
-              <h4 className="font-bold text-lg text-gray-950 flex items-center gap-1.5">
-                <ShieldAlert className="w-5 h-5 text-indigo-500" />
-                Perceived Severity vs. Data-Confirmed Severity
-              </h4>
-              <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                Analysis showing cases where your owner-reported worries diverge from what statistical evidence indicates. Identifying this mismatch is your biggest diagnostic breakthrough:
-              </p>
-
-              <div className="p-4 bg-indigo-950 text-white rounded-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5">
-                  <ShieldCheck className="w-24 h-24" />
-                </div>
-                <div className="relative z-10 space-y-2">
-                  <p className="text-xs font-black text-indigo-300 uppercase tracking-widest flex items-center gap-1.5">
-                    <Info className="w-4 h-4 text-indigo-400" />
-                    Insight Summary
-                  </p>
-                  <p className="text-xs text-slate-200 font-bold leading-relaxed">
-                    {mismatchInfo.desc}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* DISTRICT COMPETITOR DIGITAL BENCHMARK (Section 6.5) */}
-            <div className="space-y-4 pt-6 border-t border-gray-100">
-              <h4 className="font-bold text-lg text-gray-950 flex items-center gap-1.5">
-                <Globe className="w-5 h-5 text-blue-500" />
-                District Digital Competitor Positioning Index
-              </h4>
-              <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                Gathered strictly from publicly available web listings, mobile speed latency crawlers, search indexing, and review sentiment metrics:
-              </p>
-
-              <div className="overflow-x-auto border border-gray-100 rounded-xl">
-                <table className="min-w-full text-left text-xs text-gray-600 font-medium">
-                  <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                    <tr>
-                      <th className="px-4 py-3">Metrics / School</th>
-                      <th className="px-4 py-3 text-blue-800">{activeSchool?.name || 'Vasant Vihar Public'} (You)</th>
-                      <th className="px-4 py-3">{comp1}</th>
-                      <th className="px-4 py-3">{comp2}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    <tr className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-bold text-gray-900">Estimated Annual Fee</td>
-                      <td className="px-4 py-3 font-semibold text-blue-800">₹45k - ₹60k (Competitive)</td>
-                      <td className="px-4 py-3">₹75k - ₹90k (High Profile)</td>
-                      <td className="px-4 py-3">₹30k - ₹40k (Budget Convent)</td>
-                    </tr>
-                    <tr className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-bold text-gray-900">Google Review Score</td>
-                      <td className="px-4 py-3 text-rose-600 font-black flex items-center gap-1">
-                        <span>3.4 Stars</span>
-                        <span className="text-[9px] bg-rose-50 px-1.5 py-0.5 rounded">Critical Lag</span>
-                      </td>
-                      <td className="px-4 py-3 text-emerald-600 font-bold">4.6 Stars (Active reviews)</td>
-                      <td className="px-4 py-3 text-slate-700 font-bold">4.1 Stars (Unclaimed Profile)</td>
-                    </tr>
-                    <tr className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-bold text-gray-900">Website Mobile Friendly Speed</td>
-                      <td className="px-4 py-3 text-amber-600 font-bold">Slow: 4.8s load index</td>
-                      <td className="px-4 py-3 text-emerald-600 font-bold">Fast: 1.8s mobile index</td>
-                      <td className="px-4 py-3 text-slate-500">Stale template: 3.5s</td>
-                    </tr>
-                    <tr className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-bold text-gray-900">Social Posting Frequency</td>
-                      <td className="px-4 py-3 text-slate-400">Near-zero (stale since 2024)</td>
-                      <td className="px-4 py-3 text-emerald-600 font-bold">Daily (Insta highlights & YT tours)</td>
-                      <td className="px-4 py-3 text-slate-500">Monthly news text only</td>
-                    </tr>
-                    <tr className="hover:bg-gray-50/50 bg-indigo-50/20">
-                      <td className="px-4 py-3 font-bold text-gray-900">Digital Reputation Verdict</td>
-                      <td className="px-4 py-3 font-bold text-rose-700">Online Invisible: Academic quality hidden</td>
-                      <td className="px-4 py-3 font-bold text-emerald-700">Digital Premium: Attracts elite inquiries</td>
-                      <td className="px-4 py-3 text-slate-600">Legacy-Driven: Relies purely on legacy board scores</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* INTERACTIVE CAUSAL ROOT-CAUSE MAP (Section 7) */}
-            <div className="space-y-4 pt-6 border-t border-gray-100">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h4 className="font-bold text-lg text-gray-950 flex items-center gap-1.5">
-                    <Compass className="w-5 h-5 text-indigo-500" />
-                    Interactive Root-Cause Map (Causal Connections)
-                  </h4>
-                  <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                    Disha maps how separate pain points connect. Click on any operational node below to explore its downstream impact:
-                  </p>
-                </div>
-                <div className="text-[10px] text-gray-400 font-bold">
-                  Click nodes to inspect connection logic
-                </div>
-              </div>
-
-              {/* Node connection blocks */}
-              <div className="grid grid-cols-2 md:grid-cols-7 gap-2 text-center text-xs font-bold pt-2">
-                {Object.keys(ROOT_CAUSE_NODES).map((nodeKey, idx) => {
-                  const node = ROOT_CAUSE_NODES[nodeKey];
-                  const isActive = activeRootNode === nodeKey;
-                  return (
-                    <div key={nodeKey} className="flex flex-col md:flex-row items-center md:col-span-1 gap-1">
-                      <div 
-                        onClick={() => setActiveRootNode(nodeKey)}
-                        className={cn(
-                          "p-2.5 rounded-xl border text-center cursor-pointer transition-all w-full flex flex-col justify-between min-h-[90px]",
-                          isActive 
-                            ? "bg-indigo-600 text-white border-indigo-600 scale-105 shadow-sm" 
-                            : "bg-slate-50 text-slate-800 border-slate-100 hover:bg-slate-100"
-                        )}
-                      >
-                        <p className="text-[10px] tracking-tight truncate max-w-full leading-tight font-black">{node.title}</p>
-                        <p className={cn("text-[9px] mt-1 font-medium leading-none", isActive ? "text-indigo-200" : "text-gray-400")}>{node.metric.split(' ')[0]}</p>
-                        <span className={cn("text-[8px] px-1 py-0.5 rounded mt-2 uppercase font-black tracking-widest block w-fit mx-auto", 
-                          isActive ? "bg-white/20 text-white" : "bg-gray-200/80 text-gray-600"
-                        )}>
-                          Node {idx + 1}
-                        </span>
-                      </div>
-                      {idx < 6 && <ChevronRight className="w-4 h-4 text-slate-300 hidden md:block" />}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Node active detail box */}
-              <div className="p-4 bg-slate-900 text-white rounded-xl border border-slate-800 space-y-2 animate-in fade-in duration-300">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">
-                    Node Connection Logic: {ROOT_CAUSE_NODES[activeRootNode].title}
-                  </span>
-                  <span className="bg-indigo-900 text-indigo-200 text-[9px] px-2 py-0.5 rounded-full font-bold">
-                    {ROOT_CAUSE_NODES[activeRootNode].status}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                  <div className="md:col-span-1 bg-slate-800 p-3 rounded-lg border border-slate-750 text-center">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Quant Indicator</p>
-                    <p className="text-base font-black text-white mt-1">{ROOT_CAUSE_NODES[activeRootNode].metric}</p>
-                  </div>
-                  <p className="md:col-span-3 text-xs text-slate-300 leading-relaxed font-medium">
-                    {ROOT_CAUSE_NODES[activeRootNode].details}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* DIRECT ACTION PLAN (What to do first) */}
-            <div className="space-y-4 pt-6 border-t border-gray-100">
-              <h4 className="font-bold text-lg text-gray-950 flex items-center gap-1.5">
-                <Compass className="w-5 h-5 text-emerald-500" />
-                First Action Blueprint (Prioritized Roadmap)
-              </h4>
-              <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                Simple, ground-level tasks formulated to yield the maximum diagnostic ROI with the least workload disruption. No complex charts to interpret:
-              </p>
-
-              <div className="space-y-3">
-                {[
-                  {
-                    step: '1',
-                    title: 'Claim Google Maps & Run Positive Review Drive',
-                    desc: 'Claim your school profile on Google Maps. Send a WhatsApp link to 25 highly satisfied current families asking for an honest 5-star rating.',
-                    cost: 'Free',
-                    effort: '1 Hour task',
-                    roi: 'Raises reputation to >4.5, neutralizes brand weakness'
-                  },
-                  {
-                    step: '2',
-                    title: 'Deploy Automated Classroom Attendance Loggers',
-                    desc: 'Ditch paper attendance registers. Teachers log attendance in 10 seconds via a shared spreadsheet. Frees up 6 hours/week.',
-                    cost: 'Low Cost',
-                    effort: 'Medium (1 week rollout)',
-                    roi: 'Reduces staff burnout by 35%, stops turnover'
-                  },
-                  {
-                    step: '3',
-                    title: 'Instate a 24-Hour Parent Grievance Resolution SLA',
-                    desc: 'Publish an absolute guarantee to parents that any written concern gets a coordinator reply within 24 hours.',
-                    cost: 'Free',
-                    effort: 'Low Effort',
-                    roi: 'Resolves 80% of parent friction before fee dates'
-                  }
-                ].map((act, idx) => (
-                  <div key={idx} className="flex gap-4 p-4 rounded-xl border border-gray-100 hover:border-indigo-100 hover:bg-slate-50/20 transition-all">
-                    <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center font-black shrink-0 text-sm">
-                      {act.step}
-                    </div>
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-bold text-sm text-gray-900">{act.title}</p>
-                        <div className="flex gap-1.5 text-[9px] font-bold">
-                          <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{act.cost}</span>
-                          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{act.effort}</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-600 font-medium leading-relaxed">{act.desc}</p>
-                      <p className="text-[10px] text-emerald-600 font-bold bg-emerald-50 w-fit px-2 py-0.5 rounded">Target ROI: {act.roi}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
-
-          {/* DESIRED OUTCOME SIMULATION & STAKEHOLDER MATRIX READJUSTMENT ENGINE */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
-            <div>
-              <span className="bg-indigo-50 text-indigo-700 text-[10px] px-2.5 py-1 rounded-full font-bold border border-indigo-100 uppercase tracking-wider">
-                Adaptive Optimization Engine
-              </span>
-              <h4 className="font-extrabold text-2xl text-gray-950 mt-2 flex items-center gap-2">
-                <Target className="w-6 h-6 text-indigo-600 animate-pulse" />
-                Desired Outcome & Stakeholder Readjustment Simulation
-              </h4>
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed font-medium">
-                Select a school priority outcome to simulate. Disha will calculate the required reverse adjustments in metrics from <strong>all 4 stakeholders</strong> (School Leader, Teaching Staff, Parents, Students) needed to achieve your goal, along with an AI Gap Analysis and Actionable Points.
-              </p>
-            </div>
-
-            {/* Selector & Target Slider */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-slate-50 p-5 rounded-2xl border border-slate-100 items-center">
-              
-              {/* Metric Selector (5 cols) */}
-              <div className="md:col-span-5 space-y-2">
-                <label className="block text-xs font-extrabold text-gray-600 uppercase tracking-wider">
-                  Select Desired Outcome Requirement
-                </label>
-                <select
-                  value={simSelectedId}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setSimSelectedId(val);
-                    const baseline = getSimBaselineVal(val);
-                    setSimTargetVal(Math.min(100, Math.max(80, baseline + 10)));
-                    setSimHasRun(false);
-                    setSimCommitted(false);
-                  }}
-                  className="w-full bg-white border border-gray-200 text-gray-900 rounded-xl px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 text-sm shadow-sm"
-                >
-                  {OUTCOMES.map(o => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Target Score Slider (7 cols) */}
-              <div className="md:col-span-7 space-y-3">
-                <div className="flex justify-between items-center text-xs font-bold">
-                  <span className="text-gray-500">
-                    CURRENT BASELINE: <span className="text-gray-900 font-extrabold">{getSimBaselineVal(simSelectedId)}%</span>
-                  </span>
-                  <span className="text-indigo-600">
-                    DESIRED TARGET OUTCOME: <span className="text-indigo-700 text-lg font-black">{simTargetVal}%</span>
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <input
-                    type="range"
-                    min={Math.max(70, getSimBaselineVal(simSelectedId) + 1)}
-                    max="100"
-                    value={simTargetVal}
-                    onChange={(e) => {
-                      setSimTargetVal(Number(e.target.value));
-                      setSimCommitted(false);
-                    }}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setSimIsRunning(true);
-                        setTimeout(() => {
-                          setSimIsRunning(false);
-                          setSimHasRun(true);
-                        }, 800);
-                      }}
-                      disabled={simIsRunning}
-                      className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm transition-all flex items-center gap-1.5 shrink-0"
-                    >
-                      {simIsRunning ? (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          Simulating...
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-3.5 h-3.5" />
-                          Run Simulator
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Simulation Result Area */}
-            {simHasRun && (
-              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
-                
-                {/* Stakeholder Triangulation Grid */}
-                <div className="border border-indigo-100 rounded-2xl bg-white shadow-sm overflow-hidden">
-                  <div className="bg-indigo-900 text-white px-5 py-3.5 flex justify-between items-center">
-                    <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-                      <Users className="w-4 h-4 text-indigo-300" />
-                      Stakeholder Adaptive Readjustment Matrix
-                    </span>
-                    <span className="bg-indigo-800 text-indigo-200 text-[10px] px-2.5 py-1 rounded-full font-extrabold uppercase">
-                      Feasibility: {simTargetVal >= 95 ? 'Medium (High Effort)' : 'High (Optimal)'}
-                    </span>
-                  </div>
-
-                  <div className="divide-y divide-gray-100">
-                    {OUTCOMES.find(o => o.id === simSelectedId)?.factors.map((f, fIdx) => {
-                      const iconColor = f.stakeholder === 'School Leader' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                                        f.stakeholder === 'Teaching Staff' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                        f.stakeholder === 'Parents' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                        'bg-amber-50 text-amber-600 border-amber-100';
-                      return (
-                        <div key={fIdx} className="p-4 sm:p-5 hover:bg-slate-50/40 transition-colors">
-                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-                            
-                            {/* Stakeholder role card */}
-                            <div className="lg:col-span-3 flex items-center gap-2.5">
-                              <div className={cn("p-2 rounded-xl border shrink-0 font-bold text-xs flex items-center justify-center w-8 h-8", iconColor)}>
-                                {f.stakeholder[0]}
-                              </div>
-                              <div>
-                                <p className="font-extrabold text-sm text-gray-900">{f.stakeholder}</p>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Stakeholder Unit</p>
-                              </div>
-                            </div>
-
-                            {/* Parameter assessment details */}
-                            <div className="lg:col-span-4 space-y-1">
-                              <span className="bg-gray-100 text-gray-600 text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                                Assessment Parameter
-                              </span>
-                              <p className="text-xs font-bold text-gray-800 leading-snug">
-                                {f.parameter}
-                              </p>
-                              <p className="text-[10px] text-indigo-600 font-semibold italic flex items-center gap-1 mt-1">
-                                <Info className="w-3 h-3 shrink-0" />
-                                Source: {f.techStack}
-                              </p>
-                            </div>
-
-                            {/* States transformation */}
-                            <div className="lg:col-span-5 grid grid-cols-2 gap-3 text-xs bg-gray-50/50 p-3 rounded-xl border border-gray-100">
-                              <div>
-                                <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Current State</span>
-                                <span className="font-semibold text-gray-600 leading-tight block">
-                                  {f.currentVal}
-                                </span>
-                              </div>
-                              <div className="border-l border-gray-200/60 pl-3">
-                                <span className="text-[10px] text-indigo-500 font-bold uppercase block mb-1">Target Readjustment</span>
-                                <span className="font-extrabold text-indigo-700 leading-tight block flex flex-col gap-1">
-                                  {f.targetValFn(simTargetVal)}
-                                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[9px] px-1.5 py-0.2 rounded font-black uppercase w-fit">
-                                    {f.adjustment}
-                                  </span>
-                                </span>
-                              </div>
-                            </div>
-
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* AI Gap Analysis & Actionable Points */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  
-                  {/* Gap Analysis Box (1 col) */}
-                  <div className="bg-indigo-950 text-white p-5 rounded-2xl border border-indigo-900 space-y-3 flex flex-col justify-between">
-                    <div className="space-y-2">
-                      <span className="bg-indigo-800 text-indigo-200 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md border border-indigo-700">
-                        AI Diagnostic Gap Analysis
-                      </span>
-                      <h5 className="font-bold text-base mt-2">Required Alignment Bridge</h5>
-                      <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                        {OUTCOMES.find(o => o.id === simSelectedId)?.gapAnalysis}
-                      </p>
-                    </div>
-                    <div className="text-[10px] text-indigo-300 font-semibold italic border-t border-indigo-900 pt-2.5">
-                      Calculated by reverse model with 94.8% confidence matrix.
-                    </div>
-                  </div>
-
-                  {/* Actionable points (2 cols) */}
-                  <div className="md:col-span-2 bg-white p-5 rounded-2xl border border-gray-100 shadow-xs space-y-4">
-                    <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md border border-emerald-100">
-                      Actionable Adjustments Blueprint
-                    </span>
-                    <h5 className="font-extrabold text-gray-900 text-sm">Adaptive Remedial Procedures</h5>
-                    
-                    <div className="space-y-3">
-                      {OUTCOMES.find(o => o.id === simSelectedId)?.actionPoints.map((ap, apIdx) => (
-                        <div key={apIdx} className="flex gap-3 items-start p-3 bg-slate-50/50 rounded-xl border border-gray-100 hover:border-indigo-100 transition-colors">
-                          <span className="w-5 h-5 bg-indigo-50 text-indigo-600 text-xs font-black rounded-full flex items-center justify-center shrink-0">
-                            {ap.step}
-                          </span>
-                          <div className="space-y-0.5">
-                            <p className="text-xs font-bold text-gray-900">{ap.title}</p>
-                            <p className="text-[11px] text-gray-500 font-medium leading-relaxed">{ap.desc}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Commit Target Button */}
-                    <div className="pt-2 flex justify-end">
-                      <button
-                        onClick={async () => {
-                          setSimIsCommitting(true);
-                          try {
-                            const outcome = OUTCOMES.find(o => o.id === simSelectedId)!;
-                            const baseline = getSimBaselineVal(simSelectedId);
-                            const newSimDoc = {
-                              id: 'sim_' + Date.now(),
-                              targetMetric: outcome.label,
-                              currentValue: baseline,
-                              targetValue: simTargetVal,
-                              confidenceTier: simTargetVal >= 95 ? 'B' : 'A',
-                              districtPrecedent: 'St. Xavier High School (2024)',
-                              requiredChanges: outcome.factors.map(f => ({
-                                factor: f.parameter,
-                                current: f.currentVal,
-                                required: f.targetValFn(simTargetVal),
-                                impact: f.stakeholder === 'Teaching Staff' ? 40 : f.stakeholder === 'Students' ? 25 : f.stakeholder === 'Parents' ? 20 : 15
-                              }))
-                            };
-                            const docRef = doc(collection(db, 'simulations'));
-                            await setDoc(docRef, newSimDoc);
-                            
-                            // Trigger alert simulation
-                            const newAlert = {
-                              id: Date.now(),
-                              time: 'Just now',
-                              text: `Committed new target: "${outcome.label}" set to ${simTargetVal}%. Baseline monitoring registered. Quiet Watch is active on supporting stakeholder metrics.`,
-                              severity: 'high'
-                            };
-                            setAlerts(prev => [newAlert, ...prev]);
-                            
-                            setSimCommitted(true);
-                          } catch (e) {
-                            console.error(e);
-                          } finally {
-                            setSimIsCommitting(false);
-                          }
-                        }}
-                        disabled={simIsCommitting || simCommitted}
-                        className={cn(
-                          "text-xs font-extrabold px-5 py-3 rounded-xl transition-all shadow-sm flex items-center gap-1.5",
-                          simCommitted 
-                            ? "bg-emerald-600 text-white" 
-                            : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md"
-                        )}
-                      >
-                        {simIsCommitting ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            Saving Target & Syncing ERP...
-                          </>
-                        ) : simCommitted ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" />
-                            Committed & Quiet Watch Active!
-                          </>
-                        ) : (
-                          <>
-                            <Sliders className="w-3.5 h-3.5" />
-                            Commit Target to Firebase & Monitor
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                  </div>
-
-                </div>
-
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <DeepDiveAssessment 
-          initialDimensions={ewisrDimensions}
-          initialAnswers={ewisrAnswers}
-        />
-      )}
-
-          {/* BACKGROUND MONITORING ACTIVATION PANEL */}
-          <div className="bg-emerald-950 text-emerald-50 p-6 rounded-2xl border border-emerald-900 flex flex-col md:flex-row gap-6 justify-between shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-5">
-              <HeartPulse className="w-48 h-48 text-emerald-100" />
-            </div>
-            
-            <div className="space-y-3 relative z-10 max-w-2xl">
-              <div className="flex items-center gap-2">
-                <span className="bg-emerald-800 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md border border-emerald-700 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                  Quiet Watch Active
-                </span>
-                <span className="text-xs font-bold text-emerald-300">Continuous Monitoring Enabled</span>
-              </div>
-              <h4 className="font-bold text-lg text-white">Disha Quiet Watch is Scanning</h4>
-              <p className="text-xs text-emerald-200 leading-relaxed font-medium">
-                Disha has gone quiet in the background. We passively check statutory expiration dates, crawl competitor review star trends, and evaluate public social activity. No weekly report spam—we only trigger an alert if a threshold is crossed.
-              </p>
-            </div>
-
-            {/* Alerts panel log */}
-            <div className="relative z-10 bg-slate-900/60 p-4 rounded-xl border border-emerald-900/40 w-full md:max-w-md space-y-3 text-xs">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                <span className="font-extrabold text-slate-200 uppercase tracking-wider text-[10px]">Quiet Alert Feed history</span>
-                <button 
-                  onClick={() => {
-                    // simulate trigger a fresh background log
-                    const newAlert = {
-                      id: Date.now(),
-                      time: 'Just now',
-                      text: 'Competitor benchmarking check completed. Ryan International posted secondary boarding achievements. Quiet Watch remains standard.',
-                      severity: 'healthy'
-                    };
-                    setAlerts(prev => [newAlert, ...prev]);
-                  }}
-                  className="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold px-2 py-1 rounded transition-colors"
-                >
-                  Force Live Scan
-                </button>
-              </div>
-
-              <div className="space-y-2.5 max-h-[140px] overflow-y-auto pr-1">
-                {alerts.map(a => {
-                  const labelColor = a.severity === 'high' ? 'text-rose-400 border-rose-900 bg-rose-950/20' : 
-                                     a.severity === 'medium' ? 'text-amber-400 border-amber-900 bg-amber-950/20' : 
-                                     a.severity === 'low' ? 'text-blue-400 border-blue-900 bg-blue-950/20' : 
-                                     'text-emerald-400 border-emerald-900 bg-emerald-950/20';
-                  return (
-                    <div key={a.id} className="p-2 border border-slate-800 rounded bg-slate-950/30 text-[11px] leading-relaxed font-medium">
-                      <div className="flex justify-between items-center mb-1 text-[10px] font-bold">
-                        <span className={cn("px-1.5 py-0.2 rounded border uppercase font-black text-[8px]", labelColor)}>
-                          {a.severity}
-                        </span>
-                        <span className="text-gray-500 font-semibold">{a.time}</span>
-                      </div>
-                      <p className="text-slate-300 font-medium leading-normal">{a.text}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-          </div>
-
         </div>
       )}
 

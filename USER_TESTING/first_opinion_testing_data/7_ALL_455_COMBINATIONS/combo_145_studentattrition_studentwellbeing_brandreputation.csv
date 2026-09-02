@@ -1,0 +1,12 @@
+# Challenge Combination: Student Attrition + Student Wellbeing Issues + Brand/Reputation Issues
+metric_field,value
+students_per_classroom,28
+parent_query_response_sla_hours,24
+annual_training_hours,20
+weekly_planning_hours,4
+midyear_dropout_rate_pct,6
+outflow_to_competitors_pct,4
+mental_health_incidents_per_1000,12
+safety_violations_count_year,5
+brand_perception_score_pct,62
+media_sentiment_pct,55

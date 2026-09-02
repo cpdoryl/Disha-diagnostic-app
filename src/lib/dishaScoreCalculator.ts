@@ -154,7 +154,32 @@ export class DISHAScoreCalculator {
   }
 
   /**
-   * Classify into Risk Quadrant
+   * Classify into Risk Quadrant.
+   *
+   * FIXED (2026-08-31): the color/badge (quadrant, riskLevel) used to be
+   * decided from S_sub and M_obj each independently crossing their own
+   * threshold (s_sub >= 60, m_obj >= 0.7), completely ignoring the
+   * healthIndex parameter this function already received. Since
+   * healthIndex = s_sub * m_obj (roughly), a school could clear BOTH
+   * individual thresholds while its product/healthIndex still landed well
+   * below the dashboard's own displayed legend for that color (e.g.
+   * s_sub=61.1, m_obj=0.71 -> both "high" -> badge said GREEN/"ELITE
+   * EQUILIBRIUM"/EXCELLENT, while healthIndex=43.5 falls in the legend's
+   * ORANGE 30-50 band and getHealthIndexInterpretation() simultaneously
+   * printed "POOR: Requires significant intervention" on the same report).
+   * The color/riskLevel badge is now driven directly by healthIndex, using
+   * the exact same 70/50/30 bands as getHealthIndexInterpretation() and the
+   * dashboard's own legend, so it can never again contradict the Health
+   * Index score shown right next to it.
+   *
+   * The quadrant NAME (Elite Equilibrium / Delusional Comfort / Hidden
+   * Excellence / Critical Collapse) still describes the separate
+   * perception-vs-reality "Character" question from the reference doc's
+   * gap-based quadrant (Gap = S_sub - M_obj, scaled to 0-100): a large
+   * positive gap means leadership perceives things as healthier than the
+   * objective data supports (Delusional Comfort / blind-spot risk); a large
+   * negative gap means the reverse (Hidden Excellence). This is independent
+   * of the health magnitude, so it's computed separately from the color.
    */
   static classifyRiskQuadrant(
     s_sub: number,
@@ -165,34 +190,41 @@ export class DISHAScoreCalculator {
     name: string;
     riskLevel: 'EXCELLENT' | 'AT_RISK' | 'CONCERNING' | 'CRITICAL';
   } {
-    const highS_sub = s_sub >= 60;
-    const highM_obj = m_obj >= 0.7;
-
-    if (highS_sub && highM_obj) {
-      return {
-        quadrant: 'GREEN',
-        name: 'ELITE EQUILIBRIUM',
-        riskLevel: 'EXCELLENT'
-      };
-    } else if (highS_sub && !highM_obj) {
-      return {
-        quadrant: 'ORANGE',
-        name: 'DELUSIONAL COMFORT',
-        riskLevel: 'AT_RISK'
-      };
-    } else if (!highS_sub && highM_obj) {
-      return {
-        quadrant: 'YELLOW',
-        name: 'HIDDEN EXCELLENCE',
-        riskLevel: 'CONCERNING'
-      };
+    // Magnitude: how healthy is the school overall (matches
+    // getHealthIndexInterpretation()'s bands and the dashboard's own legend).
+    let quadrant: 'GREEN' | 'ORANGE' | 'YELLOW' | 'RED';
+    let riskLevel: 'EXCELLENT' | 'AT_RISK' | 'CONCERNING' | 'CRITICAL';
+    if (healthIndex >= 70) {
+      quadrant = 'GREEN';
+      riskLevel = 'EXCELLENT';
+    } else if (healthIndex >= 50) {
+      quadrant = 'YELLOW';
+      riskLevel = 'CONCERNING';
+    } else if (healthIndex >= 30) {
+      quadrant = 'ORANGE';
+      riskLevel = 'AT_RISK';
     } else {
-      return {
-        quadrant: 'RED',
-        name: 'CRITICAL COLLAPSE',
-        riskLevel: 'CRITICAL'
-      };
+      quadrant = 'RED';
+      riskLevel = 'CRITICAL';
     }
+
+    // Character: does leadership's perception match the objective reality?
+    // Gap = S_sub - M_obj, both scaled to a comparable 0-100 range.
+    const gap = s_sub - m_obj * 100;
+    let name: string;
+    if (gap > 10) {
+      name = 'DELUSIONAL COMFORT'; // perceives better than reality shows - blind-spot risk
+    } else if (gap < -10) {
+      name = 'HIDDEN EXCELLENCE'; // reality is better than perceived - communication gap
+    } else if (riskLevel === 'EXCELLENT') {
+      name = 'ELITE EQUILIBRIUM'; // aligned, and genuinely healthy
+    } else if (riskLevel === 'CRITICAL') {
+      name = 'CRITICAL COLLAPSE'; // aligned, and genuinely critical
+    } else {
+      name = 'ALIGNED - MIXED HEALTH'; // aligned, but the health itself is only fair/concerning
+    }
+
+    return { quadrant, name, riskLevel };
   }
 
   /**
