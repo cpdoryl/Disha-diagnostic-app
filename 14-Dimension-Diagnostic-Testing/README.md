@@ -28,19 +28,18 @@ features/phases.
 Static code review (double-checked by an independent full-repo pass) surfaced two P0
 issues:
 
-1. **Every real stakeholder submission is rejected outright.** The public survey page is
-   intentionally unauthenticated, but the function that saves its answers writes to a
-   Firestore path whose deployed security rules require a signed-in user *and* a field the
-   write never includes. The result: `permission-denied`, and the respondent sees
-   "Access denied. The assessment link may have expired." — their answers are not saved
-   anywhere. Full detail in `02-Critical-Defects-Found.md`, Defect #1.
+1. **Every real stakeholder submission was rejected outright — ✅ now fixed.** The public
+   survey page is intentionally unauthenticated, but the function that saved its answers
+   wrote to a Firestore path whose deployed security rules require a signed-in user *and*
+   a field the write never included. Result: `permission-denied`, and the respondent saw
+   "Access denied. The assessment link may have expired." — answers were never saved
+   anywhere. Fixed this session by routing the save through the same Firestore path/shape
+   the admin dashboard and report engine already read from. Full detail (root cause +
+   fix) in `02-Critical-Defects-Found.md`, Defect #1. **Live end-to-end confirmation is
+   Step 4 of testing below** — expect success now, not the error screen.
 2. **The feature the sidebar links to isn't the one the "authoritative" framework doc
    describes.** A full reality-metric + perception-score + root-cause-follow-up
    implementation exists in the codebase and matches the reference doc exactly, but it's
    wired into no route — it can't be reached by clicking anything in the app. What you can
-   actually reach is a simpler flat 1–5 rating survey. Detail in Defect #2.
-
-I recommend we confirm Defect #1 live in Step 4 of testing (it should reproduce
-immediately), then fix it before further rounds — otherwise every later "does the admin
-dashboard update" check fails for the same root cause. Defect #2 is a product decision for
-you to weigh in on; I've flagged exactly what's built vs. reachable so you can decide.
+   actually reach is a simpler flat 1–5 rating survey. Detail in Defect #2 — flagged for a
+   later product decision, not changed this session.

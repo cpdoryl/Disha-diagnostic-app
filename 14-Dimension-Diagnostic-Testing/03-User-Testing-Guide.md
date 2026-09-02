@@ -3,14 +3,14 @@
 Do this in order. I (Claude) will validate the backend (Firestore + Cloud Functions) after
 each step you complete — see `04-Test-Execution-Checklist.md` for what I'll be checking.
 
-**Heads up before you start:** static code review found that Step 4 (submitting the
-survey) will very likely show an **"Access denied. The assessment link may have expired."**
-error, and — unlike a normal "please retry" error — your answers will **not** actually be
-saved anywhere; the Firestore write is rejected outright by the security rules. See
-`02-Critical-Defects-Found.md`, Defect #1, for the exact mechanism. That's expected, and
-confirming it live (rather than just trusting the static analysis) is the point of Step 4.
-Please go through Steps 1–5 anyway and tell me exactly what you see at each step
-(screenshots help).
+**Update:** static code review had found that Step 4 (submitting the survey) would fail
+with "Access denied. The assessment link may have expired." — a real Firestore
+`permission-denied` rejection, with your answers not saved anywhere. That bug (Defect #1)
+has now been **fixed** in this session: the survey now saves to the same Firestore
+location the admin dashboard and report engine already read from. Step 4 below should now
+show the green "Thank You!" confirmation, and Step 5 should show your response in the live
+counter. Please still report exactly what you see at each step — this is the live
+confirmation that the fix actually works, not just a code-review claim.
 
 Separately, `02-Critical-Defects-Found.md` Defect #2 found that the richer "reality metric
 + perception + root cause" survey style described in the framework reference doc lives in
@@ -51,11 +51,10 @@ no admin session):
 3. **Survey screen** — answer every question (1–5) for all 14 dimensions. You can pick any
    scores; note roughly what pattern you used (e.g. "all 4s", or "mixed").
 4. **Review screen** — confirm all dimensions show ✓, then click **"Submit Survey"**.
-5. Tell me exactly what screen appears next: the green "Thank You!" confirmation, or the
-   red "Oops!" error screen (expected message: "Access denied. The assessment link may
-   have expired."). Screenshot if possible, and check the browser console (F12) for a
-   `permission-denied` Firestore error, which would confirm the exact mechanism in
-   Defect #1.
+5. Tell me exactly what screen appears next — expected now: the green "Thank You!"
+   confirmation with a reference ID. If you instead see the red "Oops!" error screen,
+   screenshot it plus the browser console (F12) so we can see the exact error — that would
+   mean the fix needs another look.
 
 ### Step 5 — Check the admin dashboard updates (Admin)
 1. Go back to the admin tab, on the Deploy screen for this event.

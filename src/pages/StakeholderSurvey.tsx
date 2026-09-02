@@ -4,7 +4,6 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { isAssessmentEventOpen } from '../lib/assessmentEventService';
 import { ChevronLeft, ChevronRight, Send, Check, AlertCircle } from 'lucide-react';
-import { saveAssessmentResponse, getAssessmentStats } from '../lib/assessmentService';
 import { logAuditEvent } from '../lib/auditService';
 import { useAppStore } from '../store';
 
@@ -266,42 +265,40 @@ export function StakeholderSurvey() {
         throw new Error('No survey responses recorded');
       }
 
-      // Calculate dimension averages from nested response structure
-      const dimensionAverages: Record<string, number> = {};
-      Object.entries(responses).forEach(([dimensionId, questionResponses]) => {
-        const scores = Object.values(questionResponses as Record<string, number>);
-        if (scores.length > 0) {
-          const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-          dimensionAverages[dimensionId] = Math.round(average * 100) / 100; // Round to 2 decimals
-        }
-      });
-
       console.log('📋 Submitting assessment response:', {
         assessmentId: assessmentId.trim(),
         stakeholderType,
         respondentName: respondentInfo.name.trim(),
-        dimensionCount: Object.keys(dimensionAverages).length,
-        dimensionAverages: dimensionAverages
+        dimensionsAnswered: Object.keys(responses).length,
       });
 
-      // Use assessmentService to save response (integrates with Firestore & Cloud Functions)
-      const responseId = await saveAssessmentResponse(schoolId, assessmentId.trim(), {
-        respondentType: stakeholderType as StakeholderType,
-        respondentEmail: respondentInfo.email || 'no-email-provided',
+      // Write to the same assessments/{id}/responses collection (and field
+      // shape: stakeholderType + nested responses[dimensionId][questionId])
+      // that the admin's live ResponseTracker, the "Simulate" test-data
+      // button, and the diagnostic report engine (dimensionScoring.ts) all
+      // already read - see
+      // 14-Dimension-Diagnostic-Testing/02-Critical-Defects-Found.md
+      // (Defect #1) for why routing this through assessmentService.ts's
+      // schools/{schoolId}/assessments/{id} path never reached any of them,
+      // and was rejected by the deployed Firestore rules outright.
+      const responseRef = await addDoc(collection(db, 'assessments', assessmentId.trim(), 'responses'), {
+        assessmentId: assessmentId.trim(),
+        stakeholderType,
+        responses,
+        submittedAt: serverTimestamp(),
+        submittedTimestamp: new Date().toISOString(),
+        isSimulated: false,
         respondentName: respondentInfo.name.trim() || 'Anonymous',
         respondentId: getRespondentId(),
-        answers: dimensionAverages,
-        feedback: respondentInfo.department || '',
-        schoolId: schoolId
+        ...buildRespondentContactFields(),
       });
+      const responseId = responseRef.id;
 
       console.log('✓ Response saved to Firestore:', responseId);
 
-      // Get updated assessment stats
-      const stats = await getAssessmentStats(schoolId, assessmentId.trim());
-      console.log('✓ Updated assessment stats:', stats);
-
-      // Log audit event
+      // Log audit event (best-effort; anonymous respondents can't write
+      // audit logs under the current security rules, but logAuditEvent
+      // already swallows its own errors so this never blocks confirmation)
       await logAuditEvent(
         schoolId,
         'ASSESSMENT_RESPONSE_SUBMITTED',
@@ -345,6 +342,44 @@ export function StakeholderSurvey() {
     if (typeStr === 'parent') return respondentInfo.studentName || '';
     if (typeStr === 'admin') return respondentInfo.adminId || '';
     return respondentInfo.name || '';
+  };
+
+  // Map the role-specific respondent fields into the same field names
+  // lib/simulateResponses.ts uses, so admin-side displays/exports treat real
+  // and simulated responses identically.
+  const buildRespondentContactFields = (): Record<string, any> => {
+    const typeStr = stakeholderType as StakeholderType;
+    switch (typeStr) {
+      case 'teacher':
+        return {
+          respondentEmail: respondentInfo.email,
+          respondentPhone: respondentInfo.phone,
+          respondentSubject: respondentInfo.subject,
+          respondentClass: respondentInfo.class,
+          respondentTeacherId: respondentInfo.teacherId,
+        };
+      case 'parent':
+        return {
+          respondentEmail: respondentInfo.email,
+          respondentPhone: respondentInfo.phone,
+          respondentStudentName: respondentInfo.studentName,
+          respondentStudentClass: respondentInfo.class,
+          respondentStudentSection: respondentInfo.section,
+        };
+      case 'admin':
+        return {
+          respondentEmail: respondentInfo.email,
+          respondentPhone: respondentInfo.phone,
+          respondentDepartment: respondentInfo.department,
+          respondentAdminId: respondentInfo.adminId,
+        };
+      case 'student':
+      case 'other':
+      default:
+        return {
+          respondentDepartment: respondentInfo.department,
+        };
+    }
   };
 
   const getProgressPercentage = (): number => {

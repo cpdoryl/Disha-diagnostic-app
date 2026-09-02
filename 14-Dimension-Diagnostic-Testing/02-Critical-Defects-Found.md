@@ -6,7 +6,22 @@ testing. Each is reproducible from the code alone; live testing
 
 ---
 
-## Defect #1 — P0 / Blocker: Every real stakeholder submission is rejected and the answers are lost
+## Defect #1 — P0 / Blocker: Every real stakeholder submission is rejected and the answers are lost — ✅ FIXED
+
+**Fix applied** (`src/pages/StakeholderSurvey.tsx`, this session): `handleSubmitSurvey` no
+longer calls `assessmentService.ts`'s `saveAssessmentResponse`/`getAssessmentStats`
+(the nested, rules-blocked, unread `schools/{schoolId}/assessments/...` path). It now
+writes directly via `addDoc` to the top-level `assessments/{assessmentId}/responses`
+collection with the exact field shape (`stakeholderType`, nested
+`responses[dimensionId][questionId]`) that `ResponseTracker.tsx`'s live counter,
+`simulateResponses.ts`, and `dimensionScoring.ts`'s report engine already read — the same
+collection the deployed Firestore rules already leave open for anonymous respondents
+(confirmed by the in-file comment in `firestore-security-rules.txt`, §7 of the
+architecture doc). Verified: `tsc --noEmit` clean, `vite build` succeeds, all 360 existing
+tests still pass. Live end-to-end confirmation (submit → admin counter → report) is the
+first item in `04-Test-Execution-Checklist.md`.
+
+Original finding, kept for reference:
 
 **Root cause, in the order it actually happens:**
 
