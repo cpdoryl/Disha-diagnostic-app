@@ -5,6 +5,7 @@ Filled in live as we go through `03-User-Testing-Guide.md` together. Status lege
 
 | # | Step | Expected | Actual | Firestore check | Status |
 |---|---|---|---|---|---|
+| 0 | Demo login (`demo@disha.edu`) | `users/{uid}` doc upserted with email/isApproved/role | Confirmed: `email: "demo@disha.edu"`, `isApproved: true`, `role: "demo"`, plus `activeSchoolId` from an earlier session | `users/{uid}` in the named Firestore DB (`ai-studio-dishadiagnostice-...`), not `(default)` | ✅ |
 | 1 | Open 14D Assessment nav item | Loads Events screen | | — | ⏳ |
 | 2 | Create assessment event | Config saved, moves to Deploy screen | | `assessments/{id}` doc created with `status: 'active'`, correct `expectedRespondents` | ⏳ |
 | 3 | Copy survey link | Link format `/survey/{assessmentId}/teacher` | | — | ⏳ |
@@ -20,7 +21,7 @@ Filled in live as we go through `03-User-Testing-Guide.md` together. Status lege
 
 ## Notes / running log
 
-- _(add dated notes here as we test)_
+- 2026-09-02/03: Confirmed the app writes to a **named** Firestore database (`ai-studio-dishadiagnostice-63fe1b2b-7f23-4689-aa1a-cd41267d5918`), not `(default)` — check the database selector in the console before assuming data is missing. First check of the `users` collection appeared empty because of scrolling/eyeballing an opaque UID-keyed doc, not a real gap — confirmed present once looked up by UID via the Auth tab.
 
 ## Defects confirmed live vs. static-analysis-only
 
