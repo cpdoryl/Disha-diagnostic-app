@@ -283,6 +283,7 @@ export const ReverseSimulationEngine = () => {
                     {step.key === 'goal' && (
                       <GoalSettingWizard
                         simulationId={simulation.simulationId}
+                        schoolId={activeSchool.id}
                         onSuccess={handleGoalSuccess}
                         onError={(err) => setError('goal', err)}
                       />
@@ -291,6 +292,7 @@ export const ReverseSimulationEngine = () => {
                     {step.key === 'calculation' && simulation.calculationResult === undefined && (
                       <CalculationDashboard
                         simulationId={simulation.simulationId}
+                        schoolId={activeSchool.id}
                         dimensions={simulation.dimensions}
                         currentHealth={simulation.currentHealth}
                         targetHealth={simulation.targetHealth}
@@ -304,6 +306,7 @@ export const ReverseSimulationEngine = () => {
                     {step.key === 'feasibility' && (
                       <FeasibilityAssessment
                         simulationId={simulation.simulationId}
+                        schoolId={activeSchool.id}
                         currentDimensions={simulation.dimensions}
                         targetDimensions={simulation.calculationResult?.dimensionTargets || simulation.dimensions}
                         timelineMonths={simulation.timelineMonths}
@@ -316,6 +319,7 @@ export const ReverseSimulationEngine = () => {
                     {step.key === 'action' && (
                       <ActionMappingUI
                         simulationId={simulation.simulationId}
+                        schoolId={activeSchool.id}
                         currentDimensions={simulation.dimensions}
                         targetDimensions={simulation.calculationResult?.dimensionTargets || simulation.dimensions}
                         timelineMonths={simulation.timelineMonths}
@@ -327,6 +331,7 @@ export const ReverseSimulationEngine = () => {
                     {step.key === 'resources' && (
                       <ResourceAllocationView
                         simulationId={simulation.simulationId}
+                        schoolId={activeSchool.id}
                         totalBudget={simulation.budget}
                         dimensionGaps={Object.fromEntries(
                           Object.entries(simulation.dimensions).map(([k, v]) => [
@@ -345,6 +350,7 @@ export const ReverseSimulationEngine = () => {
                     {step.key === 'timeline' && (
                       <TimelineTracker
                         simulationId={simulation.simulationId}
+                        schoolId={activeSchool.id}
                         dimensionTargets={simulation.calculationResult?.dimensionTargets || simulation.dimensions}
                         timelineMonths={simulation.timelineMonths}
                         budget={simulation.budget}

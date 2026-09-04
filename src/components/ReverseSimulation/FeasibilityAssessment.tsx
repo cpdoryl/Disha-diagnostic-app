@@ -4,6 +4,7 @@ import { useReverseSimulation } from '../../hooks/useReverseSimulation';
 
 interface FeasibilityAssessmentProps {
   simulationId: string;
+  schoolId: string;
   currentDimensions: Record<string, number>;
   targetDimensions: Record<string, number>;
   timelineMonths: number;
@@ -44,6 +45,7 @@ const getBandIcon = (band: string) => {
 
 export const FeasibilityAssessment: React.FC<FeasibilityAssessmentProps> = ({
   simulationId,
+  schoolId,
   currentDimensions,
   targetDimensions,
   timelineMonths,
@@ -60,6 +62,7 @@ export const FeasibilityAssessment: React.FC<FeasibilityAssessmentProps> = ({
       setSubmitted(true);
       const response = await analyzeFeasibility({
         simulationId,
+        schoolId,
         currentDimensions,
         targetDimensions,
         timelineMonths,

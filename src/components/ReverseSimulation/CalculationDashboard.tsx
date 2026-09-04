@@ -4,6 +4,7 @@ import { useReverseSimulation } from '../../hooks/useReverseSimulation';
 
 interface CalculationDashboardProps {
   simulationId: string;
+  schoolId: string;
   dimensions: Record<string, number>;
   currentHealth: number;
   targetHealth: number;
@@ -15,6 +16,7 @@ interface CalculationDashboardProps {
 
 export const CalculationDashboard: React.FC<CalculationDashboardProps> = ({
   simulationId,
+  schoolId,
   dimensions,
   currentHealth,
   targetHealth,
@@ -31,6 +33,7 @@ export const CalculationDashboard: React.FC<CalculationDashboardProps> = ({
     try {
       const response = await performReverseCalculation({
         simulationId,
+        schoolId,
         dimensions,
         currentHealth,
         targetHealth,

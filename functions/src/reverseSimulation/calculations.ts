@@ -1,8 +1,9 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { getDb } from '../lib/db';
 import { CalculationEngine } from './calculationEngine';
 
-const db = admin.firestore();
+const db = getDb();
 const logger = functions.logger;
 const engine = new CalculationEngine();
 
@@ -149,6 +150,7 @@ export const performReverseCalculation = functions
       });
 
       // 6. Prepare calculation object for storage
+      const schoolId = data.schoolId || userId;
       const calculationData = {
         simulationId: data.simulationId,
         currentHealth: data.currentHealth,
@@ -171,7 +173,7 @@ export const performReverseCalculation = functions
       // 7. Save calculations to Firestore
       await db
         .collection('schools')
-        .doc(userId)
+        .doc(schoolId)
         .collection('reverseSimulations')
         .doc(data.simulationId)
         .collection('calculations')

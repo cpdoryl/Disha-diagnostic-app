@@ -4,6 +4,7 @@ import { useReverseSimulation } from '../../hooks/useReverseSimulation';
 
 interface ActionMappingUIProps {
   simulationId: string;
+  schoolId: string;
   currentDimensions: Record<string, number>;
   targetDimensions: Record<string, number>;
   timelineMonths: number;
@@ -13,6 +14,7 @@ interface ActionMappingUIProps {
 
 export const ActionMappingUI: React.FC<ActionMappingUIProps> = ({
   simulationId,
+  schoolId,
   currentDimensions,
   targetDimensions,
   timelineMonths,
@@ -26,6 +28,7 @@ export const ActionMappingUI: React.FC<ActionMappingUIProps> = ({
     try {
       const response = await generateActionPlan({
         simulationId,
+        schoolId,
         currentDimensions,
         targetDimensions,
         timelineMonths,

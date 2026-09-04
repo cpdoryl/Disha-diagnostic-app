@@ -4,6 +4,7 @@ import { useReverseSimulation } from '../../hooks/useReverseSimulation';
 
 interface TimelineTrackerProps {
   simulationId: string;
+  schoolId: string;
   dimensionTargets: Record<string, number>;
   timelineMonths: number;
   budget: number;
@@ -14,6 +15,7 @@ interface TimelineTrackerProps {
 
 export const TimelineTracker: React.FC<TimelineTrackerProps> = ({
   simulationId,
+  schoolId,
   dimensionTargets,
   timelineMonths,
   budget,
@@ -28,6 +30,7 @@ export const TimelineTracker: React.FC<TimelineTrackerProps> = ({
     try {
       const response = await generateTimeline({
         simulationId,
+        schoolId,
         dimensionTargets,
         timelineMonths,
         budget,

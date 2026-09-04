@@ -1,8 +1,9 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { getDb } from '../lib/db';
 import { CalculationEngine } from './calculationEngine';
 
-const db = admin.firestore();
+const db = getDb();
 const logger = functions.logger;
 const engine = new CalculationEngine();
 
@@ -160,6 +161,7 @@ export const allocateResources = functions
       });
 
       // 9. Prepare allocation object for storage
+      const schoolId = data.schoolId || userId;
       const allocationData = {
         simulationId: data.simulationId,
         totalBudget: data.totalBudget,
@@ -201,7 +203,7 @@ export const allocateResources = functions
       // 10. Save allocation to Firestore
       await db
         .collection('schools')
-        .doc(userId)
+        .doc(schoolId)
         .collection('reverseSimulations')
         .doc(data.simulationId)
         .collection('resourceAllocation')

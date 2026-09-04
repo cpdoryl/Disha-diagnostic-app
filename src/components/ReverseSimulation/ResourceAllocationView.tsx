@@ -4,6 +4,7 @@ import { useReverseSimulation } from '../../hooks/useReverseSimulation';
 
 interface ResourceAllocationViewProps {
   simulationId: string;
+  schoolId: string;
   totalBudget: number;
   dimensionGaps: Record<string, number>;
   feasibilityScores: Record<string, number>;
@@ -13,6 +14,7 @@ interface ResourceAllocationViewProps {
 
 export const ResourceAllocationView: React.FC<ResourceAllocationViewProps> = ({
   simulationId,
+  schoolId,
   totalBudget,
   dimensionGaps,
   feasibilityScores,
@@ -26,6 +28,7 @@ export const ResourceAllocationView: React.FC<ResourceAllocationViewProps> = ({
     try {
       const response = await allocateResources({
         simulationId,
+        schoolId,
         totalBudget,
         dimensionGaps,
         feasibilityScores,

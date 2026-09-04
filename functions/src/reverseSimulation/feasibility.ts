@@ -1,8 +1,9 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { getDb } from '../lib/db';
 import { CalculationEngine } from './calculationEngine';
 
-const db = admin.firestore();
+const db = getDb();
 const logger = functions.logger;
 const engine = new CalculationEngine();
 
@@ -176,6 +177,7 @@ export const analyzeFeasibility = functions
       };
 
       // 8. Prepare feasibility object for storage
+      const schoolId = data.schoolId || userId;
       const feasibilityData = {
         simulationId: data.simulationId,
         timelineMonths: data.timelineMonths,
@@ -198,7 +200,7 @@ export const analyzeFeasibility = functions
       // 9. Save feasibility analysis to Firestore
       await db
         .collection('schools')
-        .doc(userId)
+        .doc(schoolId)
         .collection('reverseSimulations')
         .doc(data.simulationId)
         .collection('feasibilityAnalysis')
