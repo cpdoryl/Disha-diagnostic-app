@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FOURTEEN_DIMENSIONS, getDimensionByIndex, getTotalDimensions, getTotalQuestions } from '../data/14DimensionsQuestions';
+import { getDimensionsForRespondent, getQuestionsForRespondent, Question } from '../data/14DimensionsQuestions';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { isAssessmentEventOpen } from '../lib/assessmentEventService';
@@ -33,6 +33,12 @@ interface SurveyResponse {
   };
 }
 
+interface RootCauseResponse {
+  [dimensionId: string]: {
+    [questionId: string]: string; // open-ended root-cause / expectation follow-up
+  };
+}
+
 export function StakeholderSurvey() {
   const { activeSchool } = useAppStore();
   const schoolId = activeSchool?.id || 'default-school';
@@ -47,6 +53,7 @@ export function StakeholderSurvey() {
   const [currentDimensionIndex, setCurrentDimensionIndex] = useState(0);
   const [respondentInfo, setRespondentInfo] = useState<RespondentInfo>({ name: '', department: '' });
   const [responses, setResponses] = useState<SurveyResponse>({});
+  const [rootCauses, setRootCauses] = useState<RootCauseResponse>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [submissionId, setSubmissionId] = useState('');
@@ -73,8 +80,22 @@ export function StakeholderSurvey() {
       });
   }, [assessmentId, stakeholderType]);
 
-  const totalDimensions = getTotalDimensions();
-  const currentDimension = getDimensionByIndex(currentDimensionIndex);
+  // Each question in the framework targets exactly one stakeholder type - a
+  // student is never asked about the reserve fund, a parent is never asked
+  // about lesson-plan tagging. So a respondent's survey only steps through
+  // the dimensions that have at least one question for them, in framework
+  // order, and only shows that dimension's applicable questions.
+  const respondentType = stakeholderType as StakeholderType;
+  const respondentDimensions = getDimensionsForRespondent(respondentType);
+  const totalDimensions = respondentDimensions.length;
+  const currentDimension = respondentDimensions[currentDimensionIndex];
+  const currentDimensionQuestions: Question[] = currentDimension
+    ? getQuestionsForRespondent(currentDimension, respondentType)
+    : [];
+  const totalQuestionsForRespondent = respondentDimensions.reduce(
+    (sum, dim) => sum + getQuestionsForRespondent(dim, respondentType).length,
+    0
+  );
 
   const handleStartSurvey = () => {
     setCurrentStep('info');
@@ -189,15 +210,17 @@ export function StakeholderSurvey() {
     setCurrentStep('survey');
     setErrorMessage('');
 
-    // Initialize responses structure
+    // Initialize responses structure - only for the dimensions/questions
+    // this respondent type actually answers
     const initialResponses: SurveyResponse = {};
-    FOURTEEN_DIMENSIONS.forEach(dim => {
+    respondentDimensions.forEach(dim => {
       initialResponses[dim.id] = {};
-      dim.questions.forEach(q => {
+      getQuestionsForRespondent(dim, respondentType).forEach(q => {
         initialResponses[dim.id][q.id] = 0;
       });
     });
     setResponses(initialResponses);
+    setRootCauses({});
   };
 
   const handleQuestionChange = (questionId: string, score: number) => {
@@ -211,10 +234,21 @@ export function StakeholderSurvey() {
     }));
   };
 
+  const handleRootCauseChange = (questionId: string, text: string) => {
+    if (!currentDimension) return;
+    setRootCauses(prev => ({
+      ...prev,
+      [currentDimension.id]: {
+        ...prev[currentDimension.id],
+        [questionId]: text
+      }
+    }));
+  };
+
   const isCurrentDimensionComplete = (): boolean => {
     if (!currentDimension) return false;
     const dimensionResponses = responses[currentDimension.id] || {};
-    return currentDimension.questions.every(q => dimensionResponses[q.id] > 0);
+    return currentDimensionQuestions.every(q => dimensionResponses[q.id] > 0);
   };
 
   const handleNext = () => {
@@ -285,6 +319,7 @@ export function StakeholderSurvey() {
         assessmentId: assessmentId.trim(),
         stakeholderType,
         responses,
+        rootCauses,
         submittedAt: serverTimestamp(),
         submittedTimestamp: new Date().toISOString(),
         isSimulated: false,
@@ -394,7 +429,7 @@ export function StakeholderSurvey() {
     Object.values(responses).forEach(dimResponses => {
       answered += Object.values(dimResponses).filter(score => score > 0).length;
     });
-    return getTotalQuestions() - answered;
+    return totalQuestionsForRespondent - answered;
   };
 
   // ============ WELCOME PAGE ============
@@ -428,8 +463,8 @@ export function StakeholderSurvey() {
             <div className="flex items-start gap-3">
               <Check className="w-6 h-6 text-green-600 mt-1 flex-shrink-0" />
               <div>
-                <h3 className="font-semibold text-gray-900">~60 Questions</h3>
-                <p className="text-sm text-gray-600">Easy-to-answer questions rated on a simple 1-5 scale</p>
+                <h3 className="font-semibold text-gray-900">{totalQuestionsForRespondent} Questions For You</h3>
+                <p className="text-sm text-gray-600">Rated on a simple 1-5 scale, with an optional follow-up on each</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -643,39 +678,60 @@ export function StakeholderSurvey() {
 
             {/* Questions */}
             <div className="space-y-8">
-              {currentDimension.questions.map((question, idx) => (
-                <div key={question.id} className="border-b pb-8 last:border-b-0 last:pb-0">
-                  <div className="mb-4">
-                    <p className="font-semibold text-gray-900 mb-2">
-                      {idx + 1}. {question.text}
-                    </p>
-                    {question.hint && (
-                      <p className="text-sm text-gray-500 italic">{question.hint}</p>
+              {currentDimensionQuestions.map((question, idx) => {
+                const score = dimensionResponses[question.id];
+                const dimensionRootCauses = rootCauses[currentDimension.id] || {};
+
+                return (
+                  <div key={question.id} className="border-b pb-8 last:border-b-0 last:pb-0">
+                    <div className="mb-4">
+                      <p className="font-semibold text-gray-900 mb-2">
+                        {idx + 1}. {question.text}
+                      </p>
+                      {question.hint && (
+                        <p className="text-sm text-gray-500 italic">{question.hint}</p>
+                      )}
+                    </div>
+
+                    {/* Rating Scale */}
+                    <div className="flex items-center gap-2 sm:gap-4">
+                      <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">Strongly Disagree</span>
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <button
+                            key={s}
+                            onClick={() => handleQuestionChange(question.id, s)}
+                            className={`w-10 h-10 rounded-lg font-bold transition-all ${
+                              score === s
+                                ? 'bg-blue-600 text-white scale-110'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                      <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">Strongly Agree</span>
+                    </div>
+
+                    {/* Root-cause / expectation follow-up - shown once a rating is given */}
+                    {score > 0 && (
+                      <div className="mt-4">
+                        <label className="block text-sm text-gray-600 mb-1.5">
+                          {question.followUp} <span className="text-gray-400">(optional)</span>
+                        </label>
+                        <textarea
+                          value={dimensionRootCauses[question.id] || ''}
+                          onChange={(e) => handleRootCauseChange(question.id, e.target.value)}
+                          rows={2}
+                          placeholder="Your thoughts help us understand the specific fix, not just the score..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
                     )}
                   </div>
-
-                  {/* Rating Scale */}
-                  <div className="flex items-center gap-2 sm:gap-4">
-                    <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">Strongly Disagree</span>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map(score => (
-                        <button
-                          key={score}
-                          onClick={() => handleQuestionChange(question.id, score)}
-                          className={`w-10 h-10 rounded-lg font-bold transition-all ${
-                            dimensionResponses[question.id] === score
-                              ? 'bg-blue-600 text-white scale-110'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          {score}
-                        </button>
-                      ))}
-                    </div>
-                    <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">Strongly Agree</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {errorMessage && (
@@ -744,18 +800,19 @@ export function StakeholderSurvey() {
 
           {/* Summary */}
           <div className="space-y-4 mb-8 max-h-96 overflow-y-auto">
-            {FOURTEEN_DIMENSIONS.map((dim, idx) => {
+            {respondentDimensions.map((dim) => {
+              const dimQuestions = getQuestionsForRespondent(dim, respondentType);
               const dimResponses = responses[dim.id] || {};
-              const answers = dim.questions.filter(q => dimResponses[q.id] > 0).length;
+              const answers = dimQuestions.filter(q => dimResponses[q.id] > 0).length;
 
               return (
                 <div key={dim.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div>
                     <p className="font-semibold text-gray-900">{dim.name}</p>
-                    <p className="text-sm text-gray-600">{answers}/{dim.questions.length} questions answered</p>
+                    <p className="text-sm text-gray-600">{answers}/{dimQuestions.length} questions answered</p>
                   </div>
-                  <div className={`text-lg font-bold ${answers === dim.questions.length ? 'text-green-600' : 'text-gray-400'}`}>
-                    {answers === dim.questions.length ? '✓' : '○'}
+                  <div className={`text-lg font-bold ${answers === dimQuestions.length ? 'text-green-600' : 'text-gray-400'}`}>
+                    {answers === dimQuestions.length ? '✓' : '○'}
                   </div>
                 </div>
               );

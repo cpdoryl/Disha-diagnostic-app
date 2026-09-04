@@ -21,20 +21,20 @@ export const SUBJECTIVE_BENCHMARK_DATASET_META: BenchmarkDatasetMeta = {
 };
 
 export const SUBJECTIVE_INDEX_BENCHMARKS: Record<string, number> = {
-  leadership: 75,
-  academic: 80,
-  infrastructure: 75,
+  academic_performance: 80,
+  curriculum_pedagogy: 75,
+  teacher_quality: 78,
   student_wellbeing: 80,
-  staff_development: 75,
-  community: 70,
-  innovation: 65,
-  finance: 75,
-  quality: 80,
-  inclusivity: 70,
-  curriculum: 78,
-  satisfaction: 75,
-  performance: 72,
-  culture: 75,
+  student_discipline: 75,
+  infrastructure_facilities: 75,
+  safety_security: 85,
+  parent_engagement: 78,
+  student_engagement: 75,
+  leadership_governance: 75,
+  financial_health: 70,
+  admissions_market: 70,
+  technology_digital: 72,
+  cocurricular_holistic: 72,
 };
 
 interface DimensionLens {
@@ -44,75 +44,75 @@ interface DimensionLens {
 }
 
 const DIMENSION_LENS: Record<string, DimensionLens> = {
-  leadership: {
-    strength: 'governance and decision-making are seen as clear, transparent, and accountable',
-    risk: 'governance and decision-making are seen as inconsistent rather than a clear source of institutional direction',
-    lever: 'strengthening transparent, data-driven decision cycles and visible accountability tracking',
+  academic_performance: {
+    strength: 'students are seen as genuinely learning and progressing against grade-level benchmarks',
+    risk: 'academic results and learning depth are not seen as living up to the school\'s promise',
+    lever: 'tightening formative assessment cycles, diagnostic testing, and targeted remedial support',
   },
-  academic: {
-    strength: 'teaching quality and learning outcomes are seen as a genuine strength',
-    risk: 'teaching quality and learning outcomes are not seen as living up to the school\'s academic promise',
-    lever: 'tightening curriculum delivery, assessment feedback loops, and targeted academic support',
+  curriculum_pedagogy: {
+    strength: 'teaching methods are seen as effective, engaging, and well-paced',
+    risk: 'lessons are seen as lecture-heavy and not effectively engaging students',
+    lever: 'expanding activity-based/project-based teaching and structured lesson observation',
   },
-  infrastructure: {
-    strength: 'facilities and learning resources are seen as well-maintained and adequate',
-    risk: 'facilities and learning resources are seen as a visible gap in the day-to-day learning experience',
-    lever: 'prioritizing facility upgrades and resource availability in the next budget cycle',
+  teacher_quality: {
+    strength: 'teachers are seen as well-qualified, stable, and genuinely improving their craft',
+    risk: 'teacher retention, qualification, and continuity are seen as a weak spot',
+    lever: 'investing in retention (mentorship, compensation benchmarking) and structured CPD',
   },
   student_wellbeing: {
     strength: 'students are seen as safe, supported, and cared for holistically',
-    risk: 'student safety, counseling, and holistic support are seen as under-resourced',
-    lever: 'expanding counseling capacity and formalizing safety/wellbeing protocols',
+    risk: 'student mental health and counselling support are seen as under-resourced',
+    lever: 'expanding counselling capacity and formalizing SEL/wellbeing protocols',
   },
-  staff_development: {
-    strength: 'teachers are seen as well-supported, trained, and engaged',
-    risk: 'teacher development and morale are seen as neglected',
-    lever: 'investing in structured professional development and transparent performance support',
+  student_discipline: {
+    strength: 'discipline is seen as fair, consistent, and restorative rather than purely punitive',
+    risk: 'discipline enforcement is seen as inconsistent or unfairly applied',
+    lever: 'centralizing incident logging and running a consistency-of-enforcement audit',
   },
-  community: {
-    strength: 'parents and the community are seen as genuinely engaged partners',
-    risk: 'parent and community engagement is seen as thin or one-directional',
-    lever: 'building regular, two-way communication channels and community touchpoints',
+  infrastructure_facilities: {
+    strength: 'facilities and learning resources are seen as well-maintained and adequate',
+    risk: 'facilities and learning resources are seen as a visible gap in the day-to-day learning experience',
+    lever: 'prioritizing facility upgrades and maintenance response time in the next budget cycle',
   },
-  innovation: {
-    strength: 'technology and innovative practice are seen as embedded in daily learning',
-    risk: 'technology adoption and innovation are seen as lagging',
-    lever: 'accelerating classroom technology integration and piloting new teaching methods',
+  safety_security: {
+    strength: 'campus and transport safety are seen as trustworthy and well-prepared',
+    risk: 'campus security, drills, or transport safety are seen as a real concern',
+    lever: 'closing CCTV coverage, drill compliance, and background-verification gaps immediately',
   },
-  finance: {
-    strength: 'financial management is seen as transparent and well-governed',
-    risk: 'financial transparency and planning are seen as unclear to stakeholders',
-    lever: 'improving budget transparency and communicating financial planning to stakeholders',
+  parent_engagement: {
+    strength: 'parents are seen as genuinely engaged and satisfied partners',
+    risk: 'parent communication and grievance handling are seen as thin or slow',
+    lever: 'tightening the grievance-resolution SLA and building two-way communication channels',
   },
-  quality: {
-    strength: 'quality assurance and compliance are seen as rigorous and well-tracked',
-    risk: 'quality assurance and regulatory compliance are seen as inconsistent',
-    lever: 'formalizing internal audit cycles and closing compliance gaps proactively',
+  student_engagement: {
+    strength: 'students are seen as genuinely engaged and glad to be at school',
+    risk: 'student sense of belonging and extracurricular access are seen as limited',
+    lever: 'broadening extracurricular breadth and giving the student council real influence',
   },
-  inclusivity: {
-    strength: 'the school is seen as genuinely inclusive across backgrounds and needs',
-    risk: 'inclusivity and support for diverse learners are seen as insufficient',
-    lever: 'expanding targeted support programs and inclusion practices',
+  leadership_governance: {
+    strength: 'school leadership and governance are seen as transparent, stable, and effective',
+    risk: 'governance and decision-making are seen as inconsistent or opaque',
+    lever: 'formalizing SMC minute-keeping, policy review cycles, and decision-tracking',
   },
-  curriculum: {
-    strength: 'the curriculum is seen as well-rounded and outcome-focused',
-    risk: 'the curriculum is seen as narrow or misaligned with stated learning outcomes',
-    lever: 'broadening experiential/interdisciplinary learning and tightening outcome tracking',
+  financial_health: {
+    strength: 'the school\'s financial management is seen as transparent and sustainable',
+    risk: 'financial transparency and sustainability are seen as unclear to stakeholders',
+    lever: 'improving fee-process transparency and communicating financial planning to stakeholders',
   },
-  satisfaction: {
-    strength: 'stakeholders are seen as genuinely satisfied and proud of the school',
-    risk: 'stakeholder satisfaction and reputation are seen as fragile',
-    lever: 'closing the loop on feedback and visibly acting on stakeholder concerns',
+  admissions_market: {
+    strength: 'the school is seen as growing, well-regarded, and a school families actively refer',
+    risk: 'admissions momentum and brand reputation are seen as flat or declining',
+    lever: 'tightening the admissions funnel and investing in alumni/referral engagement',
   },
-  performance: {
-    strength: 'performance management and accountability are seen as fair and consistent',
-    risk: 'performance evaluation and accountability are seen as unclear or inconsistently applied',
-    lever: 'standardizing appraisal cycles and making recognition/accountability more visible',
+  technology_digital: {
+    strength: 'technology is seen as genuinely useful and reliably available for teaching and learning',
+    risk: 'technology access or reliability is seen as a recurring frustration',
+    lever: 'closing device-access gaps and speeding up IT-helpdesk resolution time',
   },
-  culture: {
-    strength: 'organizational culture is seen as strong, collaborative, and values-driven',
-    risk: 'organizational culture is seen as weak or misaligned with stated values',
-    lever: 'reinforcing shared values through visible leadership modeling and team practices',
+  cocurricular_holistic: {
+    strength: 'co-curricular and holistic development opportunities are seen as genuine and accessible',
+    risk: 'co-curricular opportunities are seen as an afterthought next to academics',
+    lever: 'broadening co-curricular participation and better communicating achievements to parents',
   },
 };
 

@@ -8,29 +8,21 @@
 import { OBJECTIVE_METRICS_SCHEMA } from '../data/objectiveMetricsSchema';
 
 // Extra common real-world aliases for metrics that are likely to appear
-// under a different name in a school's own spreadsheets. Metrics not
-// listed here still get a default match on their own label text.
+// under a different name in a school's own spreadsheets, keyed by metric id
+// (e.g. '1a'). Metrics not listed here still get a default match on their
+// own label text via defaultVariations() below - this table is empty
+// pending repopulation for the v2 framework's metric ids (previously keyed
+// to the old ad hoc metric ids like 'board_exam_pass_rate', which no
+// metric uses anymore since the objective schema was rebuilt to match the
+// School Diagnostic Framework v2 reality metrics).
 const METRIC_HEADER_VARIATIONS: Record<string, string[]> = {
-  board_exam_pass_rate: ['board pass rate', 'board pass %', 'pass rate', 'pass percentage'],
-  average_result_percentage: ['average result', 'avg result', 'average marks', 'avg score'],
-  student_classroom_ratio: ['students per classroom', 'student classroom ratio', 'str'],
-  computer_student_ratio: ['students per computer', 'computer ratio'],
-  student_attendance_rate: ['attendance rate', 'attendance %', 'student attendance'],
-  counselor_student_ratio: ['students per counselor', 'counselor ratio'],
-  dropout_rate: ['dropout rate', 'dropout %'],
-  teacher_attrition_rate: ['teacher attrition', 'staff attrition', 'teacher turnover'],
-  certified_teachers_percentage: ['certified teachers', 'certified %', 'qualified teachers %'],
-  fee_collection_rate: ['fee collection', 'fee collection rate', 'fee payment rate'],
-  smart_classroom_coverage: ['smart classrooms', 'digital classrooms', 'smart classroom %'],
-  regulatory_compliance_score: ['compliance score', 'regulatory compliance'],
-  parent_participation_rate: ['parent participation', 'ptm attendance'],
-  pta_meeting_frequency: ['pta meetings', 'pta meeting frequency'],
-  curriculum_coverage_rate: ['curriculum coverage', 'syllabus coverage'],
-  student_retention_rate: ['retention rate', 're-enrollment rate', 'reenrollment rate'],
-  parent_satisfaction_score: ['parent satisfaction', 'parent nps'],
-  staff_appraisal_completion_rate: ['appraisal completion', 'performance review completion'],
-  employee_engagement_score: ['staff engagement', 'employee engagement'],
-  disadvantaged_student_enrollment_pct: ['disadvantaged enrollment', 'ews enrollment', 'scholarship students %'],
+  '1a': ['board pass rate', 'board pass %', 'pass rate', 'pass percentage'],
+  '3a': ['teacher attrition', 'staff attrition', 'teacher turnover'],
+  '8a': ['ptm attendance', 'ptm attendance rate'],
+  '8f': ['re-enrollment rate', 'reenrollment rate', 'retention rate'],
+  '9b': ['attendance rate', 'attendance %', 'student attendance'],
+  '11a': ['fee collection', 'fee collection rate', 'fee payment rate'],
+  '10e': ['compliance score', 'compliance closure rate'],
 };
 
 function defaultVariations(metricId: string, label: string): string[] {

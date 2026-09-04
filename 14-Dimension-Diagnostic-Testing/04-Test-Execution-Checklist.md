@@ -19,6 +19,16 @@ Filled in live as we go through `03-User-Testing-Guide.md` together. Status lege
 | 8c | Invalid email/phone | Blocked with validation message | | — | ⏳ |
 | 8d | Bogus assessmentId in URL | Error page, no crash | | — | ⏳ |
 
+### New framework rebuild (v2 reference doc) — pending live confirmation
+
+| # | Step | Expected | Actual | Status |
+|---|---|---|---|---|
+| 9a | Open survey link as Student | Welcome screen says a specific question count (not "~60") that is smaller than Teacher's/Parent's count, since each dimension only shows the questions tagged to Student | | ⏳ |
+| 9b | Student survey skips fully-non-Student dimensions | e.g. "Parent Satisfaction & Engagement" and "Financial Health & Sustainability" never appear as a step for a Student respondent | | ⏳ |
+| 9c | Root-cause follow-up appears | Selecting a 1-5 rating reveals an optional open-text box with the framework's specific follow-up question (not a generic one) | | ⏳ |
+| 9d | Submitted response includes rootCauses | Firestore doc at `assessments/{id}/responses/{id}` has a `rootCauses` field alongside `responses`, with any text you typed | | ⏳ |
+| 9e | Operational Data panel shows new metrics | Admin's "Operational Data" capture for e.g. "Academic Performance & Learning Outcomes" now asks for the 6 reality metrics from the reference doc (board exam pass %, formative average, etc.), not the old 5 generic ones | | ⏳ |
+
 ## Notes / running log
 
 - 2026-09-02/03: Confirmed the app writes to a **named** Firestore database (`ai-studio-dishadiagnostice-63fe1b2b-7f23-4689-aa1a-cd41267d5918`), not `(default)` — check the database selector in the console before assuming data is missing. First check of the `users` collection appeared empty because of scrolling/eyeballing an opaque UID-keyed doc, not a real gap — confirmed present once looked up by UID via the Auth tab.
@@ -28,5 +38,5 @@ Filled in live as we go through `03-User-Testing-Guide.md` together. Status lege
 | Defect | Static analysis said | Confirmed live? |
 |---|---|---|
 | #1 — Real submissions rejected (`permission-denied`) | Firestore rules require auth + an `assessmentId` field the write never sends; response is never saved | ✅ Fixed this session (code + build + tests verified); live confirmation pending Step 4 |
-| #2 — Shipped feature ≠ authoritative spec | `Assessment14D/*` reality+perception+root-cause wizard is unreachable from any route; live flow is a simpler flat-Likert survey | ⏳ (confirm by trying to navigate to it / grepping for a link — expect none) |
+| #2 — Shipped feature ≠ authoritative spec | `Assessment14D/*` reality+perception+root-cause wizard is unreachable from any route; live flow is a simpler flat-Likert survey | ✅ Fixed this session (rebuilt the live `StakeholderSurvey.tsx` flow itself to match the reference doc's 14 dimensions/reality metrics/perception+root-cause questions, rather than wiring in the orphaned wizard); live confirmation pending |
 | #3 — Dead/broken Cloud Function report | `generate14DReport` output never shown, and would be all-zero anyway (`D01`..`D14` key mismatch) | ⏳ |

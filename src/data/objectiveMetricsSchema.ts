@@ -6,9 +6,20 @@
  * `14DimensionsQuestions.ts`), so a dimension can be scored from actual
  * school data independently of the subjective stakeholder surveys.
  *
- * Benchmark values here are illustrative sector-reasonable defaults, not
- * sourced from an external national dataset - they're meant to be tuned
- * later, not treated as authoritative targets.
+ * Every metric `id` here equals the reality-metric id in
+ * `14DimensionsQuestions.ts` (e.g. '1a') and the id of its 1:1-linked
+ * perception question - the framework's whole design is metric-linked, so
+ * the three stay traceable to each other through one shared id.
+ *
+ * PROVISIONAL BENCHMARKS: the source document (School Diagnostic Framework
+ * v2) specifies an exact formula, raw data source, and fallback for every
+ * metric, but deliberately gives no numeric benchmark/target - that was a
+ * scope decision made when wiring this schema up, not an oversight. Every
+ * `benchmark` value below is a reasonable illustrative default (informed by
+ * common CBSE/Indian-school norms where applicable), not a validated target
+ * from the source document or an external dataset. Treat these as a
+ * starting point to be reviewed and tuned by an actual school/board data
+ * owner, not as authoritative.
  */
 import { BenchmarkDatasetMeta } from './benchmarkMeta';
 
@@ -63,143 +74,147 @@ export interface DimensionObjectiveMetricSchema {
 
 export const OBJECTIVE_METRICS_SCHEMA: DimensionObjectiveMetricSchema[] = [
   {
-    dimensionId: 'leadership',
+    dimensionId: 'academic_performance',
     metrics: [
-      { id: 'principal_tenure_years', label: 'Principal/Head Tenure', dataType: 'years', unit: 'yrs', required: true, benchmark: 5, direction: 'higher_better', min: 0, max: 40, description: 'Years the current head has led the school' },
-      { id: 'board_meeting_frequency', label: 'Governing Board Meeting Frequency', dataType: 'count', unit: '/yr', required: true, benchmark: 4, direction: 'higher_better', min: 0, max: 24 },
-      { id: 'policy_documentation_score', label: 'Policy Documentation Completeness', dataType: 'score0to100', unit: '/100', required: true, benchmark: 90, direction: 'higher_better', min: 0, max: 100, description: 'Coverage of written, approved school policies' },
-      { id: 'decision_implementation_rate', label: 'Strategic Decision Implementation Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 75, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'leadership_audit_compliance', label: 'Leadership/Governance Audit Compliance', dataType: 'percentage', unit: '%', required: false, benchmark: 90, direction: 'higher_better', min: 0, max: 100 },
+      { id: '1a', label: 'Board Exam Pass Rate (by subject/section)', dataType: 'percentage', unit: '%', required: true, benchmark: 85, direction: 'higher_better', min: 0, max: 100, description: 'Pass % = (Students passed ÷ Students appeared) × 100' },
+      { id: '1b', label: 'Internal Formative Assessment Average', dataType: 'score0to100', unit: '/100', required: true, benchmark: 70, direction: 'higher_better', min: 0, max: 100, description: "Sum of students' formative scores ÷ number assessed" },
+      { id: '1c', label: '% Students Below Grade-Level Benchmark', dataType: 'percentage', unit: '%', required: true, benchmark: 15, direction: 'lower_better', min: 0, max: 100, description: 'Students below diagnostic cutoff ÷ total tested × 100' },
+      { id: '1d', label: 'Year-on-Year Value-Added Growth per Student', dataType: 'count', unit: 'pts/yr', required: false, benchmark: 5, direction: 'higher_better', min: -30, max: 60, description: 'Current-year score − previous-year score, averaged' },
+      { id: '1e', label: 'Subject/Topic Item Analysis — Avg % Incorrect (weakest topics)', dataType: 'percentage', unit: '%', required: false, benchmark: 30, direction: 'lower_better', min: 0, max: 100 },
+      { id: '1f', label: 'Homework/Assignment Completion Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 85, direction: 'higher_better', min: 0, max: 100 },
     ],
   },
   {
-    dimensionId: 'academic',
+    dimensionId: 'curriculum_pedagogy',
     metrics: [
-      { id: 'board_exam_pass_rate', label: 'Board Exam Pass Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 90, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'average_result_percentage', label: 'Average Result Percentage', dataType: 'percentage', unit: '%', required: true, benchmark: 75, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'distinction_rate', label: 'Distinction Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 25, direction: 'higher_better', min: 0, max: 100, description: 'Share of students scoring distinction-level marks' },
-      { id: 'remedial_support_coverage', label: 'Remedial Support Coverage', dataType: 'percentage', unit: '%', required: false, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'subject_topper_count', label: 'Subject/Board Toppers', dataType: 'count', unit: 'students', required: false, benchmark: 5, direction: 'higher_better', min: 0, max: 100 },
+      { id: '2a', label: "% Lessons Rated 'Effective' on Shared Rubric", dataType: 'percentage', unit: '%', required: true, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
+      { id: '2b', label: 'CPD Hours per Teacher per Year', dataType: 'hours', unit: 'hrs/yr', required: true, benchmark: 20, direction: 'higher_better', min: 0, max: 300 },
+      { id: '2c', label: 'Ratio of Activity-Based to Lecture-Based Sessions', dataType: 'ratio', unit: ':1', required: false, benchmark: 1, direction: 'higher_better', min: 0, max: 10 },
+      { id: '2d', label: 'Curriculum Pacing Adherence', dataType: 'percentage', unit: '%', required: true, benchmark: 90, direction: 'higher_better', min: 0, max: 100 },
+      { id: '2e', label: 'Project-Based Learning Instances per Term/Grade', dataType: 'count', unit: '/term/grade', required: false, benchmark: 2, direction: 'higher_better', min: 0, max: 30 },
     ],
   },
   {
-    dimensionId: 'infrastructure',
+    dimensionId: 'teacher_quality',
     metrics: [
-      { id: 'student_classroom_ratio', label: 'Students per Classroom', dataType: 'ratio', unit: 'students/room', required: true, benchmark: 30, direction: 'lower_better', min: 1, max: 100 },
-      { id: 'computer_student_ratio', label: 'Students per Computer', dataType: 'ratio', unit: 'students/computer', required: true, benchmark: 5, direction: 'lower_better', min: 1, max: 200 },
-      { id: 'lab_infrastructure_score', label: 'Lab Infrastructure Score', dataType: 'score0to100', unit: '/100', required: true, benchmark: 85, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'library_books_per_student', label: 'Library Books per Student', dataType: 'ratio', unit: 'books/student', required: false, benchmark: 10, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'infrastructure_safety_audit_score', label: 'Infrastructure Safety Audit Score', dataType: 'score0to100', unit: '/100', required: false, benchmark: 95, direction: 'higher_better', min: 0, max: 100 },
+      { id: '3a', label: 'Annual Teacher Attrition Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 10, direction: 'lower_better', min: 0, max: 100 },
+      { id: '3b', label: 'Average Teacher Tenure', dataType: 'years', unit: 'yrs', required: true, benchmark: 5, direction: 'higher_better', min: 0, max: 40 },
+      { id: '3c', label: '% Teachers with Required Qualifications', dataType: 'percentage', unit: '%', required: true, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
+      { id: '3d', label: 'Teacher Absenteeism Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 5, direction: 'lower_better', min: 0, max: 100 },
+      { id: '3e', label: 'Teacher:Student Ratio', dataType: 'ratio', unit: 'students/teacher', required: true, benchmark: 25, direction: 'lower_better', min: 1, max: 100 },
+      { id: '3f', label: 'Substitute-Teacher Dependency Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 5, direction: 'lower_better', min: 0, max: 100 },
     ],
   },
   {
     dimensionId: 'student_wellbeing',
     metrics: [
-      { id: 'student_attendance_rate', label: 'Student Attendance Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 92, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'counselor_student_ratio', label: 'Students per Counselor', dataType: 'ratio', unit: 'students/counselor', required: true, benchmark: 500, direction: 'lower_better', min: 1, max: 5000 },
-      { id: 'health_checkup_frequency', label: 'Health Checkup Frequency', dataType: 'count', unit: '/yr', required: true, benchmark: 2, direction: 'higher_better', min: 0, max: 12 },
-      { id: 'dropout_rate', label: 'Student Dropout Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 2, direction: 'lower_better', min: 0, max: 100 },
-      { id: 'bullying_incident_rate', label: 'Bullying/Safety Incident Rate', dataType: 'count', unit: '/1000 students/yr', required: false, benchmark: 5, direction: 'lower_better', min: 0, max: 200 },
+      { id: '4a', label: 'Counsellor Avg. Sessions per Month', dataType: 'count', unit: '/mo', required: false, benchmark: 20, direction: 'higher_better', min: 0, max: 300 },
+      { id: '4b', label: 'Bullying/Harassment Incident Resolution Time', dataType: 'count', unit: 'days', required: false, benchmark: 3, direction: 'lower_better', min: 0, max: 60 },
+      { id: '4c', label: 'Absenteeism Linked to Stress', dataType: 'percentage', unit: '%', required: false, benchmark: 5, direction: 'lower_better', min: 0, max: 100 },
+      { id: '4d', label: 'SEL Program Participation Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
+      { id: '4e', label: 'Anonymous Wellbeing Pulse-Survey Completion Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 70, direction: 'higher_better', min: 0, max: 100 },
     ],
   },
   {
-    dimensionId: 'staff_development',
+    dimensionId: 'student_discipline',
     metrics: [
-      { id: 'teacher_attrition_rate', label: 'Teacher Attrition Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 8, direction: 'lower_better', min: 0, max: 100 },
-      { id: 'avg_annual_training_hours', label: 'Avg Annual Training Hours per Teacher', dataType: 'hours', unit: 'hrs/yr', required: true, benchmark: 20, direction: 'higher_better', min: 0, max: 500 },
-      { id: 'certified_teachers_percentage', label: 'Certified Teachers', dataType: 'percentage', unit: '%', required: true, benchmark: 95, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'postgraduate_teachers_percentage', label: 'Postgraduate-Qualified Teachers', dataType: 'percentage', unit: '%', required: false, benchmark: 50, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'staff_satisfaction_index', label: 'Staff Satisfaction Index', dataType: 'score0to100', unit: '/100', required: false, benchmark: 75, direction: 'higher_better', min: 0, max: 100 },
+      { id: '5a', label: 'Disciplinary Incidents (count, per term)', dataType: 'count', unit: '/term', required: false, benchmark: 10, direction: 'lower_better', min: 0, max: 1000 },
+      { id: '5b', label: 'Repeat-Offender Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 20, direction: 'lower_better', min: 0, max: 100 },
+      { id: '5c', label: 'Suspension/Expulsion Count', dataType: 'count', unit: '/yr', required: false, benchmark: 2, direction: 'lower_better', min: 0, max: 200 },
+      { id: '5d', label: 'Average Time-to-Resolution for Incidents', dataType: 'count', unit: 'days', required: true, benchmark: 3, direction: 'lower_better', min: 0, max: 60 },
+      { id: '5e', label: 'Consistency-of-Enforcement Audit Score', dataType: 'score0to100', unit: '/100', required: false, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
     ],
   },
   {
-    dimensionId: 'community',
+    dimensionId: 'infrastructure_facilities',
     metrics: [
-      { id: 'pta_meeting_frequency', label: 'PTA Meeting Frequency', dataType: 'count', unit: '/yr', required: true, benchmark: 4, direction: 'higher_better', min: 0, max: 24 },
-      { id: 'parent_participation_rate', label: 'Parent Participation Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 70, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'parent_query_response_time_hours', label: 'Parent Query Response Time', dataType: 'hours', unit: 'hrs', required: true, benchmark: 24, direction: 'lower_better', min: 0, max: 720 },
-      { id: 'community_outreach_events', label: 'Community Outreach Events', dataType: 'count', unit: '/yr', required: false, benchmark: 4, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'parent_satisfaction_nps', label: 'Parent Satisfaction (NPS-style)', dataType: 'score0to100', unit: '/100', required: false, benchmark: 60, direction: 'higher_better', min: 0, max: 100 },
+      { id: '6a', label: 'Facility Condition Audit Score', dataType: 'score0to100', unit: '/5', required: true, benchmark: 4, direction: 'higher_better', min: 1, max: 5 },
+      { id: '6b', label: 'Maintenance Ticket Resolution Time', dataType: 'count', unit: 'days', required: true, benchmark: 3, direction: 'lower_better', min: 0, max: 60 },
+      { id: '6c', label: 'Lab/Library Utilization Hours per Week', dataType: 'hours', unit: 'hrs/wk', required: false, benchmark: 20, direction: 'higher_better', min: 0, max: 100 },
+      { id: '6d', label: 'Student:Facility Ratio (toilets/water points) vs. CBSE Norm', dataType: 'ratio', unit: 'students/unit', required: true, benchmark: 40, direction: 'lower_better', min: 1, max: 500 },
+      { id: '6e', label: 'IT Device:Student Ratio', dataType: 'ratio', unit: 'students/device', required: true, benchmark: 5, direction: 'lower_better', min: 0, max: 100, description: 'Internet uptime % tracked alongside this metric operationally' },
     ],
   },
   {
-    dimensionId: 'innovation',
+    dimensionId: 'safety_security',
     metrics: [
-      { id: 'smart_classroom_coverage', label: 'Smart Classroom Coverage', dataType: 'percentage', unit: '%', required: true, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'digital_content_usage_hours', label: 'Digital Content Usage', dataType: 'hours', unit: 'hrs/week', required: true, benchmark: 5, direction: 'higher_better', min: 0, max: 40 },
-      { id: 'edtech_tool_adoption_rate', label: 'EdTech Tool Adoption Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 70, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'coding_stem_program_coverage', label: 'Coding/STEM Program Coverage', dataType: 'percentage', unit: '%', required: false, benchmark: 50, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'it_budget_per_student', label: 'IT Budget per Student', dataType: 'currency', unit: '₹/yr', required: false, benchmark: 3000, direction: 'higher_better', min: 0, max: 100000 },
+      { id: '7a', label: 'Safety-Drill Compliance %', dataType: 'percentage', unit: '%', required: true, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
+      { id: '7b', label: 'CCTV Coverage % of Campus', dataType: 'percentage', unit: '%', required: true, benchmark: 90, direction: 'higher_better', min: 0, max: 100 },
+      { id: '7c', label: 'Transport Safety Incident Count', dataType: 'count', unit: '/yr', required: false, benchmark: 0, direction: 'lower_better', min: 0, max: 100 },
+      { id: '7d', label: 'Security-Staff:Student Ratio', dataType: 'ratio', unit: 'students/staff', required: false, benchmark: 300, direction: 'lower_better', min: 1, max: 5000 },
+      { id: '7e', label: 'Background-Check Completion Rate (staff/vendors)', dataType: 'percentage', unit: '%', required: true, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
     ],
   },
   {
-    dimensionId: 'finance',
+    dimensionId: 'parent_engagement',
     metrics: [
-      { id: 'fee_collection_rate', label: 'Fee Collection Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 95, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'operating_expense_ratio', label: 'Operating Expense Ratio', dataType: 'percentage', unit: '%', required: true, benchmark: 80, direction: 'lower_better', min: 0, max: 200, description: 'Operating expenses as a % of revenue' },
-      { id: 'budget_utilization_rate', label: 'Budget Utilization Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 90, direction: 'higher_better', min: 0, max: 150 },
-      { id: 'audit_compliance_score', label: 'Financial Audit Compliance Score', dataType: 'score0to100', unit: '/100', required: false, benchmark: 95, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'scholarship_financial_aid_coverage', label: 'Scholarship/Financial Aid Coverage', dataType: 'percentage', unit: '%', required: false, benchmark: 10, direction: 'higher_better', min: 0, max: 100 },
+      { id: '8a', label: 'PTM Attendance Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
+      { id: '8b', label: 'Parent-Portal/App Active Engagement Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 60, direction: 'higher_better', min: 0, max: 100 },
+      { id: '8c', label: 'Grievance Resolution Time', dataType: 'count', unit: 'days', required: true, benchmark: 7, direction: 'lower_better', min: 0, max: 90 },
+      { id: '8d', label: 'Parent-Committee Participation Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 50, direction: 'higher_better', min: 0, max: 100 },
+      { id: '8e', label: 'Fee-Payment Delinquency Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 5, direction: 'lower_better', min: 0, max: 100 },
+      { id: '8f', label: 'Re-Enrollment/Renewal Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 90, direction: 'higher_better', min: 0, max: 100 },
     ],
   },
   {
-    dimensionId: 'quality',
+    dimensionId: 'student_engagement',
     metrics: [
-      { id: 'regulatory_compliance_score', label: 'Regulatory Compliance Score', dataType: 'percentage', unit: '%', required: true, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'accreditation_status_score', label: 'Accreditation Status Score', dataType: 'score0to100', unit: '/100', required: true, benchmark: 80, direction: 'higher_better', min: 0, max: 100, description: 'NAAC/ISO/board-recognition strength' },
-      { id: 'internal_audit_frequency', label: 'Internal Quality Audit Frequency', dataType: 'count', unit: '/yr', required: true, benchmark: 2, direction: 'higher_better', min: 0, max: 12 },
-      { id: 'grievance_resolution_time_days', label: 'Grievance Resolution Time', dataType: 'count', unit: 'days', required: false, benchmark: 7, direction: 'lower_better', min: 0, max: 90 },
-      { id: 'external_certification_count', label: 'External Certifications Held', dataType: 'count', unit: 'certs', required: false, benchmark: 1, direction: 'higher_better', min: 0, max: 10 },
+      { id: '9a', label: '% Students in ≥1 Extracurricular Activity', dataType: 'percentage', unit: '%', required: true, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
+      { id: '9b', label: 'Overall Attendance Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 92, direction: 'higher_better', min: 0, max: 100 },
+      { id: '9c', label: 'Student Council Activity Frequency', dataType: 'count', unit: '/term', required: false, benchmark: 4, direction: 'higher_better', min: 0, max: 50 },
+      { id: '9d', label: 'Inter-House/Inter-School Competition Participation Breadth', dataType: 'percentage', unit: '%', required: false, benchmark: 50, direction: 'higher_better', min: 0, max: 100 },
+      { id: '9e', label: 'Library Book-Issue Rate per Student', dataType: 'ratio', unit: 'books/student/yr', required: false, benchmark: 5, direction: 'higher_better', min: 0, max: 100 },
     ],
   },
   {
-    dimensionId: 'inclusivity',
+    dimensionId: 'leadership_governance',
     metrics: [
-      { id: 'disadvantaged_student_enrollment_pct', label: 'Disadvantaged Student Enrollment', dataType: 'percentage', unit: '%', required: true, benchmark: 25, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'special_needs_support_ratio', label: 'CWSN Students per Special Educator', dataType: 'ratio', unit: 'students/educator', required: true, benchmark: 20, direction: 'lower_better', min: 1, max: 500 },
-      { id: 'gender_ratio_balance', label: 'Gender Ratio Balance', dataType: 'percentage', unit: '%', required: false, benchmark: 90, direction: 'higher_better', min: 0, max: 100, description: 'How close the student body is to an even gender split' },
-      { id: 'scholarship_disadvantaged_coverage', label: 'Scholarship Coverage for Disadvantaged Students', dataType: 'percentage', unit: '%', required: false, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'accessibility_infrastructure_score', label: 'Accessibility Infrastructure Score', dataType: 'score0to100', unit: '/100', required: false, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
+      { id: '10a', label: 'SMC Meeting Quorum Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
+      { id: '10b', label: 'Policy Review/Update Frequency', dataType: 'percentage', unit: '% of policies reviewed/yr', required: false, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
+      { id: '10c', label: 'Leadership-Role Turnover Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 10, direction: 'lower_better', min: 0, max: 100 },
+      { id: '10d', label: 'Decision-Implementation Lag Time', dataType: 'count', unit: 'days', required: false, benchmark: 30, direction: 'lower_better', min: 0, max: 365 },
+      { id: '10e', label: 'Audit/Compliance Finding Closure Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
     ],
   },
   {
-    dimensionId: 'curriculum',
+    dimensionId: 'financial_health',
     metrics: [
-      { id: 'curriculum_coverage_rate', label: 'Curriculum Coverage Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 95, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'learning_outcome_achievement_rate', label: 'Learning Outcome Achievement Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'project_based_learning_hours', label: 'Project-Based Learning Hours', dataType: 'hours', unit: 'hrs/month/student', required: false, benchmark: 8, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'continuous_assessment_frequency', label: 'Continuous Assessment Frequency', dataType: 'count', unit: '/term', required: false, benchmark: 3, direction: 'higher_better', min: 0, max: 20 },
-      { id: 'cocurricular_curriculum_integration_pct', label: 'Co-curricular Integration', dataType: 'percentage', unit: '%', required: false, benchmark: 20, direction: 'higher_better', min: 0, max: 100 },
+      { id: '11a', label: 'Fee Collection Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 95, direction: 'higher_better', min: 0, max: 100 },
+      { id: '11b', label: 'Operating Margin (trended)', dataType: 'percentage', unit: '%', required: true, benchmark: 10, direction: 'higher_better', min: -50, max: 100 },
+      { id: '11c', label: 'Cost-per-Student Trend', dataType: 'currency', unit: '₹/student/yr', required: false, benchmark: 50000, direction: 'lower_better', min: 0, max: 5000000 },
+      { id: '11d', label: 'Reserve-Fund-to-Operating-Cost Ratio', dataType: 'ratio', unit: 'months covered', required: false, benchmark: 3, direction: 'higher_better', min: 0, max: 24 },
+      { id: '11e', label: 'Scholarship Disbursement vs. Budget', dataType: 'percentage', unit: '%', required: false, benchmark: 100, direction: 'higher_better', min: 0, max: 150 },
     ],
   },
   {
-    dimensionId: 'satisfaction',
+    dimensionId: 'admissions_market',
     metrics: [
-      { id: 'parent_satisfaction_score', label: 'Parent Satisfaction Score', dataType: 'score0to100', unit: '/100', required: true, benchmark: 75, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'student_retention_rate', label: 'Student Retention Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 92, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'net_promoter_score', label: 'Net Promoter Score', dataType: 'score0to100', unit: '/100', required: false, benchmark: 60, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'admission_enquiry_conversion_rate', label: 'Admission Enquiry Conversion Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 40, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'alumni_tracking_coverage', label: 'Alumni Tracking Coverage', dataType: 'percentage', unit: '%', required: false, benchmark: 50, direction: 'higher_better', min: 0, max: 100 },
+      { id: '12a', label: 'Inquiry-to-Admission Conversion Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 30, direction: 'higher_better', min: 0, max: 100 },
+      { id: '12b', label: 'Year-on-Year Enrollment Trend (by grade)', dataType: 'percentage', unit: '% change/yr', required: false, benchmark: 5, direction: 'higher_better', min: -50, max: 100 },
+      { id: '12c', label: 'Waitlist Length (by grade)', dataType: 'count', unit: 'students', required: false, benchmark: 10, direction: 'higher_better', min: 0, max: 500 },
+      { id: '12d', label: 'Mid-Year Withdrawal/Attrition Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 3, direction: 'lower_better', min: 0, max: 100 },
+      { id: '12e', label: 'Referral % of New Admissions', dataType: 'percentage', unit: '%', required: false, benchmark: 30, direction: 'higher_better', min: 0, max: 100 },
+      { id: '12f', label: 'Alumni Engagement Participation Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 20, direction: 'higher_better', min: 0, max: 100 },
     ],
   },
   {
-    dimensionId: 'performance',
+    dimensionId: 'technology_digital',
     metrics: [
-      { id: 'staff_appraisal_completion_rate', label: 'Staff Appraisal Completion Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'performance_linked_recognition_count', label: 'Performance-Linked Recognitions', dataType: 'count', unit: '/yr', required: true, benchmark: 10, direction: 'higher_better', min: 0, max: 500 },
-      { id: 'accountability_action_closure_rate', label: 'Accountability Action Closure Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 85, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'kpi_tracking_coverage', label: 'KPI Tracking Coverage', dataType: 'percentage', unit: '%', required: false, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'disciplinary_case_resolution_time_days', label: 'Disciplinary Case Resolution Time', dataType: 'count', unit: 'days', required: false, benchmark: 14, direction: 'lower_better', min: 0, max: 180 },
+      { id: '13a', label: 'LMS/Portal Active-Usage Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 75, direction: 'higher_better', min: 0, max: 100 },
+      { id: '13b', label: 'Device:Student Ratio', dataType: 'ratio', unit: 'students/device', required: true, benchmark: 3, direction: 'lower_better', min: 0, max: 50 },
+      { id: '13c', label: 'IT-Helpdesk Ticket Resolution Time', dataType: 'count', unit: 'days', required: true, benchmark: 2, direction: 'lower_better', min: 0, max: 30 },
+      { id: '13d', label: '% of Lessons Using Digital Tools', dataType: 'percentage', unit: '%', required: false, benchmark: 60, direction: 'higher_better', min: 0, max: 100 },
+      { id: '13e', label: 'Cybersecurity Incident Count', dataType: 'count', unit: '/yr', required: false, benchmark: 0, direction: 'lower_better', min: 0, max: 100 },
     ],
   },
   {
-    dimensionId: 'culture',
+    dimensionId: 'cocurricular_holistic',
     metrics: [
-      { id: 'employee_engagement_score', label: 'Employee Engagement Score', dataType: 'score0to100', unit: '/100', required: true, benchmark: 75, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'values_training_coverage', label: 'Values/Culture Training Coverage', dataType: 'percentage', unit: '%', required: true, benchmark: 100, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'internal_collaboration_events', label: 'Internal Collaboration Events', dataType: 'count', unit: '/yr', required: false, benchmark: 6, direction: 'higher_better', min: 0, max: 100 },
-      { id: 'conflict_grievance_rate', label: 'Staff Conflict/Grievance Rate', dataType: 'count', unit: '/100 staff/yr', required: false, benchmark: 5, direction: 'lower_better', min: 0, max: 100 },
-      { id: 'staff_recognition_program_score', label: 'Staff Recognition Program Score', dataType: 'score0to100', unit: '/100', required: false, benchmark: 70, direction: 'higher_better', min: 0, max: 100 },
+      { id: '14a', label: '% Students in ≥1 Co-Curricular Activity', dataType: 'percentage', unit: '%', required: true, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
+      { id: '14b', label: 'Inter-School Competition Participation & Results', dataType: 'count', unit: '/term', required: false, benchmark: 5, direction: 'higher_better', min: 0, max: 200 },
+      { id: '14c', label: 'Sports/Arts Infrastructure Utilization Hours per Week', dataType: 'hours', unit: 'hrs/wk', required: false, benchmark: 20, direction: 'higher_better', min: 0, max: 100 },
+      { id: '14d', label: 'Life-Skills Curriculum Completion Rate', dataType: 'percentage', unit: '%', required: true, benchmark: 90, direction: 'higher_better', min: 0, max: 100 },
+      { id: '14e', label: 'House-System Participation Rate', dataType: 'percentage', unit: '%', required: false, benchmark: 80, direction: 'higher_better', min: 0, max: 100 },
     ],
   },
 ];

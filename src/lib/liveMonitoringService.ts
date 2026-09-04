@@ -101,8 +101,8 @@ export async function buildLiveSnapshot(
     };
   });
 
-  const passRateEntry = rawByDimension['academic']?.['board_exam_pass_rate'];
-  const passRateDef = getMetricDefinition('academic', 'board_exam_pass_rate');
+  const passRateEntry = rawByDimension['academic_performance']?.['1a'];
+  const passRateDef = getMetricDefinition('academic_performance', '1a');
   const boardPassRate =
     passRateEntry && passRateDef ? { value: passRateEntry.value, benchmark: passRateDef.benchmark } : null;
 
