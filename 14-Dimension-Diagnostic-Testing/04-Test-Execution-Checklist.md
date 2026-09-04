@@ -6,7 +6,7 @@ Filled in live as we go through `03-User-Testing-Guide.md` together. Status lege
 | # | Step | Expected | Actual | Firestore check | Status |
 |---|---|---|---|---|---|
 | 0 | Demo login (`demo@disha.edu`) | `users/{uid}` doc upserted with email/isApproved/role | Confirmed: `email: "demo@disha.edu"`, `isApproved: true`, `role: "demo"`, plus `activeSchoolId` from an earlier session | `users/{uid}` in the named Firestore DB (`ai-studio-dishadiagnostice-...`), not `(default)` | ✅ |
-| 1 | Open 14D Assessment nav item | Loads Events screen | | — | ⏳ |
+| 1 | Open 14D Assessment nav item | Loads Events screen | Loaded correctly: Events screen, "No assessment events yet for this school", active school "Vidya Vihar Government School, Nashik" (matches `activeSchoolId`) | — | ✅ |
 | 2 | Create assessment event | Config saved, moves to Deploy screen | | `assessments/{id}` doc created with `status: 'active'`, correct `expectedRespondents` | ⏳ |
 | 3 | Copy survey link | Link format `/survey/{assessmentId}/teacher` | | — | ⏳ |
 | 4 | Submit survey as Teacher | "Thank You" confirmation | | Defect #1 fix: expect a new doc at `assessments/{assessmentId}/responses/{id}` with `stakeholderType: 'teacher'` and nested `responses[dim][q]` matching what you entered | ⏳ |
