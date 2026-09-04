@@ -83,7 +83,54 @@ fine and mask this, because simulated data happens to use the correct (different
 
 ---
 
-## Defect #2 — P0 / Product: The shipped feature does not implement the "authoritative" reference framework — and a full, spec-compliant implementation exists but is disconnected from the app
+## Defect #2 — P0 / Product: The shipped feature does not implement the "authoritative" reference framework — and a full, spec-compliant implementation exists but is disconnected from the app — ✅ FIXED
+
+**Fix applied** (this session, based on the source PDF the user supplied —
+"School Diagnostic Framework v2, Deployable Edition"): rebuilt the live
+dimension taxonomy, reality metrics, and perception questions from scratch
+to match the reference document exactly, rather than leaving the two
+disconnected implementations in place.
+
+- `src/data/14DimensionsQuestions.ts` — full rewrite: all 14 dimensions now
+  use the reference doc's names/ids (`academic_performance`,
+  `curriculum_pedagogy`, `teacher_quality`, `student_wellbeing`,
+  `student_discipline`, `infrastructure_facilities`, `safety_security`,
+  `parent_engagement`, `student_engagement`, `leadership_governance`,
+  `financial_health`, `admissions_market`, `technology_digital`,
+  `cocurricular_holistic`), each with its reality metrics
+  (formula/raw-data/fallback) and exactly one 1:1-matched, respondent-tagged
+  perception question with a root-cause follow-up — 74 metrics/questions
+  total, transcribed directly from the source document.
+- `src/data/objectiveMetricsSchema.ts` — rewritten so every reality metric
+  is capturable as admin-entered operational data, keyed by the same metric
+  id as its linked perception question.
+- `src/pages/StakeholderSurvey.tsx` — now filters each dimension's
+  questions to the ones tagged for the current respondent (some dimensions
+  have zero questions for a given stakeholder type and are skipped
+  entirely), and captures the open-ended root-cause follow-up alongside
+  each rating.
+- The orphaned `Assessment14D/*` wizard and `functions/src/14d/*` trigger
+  chain were **not** wired in or deleted — the rebuild targeted the
+  reachable `StakeholderSurvey.tsx` flow directly instead, which was the
+  lower-risk path (no Cloud Function redeploy, no new route to test).
+  Whether to also retire the orphaned wizard's dead code is a separate,
+  smaller follow-up.
+- One scale deviation from the reference doc's own "rated 1-10" framing:
+  perception questions stayed on the existing 1-5 scale to avoid a second,
+  much larger change to the scoring engine — see the addendum in
+  `DISHA_14D_DIAGNOSTIC_FRAMEWORK_V2_REFERENCE.md` for the full reasoning.
+- Not yet built: the Raw Data Requirements master input table, Analytical &
+  Predictive Use Cases, and Visual Analytics chart types from the reference
+  doc are not surfaced as dedicated UI yet — scoped follow-up, not done in
+  this pass.
+
+Verified: `tsc --noEmit` clean, `vite build` succeeds, all 360 existing
+tests still pass. A live click-through (submit a real survey as each
+respondent type, confirm only the tagged questions appear, confirm the
+admin's Operational Data panel now asks for the new reality metrics) is
+still pending — add to `04-Test-Execution-Checklist.md` once run.
+
+Original finding, kept for reference:
 
 **Root cause:** Two entirely separate implementations of "14-Dimension Diagnostic
 Assessment" exist in this codebase:

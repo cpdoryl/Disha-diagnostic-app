@@ -664,12 +664,60 @@ Small number of metrics (SEL participation, alumni database, formal reserve fund
 
 ---
 
+## Addendum: Live Implementation (September 2026)
+
+Prior to this addendum, this document's 14-dimension taxonomy, reality metrics,
+and metric-linked perception questions existed in the codebase only as an
+orphaned, unreachable component tree (`src/components/Assessment14D/*` +
+`src/lib/14d/dimensionMetadata.ts`, only 4 of 14 dimensions ever completed)
+— the actual sidebar-reachable "14D Diagnostic Assessment" feature ran on a
+completely different, older ad hoc dimension list (`leadership`, `academic`,
+`community`, `culture`, …) with generic flat Likert questions, no reality
+metrics, and no root-cause capture. This is documented in
+`14-Dimension-Diagnostic-Testing/02-Critical-Defects-Found.md`, Defect #2.
+
+That gap is now closed:
+
+- **`src/data/14DimensionsQuestions.ts`** is the live source of truth for all
+  14 dimensions, matching this document's dimension names, reality metrics
+  (formula/raw data/fallback), and 1:1-matched perception questions
+  (respondent-tagged, with the root-cause/expectation follow-up) verbatim.
+- **`src/data/objectiveMetricsSchema.ts`** captures every reality metric as
+  admin-enterable operational data ("Operational Data" panel during the
+  Deploy stage), keyed by the same metric id (e.g. `1a`) as its linked
+  perception question, so the two stay traceable to each other.
+- **The live stakeholder survey** (`/survey/:assessmentId/:stakeholderType`)
+  now shows only the dimensions/questions tagged to that respondent — a
+  student is never shown a reserve-fund question — and captures the
+  open-ended root-cause follow-up alongside each rating.
+- **One deliberate deviation from this document's "rated 1-10" framing**
+  (in the Implementation Pattern section above): perception questions are
+  rated 1-5 ("Strongly Disagree" → "Strongly Agree"), not 1-10. This matches
+  the scale the app's respondent UI, dimension scoring
+  (`src/lib/dimensionScoring.ts`), and existing survey infrastructure
+  already used before this rebuild, and this document's own perception
+  question tables never specify a scale for the graded question — a
+  10-point scale can be adopted later as a deliberate, separately-scoped UI
+  and scoring-engine change if wanted, but was out of scope for wiring the
+  existing 1-5 survey to the correct dimensions/metrics/questions.
+- **Benchmark/target numbers in `objectiveMetricsSchema.ts` are
+  provisional**, since this document intentionally specifies formula/raw
+  data/fallback per metric but no numeric target. They are reasonable
+  illustrative defaults pending review by an actual school/board data
+  owner — see the disclaimer at the top of that file.
+- **Not yet built in this pass**: the Raw Data Requirements master input
+  table, the Analytical & Predictive Use Cases, and the Visual Analytics
+  chart types above are fully specified in this document but not yet
+  surfaced as dedicated UI (the existing report — gap analysis, radar/bar
+  charts, ranked action plan — already covers a meaningful subset). Treat
+  these as a scoped follow-up, not as implemented.
+
 ## Status Summary
 
 **Document Version:** v2.0 (Authoritative)  
-**Updated:** August 25, 2026  
+**Updated:** September 2026 — live implementation addendum added  
 **Source:** School Diagnostic 14 Dimension Framework v2 PDF (Podar International School, Raipur)  
-**Implementation Status:** Ready for full deployment  
+**Implementation Status:** Core framework (14 dimensions, reality metrics, metric-linked perception + root-cause survey) is live in the running app. Raw Data Requirements UI, Analytical & Predictive Use Cases, and Visual Analytics chart types remain a scoped follow-up.  
 **Compliance:** Aligned with CBSE SQAA domains and NEP 2020 principles
 
 **This document supersedes all previous 14-D versions (v1, variants, and related implementations).**

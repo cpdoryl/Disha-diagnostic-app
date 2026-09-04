@@ -10,7 +10,7 @@
  */
 import { collection, addDoc, deleteDoc, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
 import { db } from './firebase';
-import { FOURTEEN_DIMENSIONS } from '../data/14DimensionsQuestions';
+import { getDimensionsForRespondent, getQuestionsForRespondent } from '../data/14DimensionsQuestions';
 
 export type StakeholderType = 'teacher' | 'parent' | 'student' | 'admin' | 'other';
 
@@ -33,15 +33,29 @@ function randomScore(): number {
   return pick(weighted);
 }
 
-function buildRandomResponses(): Record<string, Record<string, number>> {
+const ROOT_CAUSE_SAMPLES = [
+  'More consistent follow-up would help.',
+  'Clearer communication on this would make a difference.',
+  'This has generally been fine, but could be faster.',
+  '',
+  '',
+];
+
+function buildRandomResponses(stakeholderType: StakeholderType): {
+  responses: Record<string, Record<string, number>>;
+  rootCauses: Record<string, Record<string, string>>;
+} {
   const responses: Record<string, Record<string, number>> = {};
-  for (const dimension of FOURTEEN_DIMENSIONS) {
+  const rootCauses: Record<string, Record<string, string>> = {};
+  for (const dimension of getDimensionsForRespondent(stakeholderType)) {
     responses[dimension.id] = {};
-    for (const question of dimension.questions) {
+    rootCauses[dimension.id] = {};
+    for (const question of getQuestionsForRespondent(dimension, stakeholderType)) {
       responses[dimension.id][question.id] = randomScore();
+      rootCauses[dimension.id][question.id] = pick(ROOT_CAUSE_SAMPLES);
     }
   }
-  return responses;
+  return { responses, rootCauses };
 }
 
 function buildRespondentFields(type: StakeholderType, index: number): Record<string, any> {
@@ -95,10 +109,12 @@ export async function simulateResponses(
   let written = 0;
 
   for (let i = 0; i < count; i++) {
+    const { responses, rootCauses } = buildRandomResponses(stakeholderType);
     const submissionData = {
       assessmentId,
       stakeholderType,
-      responses: buildRandomResponses(),
+      responses,
+      rootCauses,
       submittedAt: serverTimestamp(),
       submittedTimestamp: new Date().toISOString(),
       isSimulated: true,
