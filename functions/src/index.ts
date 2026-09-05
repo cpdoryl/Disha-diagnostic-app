@@ -301,6 +301,27 @@ export const analyzeCheckup = functions.https.onCall(
 
 // ===== STAGE 2: 14D REPORT GENERATOR FUNCTION =====
 
+// The 14 live dimension ids/names from src/data/14DimensionsQuestions.ts
+// (FOURTEEN_DIMENSIONS). Cloud Functions can't import that frontend module
+// directly (separate package/build), so the id/name pairs are mirrored here -
+// keep in sync if dimensions are ever added/renamed there.
+const REPORT_DIMENSIONS: Array<{ id: string; name: string }> = [
+  { id: 'academic_performance', name: 'Academic Performance & Learning Outcomes' },
+  { id: 'curriculum_pedagogy', name: 'Curriculum & Pedagogy Quality' },
+  { id: 'teacher_quality', name: 'Teacher Quality, Development & Retention' },
+  { id: 'student_wellbeing', name: 'Student Wellbeing & Mental Health' },
+  { id: 'student_discipline', name: 'Student Discipline & Behavior' },
+  { id: 'infrastructure_facilities', name: 'Infrastructure & Facilities' },
+  { id: 'safety_security', name: 'Safety & Security' },
+  { id: 'parent_engagement', name: 'Parent Satisfaction & Engagement' },
+  { id: 'student_engagement', name: 'Student Satisfaction & Engagement' },
+  { id: 'leadership_governance', name: 'Leadership & Governance' },
+  { id: 'financial_health', name: 'Financial Health & Sustainability' },
+  { id: 'admissions_market', name: 'Admissions, Enrollment & Market Position (Brand/Reputation)' },
+  { id: 'technology_digital', name: 'Technology & Digital Readiness' },
+  { id: 'cocurricular_holistic', name: 'Co-curricular, Extracurricular & Holistic Development' },
+];
+
 export const generate14DReport = functions.https.onCall(
   async (data: any, context: any) => {
     try {
@@ -310,14 +331,11 @@ export const generate14DReport = functions.https.onCall(
         throw new Error('Authentication required');
       }
 
-      // Fetch assessment and responses
-      const assessment = await db
-        .collection('schools').doc(schoolId)
-        .collection('assessments').doc(assessmentId)
-        .get();
-
+      // Respondents submit to the flat top-level assessments/{assessmentId}/responses
+      // collection (see src/pages/StakeholderSurvey.tsx) - not a schools/{schoolId}-nested
+      // path. Each response document has a `responses[dimensionId][questionId]` shape,
+      // scored on the app's 1-5 scale (see src/data/14DimensionsQuestions.ts).
       const responses = await db
-        .collection('schools').doc(schoolId)
         .collection('assessments').doc(assessmentId)
         .collection('responses')
         .get();
@@ -328,21 +346,29 @@ export const generate14DReport = functions.https.onCall(
 
       // Aggregate responses by dimension
       const dimensionAnalysis: any = {};
-      for (let d = 1; d <= 14; d++) {
-        const dimensionId = `D${String(d).padStart(2, '0')}`;
-        const scores = responses.docs
-          .map(doc => {
-            const data = doc.data();
-            return data.answers && data.answers[dimensionId] ? parseInt(data.answers[dimensionId]) : 0;
-          })
-          .filter((s: number) => s > 0);
+      for (const dimension of REPORT_DIMENSIONS) {
+        const scores: number[] = [];
+        responses.docs.forEach(doc => {
+          const docData = doc.data();
+          const dimensionAnswers = docData.responses?.[dimension.id];
+          if (!dimensionAnswers) return;
+          const answerValues = Object.values(dimensionAnswers).filter(
+            (v): v is number => typeof v === 'number'
+          );
+          if (answerValues.length === 0) return;
+          scores.push(answerValues.reduce((a, b) => a + b, 0) / answerValues.length);
+        });
 
-        const avgScore = scores.length > 0 ? (scores.reduce((a: number, b: number) => a + b, 0) / scores.length) * 20 : 0;
+        // Scores are on a 1-5 scale; normalize to a 0-100 index, matching
+        // src/lib/dimensionScoring.ts's toIndex().
+        const avgScore = scores.length > 0
+          ? Math.round(((scores.reduce((a, b) => a + b, 0) / scores.length - 1) / 4) * 100 * 100) / 100
+          : 0;
 
-        dimensionAnalysis[dimensionId] = {
-          dimensionName: `Dimension ${d}`,
+        dimensionAnalysis[dimension.id] = {
+          dimensionName: dimension.name,
           subjectiveAnalysis: {
-            averageScore: Math.round(avgScore * 100) / 100,
+            averageScore: avgScore,
             responseCount: scores.length
           },
           status: avgScore >= 75 ? 'Strong' : avgScore >= 60 ? 'Adequate' : 'Needs Attention'
@@ -350,7 +376,7 @@ export const generate14DReport = functions.https.onCall(
       }
 
       // Calculate overall health index
-      const overallScore = Object.values(dimensionAnalysis as any).reduce((sum: number, d: any) => sum + d.subjectiveAnalysis.averageScore, 0) / 14;
+      const overallScore = Object.values(dimensionAnalysis as any).reduce((sum: number, d: any) => sum + d.subjectiveAnalysis.averageScore, 0) / REPORT_DIMENSIONS.length;
 
       // Save report
       const reportRef = db
