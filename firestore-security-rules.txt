@@ -57,9 +57,21 @@ service cloud.firestore {
       // on two independent counts, since this rule was introduced.
       allow create: if request.auth != null
         && request.resource.data.name is string
-        && request.resource.data.city is string;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+        && request.resource.data.city is string
+        // A school can only ever be created with an ownerId equal to the
+        // creator's own uid (or none at all) - never claiming someone else's.
+        && (!('ownerId' in request.resource.data) || request.resource.data.ownerId == request.auth.uid);
+      // Only the school's own owner (ownerId == caller's uid) or an admin can
+      // edit/delete it - a school created before ownerId existed has no
+      // owner, so only an admin can touch those until they're claimed by a
+      // fresh create. This is what backs the app-level fix where a regular
+      // user's school list/switcher only ever shows schools they registered
+      // themselves - it's now also enforced at the data layer, not just the
+      // client-side query.
+      allow update: if request.auth != null
+        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if request.auth != null
+        && (resource.data.ownerId == request.auth.uid || isAdmin());
 
       // ====== ASSESSMENTS SUBCOLLECTION ======
 
