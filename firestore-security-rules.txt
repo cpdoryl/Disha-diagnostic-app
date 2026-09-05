@@ -154,32 +154,6 @@ service cloud.firestore {
         allow delete: if request.auth != null;
       }
 
-      // ====== FIRST OPINION ENGINE v3 COLLECTIONS ======
-
-      match /assessmentCycles/{cycleId} {
-        allow read: if true;
-        allow create, update: if isSchoolAdmin(schoolId);
-        allow delete: if isAdmin();
-
-        match /challengeResponses/{responseId} {
-          allow read: if true;
-          allow create: if request.auth != null
-            && request.resource.data.cycleId == cycleId
-            && request.resource.data.schoolId == schoolId;
-          allow update: if false;
-          allow delete: if isAdmin();
-        }
-
-        match /multipliers/{multiplierId} {
-          allow read: if true;
-          allow create, update, delete: if false;
-        }
-
-        match /computed/{docId} {
-          allow read: if true;
-          allow create, update, delete: if false;
-        }
-      }
     }
 
     // ====== TOP-LEVEL ASSESSMENTS COLLECTION (14D Multi-User Assessment) ======
@@ -229,24 +203,5 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // ====== FIRST OPINION ENGINE v3 GLOBAL COLLECTIONS ======
-
-    match /multiplierDataCards/{cardId} {
-      allow read: if true;
-      allow create, update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    match /stakeholderVerifications/{verificationId} {
-      allow read: if isAdmin();
-      allow create, update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    match /challengeCatalog/{catalogId} {
-      allow read: if true;
-      allow create, update: if isAdmin();
-      allow delete: if isAdmin();
-    }
   }
 }
