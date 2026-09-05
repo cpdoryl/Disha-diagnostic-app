@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getDimensionsForRespondent, getQuestionsForRespondent, Question } from '../data/14DimensionsQuestions';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -39,6 +39,39 @@ interface RootCauseResponse {
   };
 }
 
+// In-progress answers for this public, unauthenticated survey used to live
+// only in useState with a single Firestore write at final submit - a
+// refresh, lost connection, or accidental navigation before clicking Submit
+// discarded 100% of the respondent's answers. These fields are the ones that
+// should survive a refresh; everything else (isSubmitting, errorMessage,
+// submissionId) stays purely transient in-memory UI state.
+interface PersistedDraft {
+  currentStep: SurveyStep;
+  currentDimensionIndex: number;
+  respondentInfo: RespondentInfo;
+  responses: SurveyResponse;
+  rootCauses: RootCauseResponse;
+}
+
+// Only these steps represent actual in-progress work worth restoring -
+// 'welcome' has no answers yet, and 'confirmation'/'error' should never be
+// resumed into (a completed submission clears its draft anyway).
+const RESUMABLE_STEPS: SurveyStep[] = ['info', 'survey', 'summary'];
+
+function loadDraft(storageKey: string | null): PersistedDraft | null {
+  if (!storageKey) return null;
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as PersistedDraft;
+  } catch {
+    // Corrupt JSON, or localStorage unavailable/blocked (private browsing) - just start fresh.
+    return null;
+  }
+}
+
 export function StakeholderSurvey() {
   const { activeSchool } = useAppStore();
   const schoolId = activeSchool?.id || 'default-school';
@@ -49,14 +82,51 @@ export function StakeholderSurvey() {
   const assessmentId = match?.[1];
   const stakeholderType = match?.[2];
 
-  const [currentStep, setCurrentStep] = useState<SurveyStep>('welcome');
-  const [currentDimensionIndex, setCurrentDimensionIndex] = useState(0);
-  const [respondentInfo, setRespondentInfo] = useState<RespondentInfo>({ name: '', department: '' });
-  const [responses, setResponses] = useState<SurveyResponse>({});
-  const [rootCauses, setRootCauses] = useState<RootCauseResponse>({});
+  // Unique per assessment + respondent type, so two different survey links
+  // (or two stakeholder types for the same assessment) never collide.
+  const draftStorageKey = assessmentId && stakeholderType
+    ? `disha-survey-draft:${assessmentId}:${stakeholderType}`
+    : null;
+
+  // Read any existing draft exactly once per mount (a ref survives re-renders
+  // without re-reading localStorage on every render).
+  const draftRef = useRef<PersistedDraft | null | undefined>(undefined);
+  if (draftRef.current === undefined) {
+    draftRef.current = loadDraft(draftStorageKey);
+  }
+  const restoredDraft = draftRef.current && RESUMABLE_STEPS.includes(draftRef.current.currentStep)
+    ? draftRef.current
+    : null;
+
+  const [currentStep, setCurrentStep] = useState<SurveyStep>(restoredDraft?.currentStep ?? 'welcome');
+  const [currentDimensionIndex, setCurrentDimensionIndex] = useState(restoredDraft?.currentDimensionIndex ?? 0);
+  const [respondentInfo, setRespondentInfo] = useState<RespondentInfo>(restoredDraft?.respondentInfo ?? { name: '', department: '' });
+  const [responses, setResponses] = useState<SurveyResponse>(restoredDraft?.responses ?? {});
+  const [rootCauses, setRootCauses] = useState<RootCauseResponse>(restoredDraft?.rootCauses ?? {});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [submissionId, setSubmissionId] = useState('');
+  const [draftRestoredNotice, setDraftRestoredNotice] = useState(!!restoredDraft);
+
+  // Autosave the draft on every meaningful change so a refresh, lost
+  // connection, or accidental navigation before the final Submit no longer
+  // discards the respondent's answers. Skipped once a submission succeeds
+  // ('confirmation') since handleSubmitSurvey already clears the draft then.
+  useEffect(() => {
+    if (!draftStorageKey || currentStep === 'confirmation') return;
+    try {
+      const draft: PersistedDraft = {
+        currentStep,
+        currentDimensionIndex,
+        respondentInfo,
+        responses,
+        rootCauses,
+      };
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+    } catch {
+      // Quota exceeded or storage disabled - fail silently, never block the survey.
+    }
+  }, [draftStorageKey, currentStep, currentDimensionIndex, respondentInfo, responses, rootCauses]);
 
   // Validate parameters, then confirm the assessment event is still open
   useEffect(() => {
@@ -342,6 +412,17 @@ export function StakeholderSurvey() {
         respondentInfo.email || respondentInfo.name
       );
 
+      // Completed successfully - clear the draft so it doesn't linger as
+      // stale data and doesn't get wrongly "restored" if this respondent
+      // opens the same link again for a fresh response.
+      if (draftStorageKey) {
+        try {
+          window.localStorage.removeItem(draftStorageKey);
+        } catch {
+          // localStorage unavailable - nothing to clean up.
+        }
+      }
+
       setSubmissionId(responseId);
       setCurrentStep('confirmation');
     } catch (error: any) {
@@ -602,6 +683,18 @@ export function StakeholderSurvey() {
               : 'Please provide the required information to continue'}
           </p>
 
+          {draftRestoredNotice && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between gap-3">
+              <p className="text-blue-800 text-sm">Restored your in-progress answers from earlier.</p>
+              <button
+                onClick={() => setDraftRestoredNotice(false)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-semibold flex-shrink-0"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {errorMessage && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-800 text-sm">{errorMessage}</p>
@@ -653,6 +746,18 @@ export function StakeholderSurvey() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 py-8">
         <div className="max-w-3xl mx-auto">
+          {draftRestoredNotice && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between gap-3">
+              <p className="text-blue-800 text-sm">Restored your in-progress answers from earlier.</p>
+              <button
+                onClick={() => setDraftRestoredNotice(false)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-semibold flex-shrink-0"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* Progress Bar */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
@@ -797,6 +902,18 @@ export function StakeholderSurvey() {
         <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 md:p-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Review Your Responses</h2>
           <p className="text-gray-600 mb-8">Please review your responses before submitting</p>
+
+          {draftRestoredNotice && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between gap-3">
+              <p className="text-blue-800 text-sm">Restored your in-progress answers from earlier.</p>
+              <button
+                onClick={() => setDraftRestoredNotice(false)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-semibold flex-shrink-0"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           {/* Summary */}
           <div className="space-y-4 mb-8 max-h-96 overflow-y-auto">

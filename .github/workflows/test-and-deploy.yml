@@ -112,6 +112,9 @@ jobs:
           gcloud config set project disha-diagnostics
 
           # List of orphaned functions to delete (NOT including analyzeCheckup, generate14DReport, runSimulation, initializeDISHADatabase, getDeploymentStatus)
+          # The First Opinion Engine v3 functions below were removed from functions/src entirely
+          # (the whole subsystem was unreachable from the client) - listed here so any
+          # already-deployed instances get cleaned up from GCP.
           FUNCTIONS=(
             "analyzeDimensions"
             "analyzeTrends"
@@ -124,6 +127,9 @@ jobs:
             "submitBatchChallengeResponses"
             "submitChallengeResponse"
             "syncMultipliers"
+            "onChallengeResponseWrite"
+            "onMultiplierWrite"
+            "onCycleCompletion"
           )
 
           # CRITICAL: Clean up us-central1 functions FIRST (they may be causing conflicts)
@@ -169,51 +175,6 @@ jobs:
         timeout-minutes: 20
         continue-on-error: true
 
-      - name: Deploy Asia-South1 Functions (Manual gcloud)
-        run: |
-          echo "🚀 Deploying asia-south1 functions via gcloud..."
-          GCP_SA_KEY='${{ secrets.GCP_SA_KEY }}'
-
-          # Setup gcloud
-          echo "$GCP_SA_KEY" > /tmp/gcloud-key.json
-          gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
-          gcloud config set project disha-diagnostics
-
-          # Deploy asia-south1 functions directly via gcloud
-          echo "Deploying syncMultipliers to asia-south1..."
-          gcloud functions deploy syncMultipliers \
-            --gen2 \
-            --region asia-south1 \
-            --source functions \
-            --entry-point syncMultipliers \
-            --runtime nodejs20 \
-            --trigger-http \
-            --allow-unauthenticated 2>&1 || echo "syncMultipliers: Already exists or error (continuing...)"
-
-          echo "Deploying batchRecalculateAllCycles to asia-south1..."
-          gcloud functions deploy batchRecalculateAllCycles \
-            --gen2 \
-            --region asia-south1 \
-            --source functions \
-            --entry-point batchRecalculateAllCycles \
-            --runtime nodejs20 \
-            --trigger-topic projects/disha-diagnostics/topics/batchRecalculate 2>&1 || echo "batchRecalculateAllCycles: Already exists or error (continuing...)"
-
-          echo "Deploying recalculateCycleScores to asia-south1..."
-          gcloud functions deploy recalculateCycleScores \
-            --gen2 \
-            --region asia-south1 \
-            --source functions \
-            --entry-point recalculateCycleScores \
-            --runtime nodejs20 \
-            --trigger-http \
-            --allow-unauthenticated 2>&1 || echo "recalculateCycleScores: Already exists or error (continuing...)"
-
-          rm /tmp/gcloud-key.json 2>/dev/null || true
-          echo "✅ Manual asia-south1 deployment complete"
-        timeout-minutes: 15
-        continue-on-error: true
-
       - name: Deploy Firestore Rules & Indexes
         if: ${{ !cancelled() }}
         run: |
@@ -241,7 +202,7 @@ jobs:
           echo "✅ Full deployment completed!"
           echo ""
           echo "📋 Deployment Summary:"
-          echo "  ✓ Cloud Functions deployed (3 functions)"
+          echo "  ✓ Cloud Functions deployed"
           echo "  ✓ Firestore security rules & indexes updated"
           echo "  ✓ React app deployed to Firebase Hosting"
           echo "  ✓ Cache headers configured"

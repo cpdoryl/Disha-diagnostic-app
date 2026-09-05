@@ -3,9 +3,10 @@ import * as admin from "firebase-admin";
 import { calculateMetrics } from "./14d/calculateMetrics";
 import { runGapAnalysis, isBlindSpot } from "./14d/gapAnalysis";
 import { generateRecommendations } from "./14d/recommendations";
+import { getDb } from "./lib/db";
 
 admin.initializeApp();
-const db = admin.firestore();
+const db = getDb();
 
 interface DeploymentResult {
   success: boolean;
@@ -300,6 +301,27 @@ export const analyzeCheckup = functions.https.onCall(
 
 // ===== STAGE 2: 14D REPORT GENERATOR FUNCTION =====
 
+// The 14 live dimension ids/names from src/data/14DimensionsQuestions.ts
+// (FOURTEEN_DIMENSIONS). Cloud Functions can't import that frontend module
+// directly (separate package/build), so the id/name pairs are mirrored here -
+// keep in sync if dimensions are ever added/renamed there.
+const REPORT_DIMENSIONS: Array<{ id: string; name: string }> = [
+  { id: 'academic_performance', name: 'Academic Performance & Learning Outcomes' },
+  { id: 'curriculum_pedagogy', name: 'Curriculum & Pedagogy Quality' },
+  { id: 'teacher_quality', name: 'Teacher Quality, Development & Retention' },
+  { id: 'student_wellbeing', name: 'Student Wellbeing & Mental Health' },
+  { id: 'student_discipline', name: 'Student Discipline & Behavior' },
+  { id: 'infrastructure_facilities', name: 'Infrastructure & Facilities' },
+  { id: 'safety_security', name: 'Safety & Security' },
+  { id: 'parent_engagement', name: 'Parent Satisfaction & Engagement' },
+  { id: 'student_engagement', name: 'Student Satisfaction & Engagement' },
+  { id: 'leadership_governance', name: 'Leadership & Governance' },
+  { id: 'financial_health', name: 'Financial Health & Sustainability' },
+  { id: 'admissions_market', name: 'Admissions, Enrollment & Market Position (Brand/Reputation)' },
+  { id: 'technology_digital', name: 'Technology & Digital Readiness' },
+  { id: 'cocurricular_holistic', name: 'Co-curricular, Extracurricular & Holistic Development' },
+];
+
 export const generate14DReport = functions.https.onCall(
   async (data: any, context: any) => {
     try {
@@ -309,14 +331,11 @@ export const generate14DReport = functions.https.onCall(
         throw new Error('Authentication required');
       }
 
-      // Fetch assessment and responses
-      const assessment = await db
-        .collection('schools').doc(schoolId)
-        .collection('assessments').doc(assessmentId)
-        .get();
-
+      // Respondents submit to the flat top-level assessments/{assessmentId}/responses
+      // collection (see src/pages/StakeholderSurvey.tsx) - not a schools/{schoolId}-nested
+      // path. Each response document has a `responses[dimensionId][questionId]` shape,
+      // scored on the app's 1-5 scale (see src/data/14DimensionsQuestions.ts).
       const responses = await db
-        .collection('schools').doc(schoolId)
         .collection('assessments').doc(assessmentId)
         .collection('responses')
         .get();
@@ -327,21 +346,29 @@ export const generate14DReport = functions.https.onCall(
 
       // Aggregate responses by dimension
       const dimensionAnalysis: any = {};
-      for (let d = 1; d <= 14; d++) {
-        const dimensionId = `D${String(d).padStart(2, '0')}`;
-        const scores = responses.docs
-          .map(doc => {
-            const data = doc.data();
-            return data.answers && data.answers[dimensionId] ? parseInt(data.answers[dimensionId]) : 0;
-          })
-          .filter((s: number) => s > 0);
+      for (const dimension of REPORT_DIMENSIONS) {
+        const scores: number[] = [];
+        responses.docs.forEach(doc => {
+          const docData = doc.data();
+          const dimensionAnswers = docData.responses?.[dimension.id];
+          if (!dimensionAnswers) return;
+          const answerValues = Object.values(dimensionAnswers).filter(
+            (v): v is number => typeof v === 'number'
+          );
+          if (answerValues.length === 0) return;
+          scores.push(answerValues.reduce((a, b) => a + b, 0) / answerValues.length);
+        });
 
-        const avgScore = scores.length > 0 ? (scores.reduce((a: number, b: number) => a + b, 0) / scores.length) * 20 : 0;
+        // Scores are on a 1-5 scale; normalize to a 0-100 index, matching
+        // src/lib/dimensionScoring.ts's toIndex().
+        const avgScore = scores.length > 0
+          ? Math.round(((scores.reduce((a, b) => a + b, 0) / scores.length - 1) / 4) * 100 * 100) / 100
+          : 0;
 
-        dimensionAnalysis[dimensionId] = {
-          dimensionName: `Dimension ${d}`,
+        dimensionAnalysis[dimension.id] = {
+          dimensionName: dimension.name,
           subjectiveAnalysis: {
-            averageScore: Math.round(avgScore * 100) / 100,
+            averageScore: avgScore,
             responseCount: scores.length
           },
           status: avgScore >= 75 ? 'Strong' : avgScore >= 60 ? 'Adequate' : 'Needs Attention'
@@ -349,7 +376,7 @@ export const generate14DReport = functions.https.onCall(
       }
 
       // Calculate overall health index
-      const overallScore = Object.values(dimensionAnalysis as any).reduce((sum: number, d: any) => sum + d.subjectiveAnalysis.averageScore, 0) / 14;
+      const overallScore = Object.values(dimensionAnalysis as any).reduce((sum: number, d: any) => sum + d.subjectiveAnalysis.averageScore, 0) / REPORT_DIMENSIONS.length;
 
       // Save report
       const reportRef = db
@@ -493,54 +520,11 @@ export const runSimulation = functions.https.onCall(
   }
 );
 
-// ====== DISHA First Opinion Engine v3 - Phase 1 ======
-// Core calculation engines (S_sub, M_obj, Health Index, Gap/Quadrant)
-// Implemented in: src/lib/firstOpinion/calculations.ts
-// Tests: src/lib/firstOpinion/calculations.test.ts
-
-// ====== DISHA First Opinion Engine v3 - Phase 2 Functions ======
-// API & Calculation Layer: Challenge responses, multiplier sync, real-time recalculation
-//
-// NOTE: Gen 2 Firestore triggers exported directly from triggers.ts
-// (not from index.ts to avoid Gen 1 conversion)
-// See: functions/src/firstOpinion/triggers.ts
-//
-// CRITICAL FIX: Temporarily disabling these exports to prevent Firebase CLI
-// from trying to create them in us-central1 (wrong region).
-// These will be deployed via manual gcloud CLI commands to ensure asia-south1 region.
-// See: .github/workflows/test-and-deploy.yml for manual deployment step
-//
-// TODO: Re-enable after Firebase CLI fixes region handling
-// export { syncMultipliers } from './firstOpinion/multiplierSync';
-// export { batchRecalculateAllCycles, recalculateCycleScores } from './firstOpinion/batch';
-
-// Phase 2: Challenge Response Submission APIs
-export { submitChallengeResponse, submitBatchChallengeResponses, deleteChallengeResponse } from './firstOpinion/submitChallengeResponse';
-
-// Phase 2: Multiplier Sync & Recalculation Orchestration
-export { syncMultipliers } from './firstOpinion/multiplierSync';
-export { recalculateCycleScores } from './firstOpinion/recalculateOnDemand';
-export { batchRecalculateAllCycles } from './firstOpinion/batch';
-
-// Phase 2: Firestore Triggers (Gen 1 style - automatic on response/multiplier changes)
-export { onChallengeResponseWrite, onMultiplierWrite } from './firstOpinion/triggers';
-
-// ====== DISHA First Opinion Engine v3 - Phase 3 ======
-// Reporting & Visualization: First Opinion Report generation
-export { generateFirstOpinionReport } from './firstOpinion/generateFirstOpinionReport';
-
-// ====== DISHA First Opinion Engine v3 - Phase 4 ======
-// Predictive & Trend Analysis: Early warning flags, trajectory prediction
-export { detectEarlyWarnings } from './firstOpinion/detectEarlyWarnings';
-
 // ====== DISHA Phase 3 - 14-Dimension Cloud Functions ======
 // Metric calculation, gap analysis, and recommendations engine
 export { calculateMetrics } from './14d/calculateMetrics';
 export { runGapAnalysis, isBlindSpot } from './14d/gapAnalysis';
 export { generateRecommendations } from './14d/recommendations';
-
-// Phase 4: Firestore Triggers (automatic on cycle score updates)
-export { onCycleCompletion } from './firstOpinion/onCycleCompletion';
 
 // ====== DISHA Phase 4 - 14-Dimension Analysis & Reporting Functions ======
 // Diagnostic reports, dimension analysis, and trend tracking (separate from First Opinion)

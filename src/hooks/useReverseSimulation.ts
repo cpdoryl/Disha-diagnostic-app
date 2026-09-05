@@ -5,6 +5,7 @@ import { functions } from '../lib/firebase';
 // Type definitions
 export interface GoalSettingRequest {
   simulationId: string;
+  schoolId: string;
   currentHealth: number;
   targetHealth: number;
   timelineMonths: number;
@@ -21,6 +22,7 @@ export interface GoalSettingResponse {
 
 export interface CalculationRequest {
   simulationId: string;
+  schoolId: string;
   dimensions: Record<string, number>;
   currentHealth: number;
   targetHealth: number;
@@ -39,6 +41,7 @@ export interface CalculationResponse {
 
 export interface FeasibilityRequest {
   simulationId: string;
+  schoolId: string;
   currentDimensions: Record<string, number>;
   targetDimensions: Record<string, number>;
   timelineMonths: number;
@@ -61,6 +64,7 @@ export interface FeasibilityResponse {
 
 export interface ActionPlanRequest {
   simulationId: string;
+  schoolId: string;
   currentDimensions: Record<string, number>;
   targetDimensions: Record<string, number>;
   timelineMonths: number;
@@ -75,6 +79,7 @@ export interface ActionPlanResponse {
 
 export interface AllocationRequest {
   simulationId: string;
+  schoolId: string;
   totalBudget: number;
   dimensionGaps: Record<string, number>;
   feasibilityScores: Record<string, number>;
@@ -94,6 +99,7 @@ export interface AllocationResponse {
 
 export interface TimelineRequest {
   simulationId: string;
+  schoolId: string;
   dimensionTargets: Record<string, number>;
   timelineMonths: number;
   budget: number;

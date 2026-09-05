@@ -1,8 +1,9 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { getDb } from '../lib/db';
 import { CalculationEngine } from './calculationEngine';
 
-const db = admin.firestore();
+const db = getDb();
 const logger = functions.logger;
 const engine = new CalculationEngine();
 
@@ -323,6 +324,7 @@ export const generateTimeline = functions
       ];
 
       // 9. Prepare timeline object for storage
+      const schoolId = data.schoolId || userId;
       const timelineData = {
         simulationId: data.simulationId,
         totalMonths: data.timelineMonths,
@@ -342,7 +344,7 @@ export const generateTimeline = functions
       // 10. Save timeline to Firestore
       await db
         .collection('schools')
-        .doc(userId)
+        .doc(schoolId)
         .collection('reverseSimulations')
         .doc(data.simulationId)
         .collection('timeline')

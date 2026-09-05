@@ -5,6 +5,7 @@
 
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
+import { getDb } from '../lib/db'
 
 interface ReportData {
   schoolId: string
@@ -31,7 +32,7 @@ export const generateDiagnosticReport = functions.https.onCall(
     }
 
     const { schoolId, cycleId } = data
-    const db = admin.firestore()
+    const db = getDb()
 
     try {
       console.log(`[Report] Generating for ${schoolId}/${cycleId}`)

@@ -156,19 +156,27 @@ export function MultiUserAssessmentPage() {
       return;
     }
 
-    try {
-      setIsGeneratingReport(true);
-      setReportError(null);
-      console.log('📊 Triggering report generation for assessment:', config.id);
+    // The rendered <DiagnosticReport assessmentId={config.id} .../> below computes
+    // its own subjective+objective+gap analysis directly from
+    // assessments/{id}/responses (see fullDiagnosticReport.ts / dimensionScoring.ts) -
+    // it never reads reportData/reportId. triggerReportGeneration's Cloud Function
+    // (generate14DReport) instead reads a different, unused nested path with stale
+    // dimension-id keys, so it always throws "No responses found", which used to
+    // block setShowReport(true) from ever running even though real responses exist.
+    // Showing the report no longer depends on that call succeeding; it's kept as a
+    // best-effort audit-trail side effect only.
+    setIsGeneratingReport(true);
+    setReportError(null);
+    setShowReport(true);
 
-      // Trigger Cloud Function to generate report
+    try {
+      console.log('📊 Triggering report generation for assessment:', config.id);
       const result = await triggerReportGeneration(schoolId, config.id);
 
       if (result?.reportId) {
         setReportId(result.reportId);
         console.log('✓ Report generation triggered:', result.reportId);
 
-        // Log audit event for report generation
         await logAuditEvent(
           schoolId,
           'REPORT_GENERATED',
@@ -176,19 +184,15 @@ export function MultiUserAssessmentPage() {
           result.reportId,
           'system'
         );
-        console.log('✓ Audit logged for report generation');
 
-        // Load the report data
         const report = await getReport(schoolId, result.reportId);
         if (report) {
-          console.log('✓ Report loaded:', report);
           setReportData(report);
-          setShowReport(true);
         }
       }
     } catch (error: any) {
-      console.error('Error generating report:', error);
-      setReportError(error.message || 'Failed to generate report. Please try again.');
+      // Best-effort only - the report is already showing from client-side data.
+      console.error('Report-generation audit trail failed (report is still shown):', error);
     } finally {
       setIsGeneratingReport(false);
     }

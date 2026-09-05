@@ -1,7 +1,8 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { getDb } from '../lib/db';
 
-const db = admin.firestore();
+const db = getDb();
 const logger = functions.logger;
 
 /**
@@ -125,7 +126,7 @@ export const setGoalSetting = functions
       // 6. Save to Firestore
       await db
         .collection('schools')
-        .doc(userId)
+        .doc(goalSetting.schoolId)
         .collection('reverseSimulations')
         .doc(data.simulationId)
         .collection('goalSetting')

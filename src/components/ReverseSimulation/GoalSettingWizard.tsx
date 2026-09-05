@@ -4,11 +4,12 @@ import { useReverseSimulation } from '../../hooks/useReverseSimulation';
 
 interface GoalSettingWizardProps {
   simulationId: string;
+  schoolId: string;
   onSuccess: (result: any) => void;
   onError: (error: string) => void;
 }
 
-export const GoalSettingWizard: React.FC<GoalSettingWizardProps> = ({ simulationId, onSuccess, onError }) => {
+export const GoalSettingWizard: React.FC<GoalSettingWizardProps> = ({ simulationId, schoolId, onSuccess, onError }) => {
   const { setGoalSetting, loading, errors } = useReverseSimulation();
 
   const [formData, setFormData] = useState({
@@ -49,6 +50,7 @@ export const GoalSettingWizard: React.FC<GoalSettingWizardProps> = ({ simulation
       setSubmitted(true);
       const response = await setGoalSetting({
         simulationId,
+        schoolId,
         currentHealth: formData.currentHealth,
         targetHealth: formData.targetHealth,
         timelineMonths: formData.timelineMonths,

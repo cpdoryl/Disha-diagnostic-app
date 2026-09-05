@@ -14,7 +14,7 @@ const mockTrendData = [
 ];
 
 export const Dashboard = () => {
-  const { domains, activeSchool, setCurrentView } = useAppStore();
+  const { domains, isDomainsSample, activeSchool, setCurrentView } = useAppStore();
 
   const averageScore = Math.round(domains.reduce((acc, curr) => acc + curr.score, 0) / domains.length);
   const criticalAreas = domains.filter(d => d.score < 80);
@@ -36,6 +36,13 @@ export const Dashboard = () => {
           </button>
         </div>
       </div>
+
+      {isDomainsSample && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          Showing sample data below — no domain scores have been configured for this school yet. Run a 14D Assessment to replace this with real data.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">

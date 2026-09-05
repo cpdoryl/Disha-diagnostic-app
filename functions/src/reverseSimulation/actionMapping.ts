@@ -1,7 +1,8 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { getDb } from '../lib/db';
 
-const db = admin.firestore();
+const db = getDb();
 const logger = functions.logger;
 
 // Dimension-specific action templates
@@ -165,6 +166,7 @@ export const generateActionPlan = functions
       const sortedPlan = actionPlan.sort((a, b) => b.gap - a.gap);
 
       // 7. Prepare action plan object for storage
+      const schoolId = data.schoolId || userId;
       const actionPlanData = {
         simulationId: data.simulationId,
         totalDimensions: dimensions.length,
@@ -180,7 +182,7 @@ export const generateActionPlan = functions
       // 8. Save action plan to Firestore
       await db
         .collection('schools')
-        .doc(userId)
+        .doc(schoolId)
         .collection('reverseSimulations')
         .doc(data.simulationId)
         .collection('actionMapping')
