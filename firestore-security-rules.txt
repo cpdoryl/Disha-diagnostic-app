@@ -4,8 +4,17 @@ service cloud.firestore {
 
     // ====== HELPER FUNCTIONS ======
 
+    // Firestore-doc-based, not custom-claims-based: this app has never called
+    // setCustomUserClaims anywhere (confirmed by repo-wide grep), which made
+    // every isAdmin()-gated rule in this file permanently unsatisfiable for
+    // every real user, including the app's own admin account - see
+    // src/pages/Admin.tsx: its user list only ever showed the caller's own
+    // account, and Approve/Revoke on anyone else always failed. Reads the
+    // caller's own users/{uid} doc instead (the same doc App.tsx already
+    // writes `role: 'admin'` to for the hardcoded admin email).
     function isAdmin() {
-      return request.auth != null && request.auth.token.role == 'admin';
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isSchoolAdmin(schoolId) {
