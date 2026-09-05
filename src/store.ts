@@ -3,7 +3,7 @@ import { ViewState, School, ChallengeDomain, CommunicationMessage } from './type
 
 import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from './lib/firebase';
-import { saveSchoolToFirestore, deleteSchoolFromFirestore, fetchSchoolsFromFirestore, findSchoolByName } from './lib/schoolService';
+import { saveSchoolToFirestore, deleteSchoolFromFirestore, fetchSchoolsFromFirestore, fetchOwnSchoolsFromFirestore, findSchoolByName } from './lib/schoolService';
 
 interface AppState {
   currentView: ViewState;
@@ -76,7 +76,7 @@ const loadSavedActiveSchool = (schoolsList: School[]): School | null => {
 const initialSchools = loadSavedSchools();
 const initialActiveSchool = loadSavedActiveSchool(initialSchools);
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   currentView: 'DASHBOARD',
   setCurrentView: (view) => set({ currentView: view }),
   customDomain: typeof localStorage !== 'undefined' ? (localStorage.getItem('disha_custom_domain') || 'disha.rylneuroacademy.com') : 'disha.rylneuroacademy.com',
@@ -105,16 +105,20 @@ export const useAppStore = create<AppState>((set) => ({
     set({ activeSchool: school });
   },
   addSchool: async (schoolData) => {
-    // Reuse an existing school with the same name instead of forking a duplicate
-    // that would orphan any assessment data already tied to the original.
-    const existing = await findSchoolByName(schoolData.name).catch(() => null);
+    const uid0 = auth.currentUser?.uid || '';
+    // Reuse an existing school of this same user's own with the same name,
+    // instead of forking a duplicate that would orphan any assessment data
+    // already tied to the original - scoped to their own schools only, so
+    // this never matches (and silently reuses) a different user's school.
+    const existing = uid0 ? await findSchoolByName(schoolData.name, uid0).catch(() => null) : null;
     const resolvedSchool: School = existing || {
       ...schoolData,
       id: 'sch_' + Date.now(),
+      ownerId: uid0 || undefined,
     };
 
     if (!existing) {
-      saveSchoolToFirestore(resolvedSchool).catch(err => console.error('Failed to save school to Firestore:', err));
+      saveSchoolToFirestore(resolvedSchool, uid0 || undefined).catch(err => console.error('Failed to save school to Firestore:', err));
     }
 
     localStorage.setItem('disha_active_school_id', resolvedSchool.id);
@@ -177,6 +181,16 @@ export const useAppStore = create<AppState>((set) => ({
   fetchData: async () => {
     set({ isLoadingData: true });
     try {
+      // A regular user only ever sees the school(s) they registered
+      // themselves (ownerId == their uid) - only an admin sees every school,
+      // and only via the Admin console's own School Management tab, not this
+      // sidebar-driving fetch. isAdmin is already set by the time fetchData()
+      // runs (App.tsx calls setIsAdmin() before awaiting fetchData()).
+      const uid = auth.currentUser?.uid;
+      const schoolsPromise = get().isAdmin
+        ? fetchSchoolsFromFirestore()
+        : (uid ? fetchOwnSchoolsFromFirestore(uid) : Promise.resolve([] as School[]));
+
       // Promise.allSettled (not Promise.all): these collections are denied by
       // the Firestore rules for this account, and a single rejection must not
       // take down the schools fetch that the rest of the app depends on to
@@ -184,7 +198,7 @@ export const useAppStore = create<AppState>((set) => ({
       const [domainsResult, communicationsResult, schoolsResult] = await Promise.allSettled([
         getDocs(collection(db, 'domains')),
         getDocs(collection(db, 'communications')),
-        fetchSchoolsFromFirestore(),
+        schoolsPromise,
       ]);
 
       const domainsSnap = domainsResult.status === 'fulfilled' ? domainsResult.value : null;
@@ -195,10 +209,25 @@ export const useAppStore = create<AppState>((set) => ({
         console.error('Failed to fetch schools:', schoolsResult.reason);
       }
 
+      // localStorage isn't scoped per-account - if a different user previously
+      // signed in on this same browser, their cached schools/active-school
+      // would otherwise leak into this session's merge below. Clear that
+      // cache whenever the signed-in uid doesn't match whoever it was cached
+      // for; a first-ever sign-in on this browser (no lastUid yet) is not a
+      // mismatch, so it's left alone.
+      const lastUid = localStorage.getItem('disha_last_uid');
+      const staleCacheForDifferentUser = !!lastUid && lastUid !== (uid || '');
+      if (staleCacheForDifferentUser) {
+        localStorage.removeItem('disha_registered_schools');
+        localStorage.removeItem('disha_active_school_id');
+      }
+      if (uid) {
+        localStorage.setItem('disha_last_uid', uid);
+      }
+
       // Fall back to the account's remembered active school (Firestore) when this
       // device/browser has no local record of it — e.g. a fresh login elsewhere.
       let remoteActiveSchoolId: string | null = null;
-      const uid = auth.currentUser?.uid;
       if (uid && !localStorage.getItem('disha_active_school_id')) {
         try {
           const userSnap = await getDoc(doc(db, 'users', uid));
@@ -209,17 +238,18 @@ export const useAppStore = create<AppState>((set) => ({
       }
 
       set(state => {
-        let mergedSchools = state.schools;
+        const baselineSchools = staleCacheForDifferentUser ? [] : state.schools;
+        let mergedSchools = baselineSchools;
         if (fetchedSchools && fetchedSchools.length > 0) {
           // Merge or replace schools with Firestore registered schools
           const schoolMap = new Map<string, School>();
-          state.schools.forEach(s => schoolMap.set(s.id, s));
+          baselineSchools.forEach(s => schoolMap.set(s.id, s));
           fetchedSchools.forEach(s => schoolMap.set(s.id, s));
           mergedSchools = Array.from(schoolMap.values());
         }
 
         const savedActiveId = localStorage.getItem('disha_active_school_id') || remoteActiveSchoolId;
-        let currentActive = state.activeSchool;
+        let currentActive = staleCacheForDifferentUser ? null : state.activeSchool;
         if (savedActiveId && mergedSchools.length > 0) {
           const match = mergedSchools.find(s => s.id === savedActiveId);
           if (match) currentActive = match;

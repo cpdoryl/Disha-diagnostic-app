@@ -24,6 +24,12 @@ export interface School {
   contactEmail?: string;
   contactPhone?: string;
   address?: string;
+  // The Firebase Auth uid of whoever registered this school. Set once, on
+  // creation, and never overwritten by later edits. Scopes the regular
+  // (non-admin) school list/switcher to only the schools a user created
+  // themselves - the Admin console's School Management tab is the only place
+  // that still lists every school regardless of ownerId.
+  ownerId?: string;
 }
 
 export interface ChallengeDomain {

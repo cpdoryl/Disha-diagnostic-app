@@ -49,27 +49,7 @@ export function subscribeToSchools(onData: (schools: School[]) => void, onError?
   return onSnapshot(
     colRef,
     (snapshot) => {
-      const schoolsList: School[] = [];
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        schoolsList.push({
-          id: docSnap.id,
-          name: data.name || '',
-          schoolCode: data.schoolCode || '',
-          city: data.city || '',
-          state: data.state || '',
-          board: data.board || '',
-          schoolType: data.schoolType || '',
-          tier: data.tier || '',
-          feeBand: data.feeBand || '',
-          studentCount: data.studentCount || '',
-          principalName: data.principalName || '',
-          contactEmail: data.contactEmail || '',
-          contactPhone: data.contactPhone || '',
-          address: data.address || '',
-        });
-      });
-      onData(schoolsList);
+      onData(snapshot.docs.map(schoolFromDoc));
     },
     (error) => {
       handleFirestoreError(error, OperationType.GET, SCHOOLS_COLLECTION);
@@ -78,33 +58,37 @@ export function subscribeToSchools(onData: (schools: School[]) => void, onError?
   );
 }
 
+function schoolFromDoc(docSnap: { id: string; data: () => any }): School {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    name: data.name || '',
+    schoolCode: data.schoolCode || '',
+    city: data.city || '',
+    state: data.state || '',
+    board: data.board || '',
+    schoolType: data.schoolType || '',
+    tier: data.tier || '',
+    feeBand: data.feeBand || '',
+    studentCount: data.studentCount || '',
+    principalName: data.principalName || '',
+    contactEmail: data.contactEmail || '',
+    contactPhone: data.contactPhone || '',
+    address: data.address || '',
+    ownerId: data.ownerId || undefined,
+  };
+}
+
 /**
- * Fetch all registered schools once
+ * Fetch every registered school, regardless of who created it. Only the
+ * Admin console's School Management tab should call this - anything a
+ * regular (non-admin) user sees must go through fetchOwnSchoolsFromFirestore
+ * instead, or every user would see every other user's schools.
  */
 export async function fetchSchoolsFromFirestore(): Promise<School[]> {
   try {
     const snapshot = await getDocs(collection(db, SCHOOLS_COLLECTION));
-    const schoolsList: School[] = [];
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      schoolsList.push({
-        id: docSnap.id,
-        name: data.name || '',
-        schoolCode: data.schoolCode || '',
-        city: data.city || '',
-        state: data.state || '',
-        board: data.board || '',
-        schoolType: data.schoolType || '',
-        tier: data.tier || '',
-        feeBand: data.feeBand || '',
-        studentCount: data.studentCount || '',
-        principalName: data.principalName || '',
-        contactEmail: data.contactEmail || '',
-        contactPhone: data.contactPhone || '',
-        address: data.address || '',
-      });
-    });
-    return schoolsList;
+    return snapshot.docs.map(schoolFromDoc);
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, SCHOOLS_COLLECTION);
     return [];
@@ -112,9 +96,31 @@ export async function fetchSchoolsFromFirestore(): Promise<School[]> {
 }
 
 /**
- * Add or register a new actual school in Firestore
+ * Fetch only the schools a given user created themselves (ownerId ==
+ * their uid). This is what a regular user's sidebar/switcher should be
+ * populated from - schools registered before ownerId existed won't match
+ * any uid and so won't appear for anyone via this path (they still show up
+ * for admins via fetchSchoolsFromFirestore).
  */
-export async function saveSchoolToFirestore(school: School): Promise<void> {
+export async function fetchOwnSchoolsFromFirestore(ownerId: string): Promise<School[]> {
+  if (!ownerId) return [];
+  try {
+    const q = query(collection(db, SCHOOLS_COLLECTION), where('ownerId', '==', ownerId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(schoolFromDoc);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, `${SCHOOLS_COLLECTION}?ownerId=${ownerId}`);
+    return [];
+  }
+}
+
+/**
+ * Add or register a new actual school in Firestore. `ownerId` should only
+ * ever be passed when creating a brand-new school (see addSchool in
+ * store.ts) - omitting it on a later edit leaves the original owner intact
+ * since this write uses { merge: true }.
+ */
+export async function saveSchoolToFirestore(school: School, ownerId?: string): Promise<void> {
   const path = `${SCHOOLS_COLLECTION}/${school.id}`;
   try {
     const schoolDocRef = doc(db, SCHOOLS_COLLECTION, school.id);
@@ -135,6 +141,7 @@ export async function saveSchoolToFirestore(school: School): Promise<void> {
       contactPhone: school.contactPhone || '',
       address: school.address || '',
       createdAt: new Date().toISOString(),
+      ...(ownerId ? { ownerId } : {}),
     }, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -142,36 +149,26 @@ export async function saveSchoolToFirestore(school: School): Promise<void> {
 }
 
 /**
- * Look up an existing school by (normalized) name so re-registering the same
- * school never creates a duplicate, orphaning past assessment data.
+ * Look up an existing school by (normalized) name, scoped to schools the
+ * given user owns themselves, so re-registering the same name never
+ * creates a duplicate FOR THAT USER - but also never matches (and silently
+ * reuses) a different user's same-named school.
  */
-export async function findSchoolByName(name: string): Promise<School | null> {
+export async function findSchoolByName(name: string, ownerId: string): Promise<School | null> {
   const nameLower = name.trim().toLowerCase();
-  if (!nameLower) return null;
+  if (!nameLower || !ownerId) return null;
   try {
-    const q = query(collection(db, SCHOOLS_COLLECTION), where('nameLower', '==', nameLower), limit(1));
+    const q = query(
+      collection(db, SCHOOLS_COLLECTION),
+      where('nameLower', '==', nameLower),
+      where('ownerId', '==', ownerId),
+      limit(1)
+    );
     const snapshot = await getDocs(q);
     if (snapshot.empty) return null;
-    const docSnap = snapshot.docs[0];
-    const data = docSnap.data();
-    return {
-      id: docSnap.id,
-      name: data.name || '',
-      schoolCode: data.schoolCode || '',
-      city: data.city || '',
-      state: data.state || '',
-      board: data.board || '',
-      schoolType: data.schoolType || '',
-      tier: data.tier || '',
-      feeBand: data.feeBand || '',
-      studentCount: data.studentCount || '',
-      principalName: data.principalName || '',
-      contactEmail: data.contactEmail || '',
-      contactPhone: data.contactPhone || '',
-      address: data.address || '',
-    };
+    return schoolFromDoc(snapshot.docs[0]);
   } catch (error) {
-    handleFirestoreError(error, OperationType.GET, `${SCHOOLS_COLLECTION}?nameLower=${nameLower}`);
+    handleFirestoreError(error, OperationType.GET, `${SCHOOLS_COLLECTION}?nameLower=${nameLower}&ownerId=${ownerId}`);
     return null;
   }
 }
