@@ -3,9 +3,10 @@ import * as admin from "firebase-admin";
 import { calculateMetrics } from "./14d/calculateMetrics";
 import { runGapAnalysis, isBlindSpot } from "./14d/gapAnalysis";
 import { generateRecommendations } from "./14d/recommendations";
+import { getDb } from "./lib/db";
 
 admin.initializeApp();
-const db = admin.firestore();
+const db = getDb();
 
 interface DeploymentResult {
   success: boolean;

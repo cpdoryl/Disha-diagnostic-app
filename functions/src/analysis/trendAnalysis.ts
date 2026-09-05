@@ -5,6 +5,7 @@
 
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
+import { getDb } from '../lib/db'
 
 export const analyzeTrends = functions.https.onCall(
   async (data: { schoolId: string; limit?: number }, context: any) => {
@@ -13,7 +14,7 @@ export const analyzeTrends = functions.https.onCall(
     }
 
     const { schoolId, limit = 10 } = data
-    const db = admin.firestore()
+    const db = getDb()
 
     try {
       console.log(`[Trends] Analyzing for ${schoolId}`)

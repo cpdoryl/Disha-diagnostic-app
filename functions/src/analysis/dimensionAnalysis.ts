@@ -5,6 +5,7 @@
 
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
+import { getDb } from '../lib/db'
 
 export const analyzeDimensions = functions.https.onCall(
   async (data: { schoolId: string; cycleId: string }, context: any) => {
@@ -13,7 +14,7 @@ export const analyzeDimensions = functions.https.onCall(
     }
 
     const { schoolId, cycleId } = data
-    const db = admin.firestore()
+    const db = getDb()
 
     try {
       console.log(`[Dimensions] Analyzing for ${schoolId}/${cycleId}`)

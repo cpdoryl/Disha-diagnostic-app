@@ -11,8 +11,9 @@ import {
   aggregatePerceptionScore,
   calculateGap,
 } from '../lib/metricCalculations';
+import { getDb } from '../lib/db';
 
-const db = admin.firestore();
+const db = getDb();
 
 interface MetricResponse {
   id: string;

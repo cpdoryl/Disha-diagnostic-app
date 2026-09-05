@@ -6,8 +6,9 @@
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { getDb } from '../lib/db';
 
-const db = admin.firestore();
+const db = getDb();
 
 interface GapAnalysisData {
   topPriorities: Array<{

@@ -5,6 +5,7 @@
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { getDb } from '../lib/db';
 
 // Temporary mock data until full implementation
 const ALL_DIMENSIONS = Array.from({ length: 14 }, (_, i) => ({
@@ -151,7 +152,7 @@ export const calculateScores = functions.https.onCall(
       }
 
       // Update assessment document with calculated scores
-      const db = admin.firestore();
+      const db = getDb();
       const assessmentRef = db.collection('ewisr_assessments').doc(assessmentId);
 
       const dimensionScoresObj = dimensionScores.reduce(
@@ -218,7 +219,7 @@ export const batchProcessAssessments = functions.pubsub
   .schedule('every 1 hours')
   .onRun(async () => {
     try {
-      const db = admin.firestore();
+      const db = getDb();
 
       // Get all draft assessments that haven't been updated in the last 24 hours
       const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000);
